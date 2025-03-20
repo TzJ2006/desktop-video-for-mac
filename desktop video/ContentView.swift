@@ -14,7 +14,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
-            Button(videoURL == nil ? "点我选择视频/图片" : "点我更换视频/图片") {
+            Button(videoURL == nil ? "点我选择视频" : "点我更换视频") {
                 openFilePicker()
             }
             .padding()
@@ -36,7 +36,7 @@ struct ContentView: View {
 
     func openFilePicker() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.movie, UTType.image]
+        panel.allowedContentTypes = [UTType.movie]
         panel.allowsMultipleSelection = false
 
         if panel.runModal() == .OK {
