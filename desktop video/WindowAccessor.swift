@@ -12,12 +12,12 @@ struct WindowAccessor: NSViewRepresentable {
     var onWindow: (NSWindow?) -> Void
 
     func makeNSView(context: Context) -> NSView {
-        let nsView = NSView()
+        let view = NSView()
         DispatchQueue.main.async {
-            onWindow(nsView.window)
+            self.onWindow(view.window)
         }
-        return nsView
+        return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) { }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

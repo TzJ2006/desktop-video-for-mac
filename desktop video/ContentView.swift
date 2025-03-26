@@ -5,84 +5,102 @@
 //  Created by 汤子嘉 on 3/20/25.
 //
 
-import UniformTypeIdentifiers
-import SwiftUI
-import AVKit
+// ContentView.swift (使用 SharedWallpaperWindowManager)
 
-class MyWindowDelegate: NSObject, NSWindowDelegate {
-    static let shared = MyWindowDelegate()
-    func windowWillClose(_ notification: Notification) {
-        NSApplication.shared.terminate(nil)
-    }
+import SwiftUI
+import UniformTypeIdentifiers
+import Foundation
+
+class AppState: ObservableObject {
+    static let shared = AppState()
+
+    @Published var lastMediaURL: URL?
+    @Published var lastVolume: Float = 1.0
+    @Published var lastStretchToFill: Bool = true
 }
 
 struct ContentView: View {
-    @State private var videoURL: URL?
-    @State private var isVideoStretched: Bool = true
-    @State private var volume: Float = 1.0 // 音量范围 0.0 ~ 1.0
+    @ObservedObject private var appState = AppState.shared
 
     var body: some View {
-        VStack {
-            Button(videoURL == nil ? "点我选择视频" : "点我更换视频") {
+        VStack(spacing: 16) {
+            Button(appState.lastMediaURL == nil ? "选择视频或图片" : "更换视频或图片") {
                 openFilePicker()
             }
-            .padding()
-            
-            
-            if videoURL != nil {
-                Button("点我关闭壁纸") {
-                    VideoWallpaperManager.shared.stopVideoWallpaper()
-                    videoURL = nil
-                }
-                .padding()
-            }
-            
-            
-            Toggle("拉伸视频以填充屏幕", isOn: $isVideoStretched)
-                .padding()
-                .onChange(of: isVideoStretched) { newValue in
-                    if let url = videoURL {
-                        VideoWallpaperManager.shared.setVideoWallpaper(url: url, stretchToFill: newValue)
-                    }
-                }
-            
 
-            if let url = videoURL {
-                Text("已选择: \(url.lastPathComponent)")
-            }
-            
-            if videoURL != nil {
-                VStack {
-                    Text("音量：\(Int(volume * 100))%")
-                    Slider(value: $volume, in: 0.0...1.0, step: 0.01)
-                        .frame(width: 200)
-                        .onChange(of: volume) { newValue in
-                            VideoWallpaperManager.shared.setVolume(newValue)
-                        }
+            if appState.lastMediaURL != nil {
+                Button("关闭壁纸") {
+                    SharedWallpaperWindowManager.shared.clear()
+                    appState.lastMediaURL = nil
                 }
-                .padding()
+
+                Text("音量：\(Int(appState.lastVolume * 100))%")
+                Slider(value: $appState.lastVolume, in: 0...1, step: 0.01)
+                    .frame(width: 200)
+                    .onChange(of: appState.lastVolume) { newValue in
+                        SharedWallpaperWindowManager.shared.updateVideoSettings(
+                            stretch: appState.lastStretchToFill,
+                            volume: newValue
+                        )
+                    }
+
+                Toggle("拉伸填充屏幕", isOn: $appState.lastStretchToFill)
+                    .onChange(of: appState.lastStretchToFill) { newValue in
+                        if let url = appState.lastMediaURL {
+                            let fileType = UTType(filenameExtension: url.pathExtension)
+                            if fileType?.conforms(to: .movie) == true {
+                                SharedWallpaperWindowManager.shared.updateVideoSettings(
+                                    stretch: newValue,
+                                    volume: appState.lastVolume
+                                )
+                            } else if fileType?.conforms(to: .image) == true {
+                                SharedWallpaperWindowManager.shared.updateImageStretch(stretch: newValue)
+                            }
+                        }
+                    }
             }
         }
-        .background(WindowAccessor { window in
-            if let window = window {
-                window.delegate = MyWindowDelegate.shared
+        .padding()
+        .frame(width: 480, height: 300)
+        .onAppear {
+            if let url = appState.lastMediaURL {
+                let fileType = UTType(filenameExtension: url.pathExtension)
+                if fileType?.conforms(to: .movie) == true {
+                    SharedWallpaperWindowManager.shared.showVideo(
+                        url: url,
+                        stretch: appState.lastStretchToFill,
+                        volume: appState.lastVolume
+                    )
+                } else if fileType?.conforms(to: .image) == true {
+                    SharedWallpaperWindowManager.shared.showImage(
+                        url: url,
+                        stretch: appState.lastStretchToFill
+                    )
+                }
             }
-        })
-        .frame(width: 300, height: 200)
-        
-        
-        
+        }
     }
 
     func openFilePicker() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.movie]
+        panel.allowedContentTypes = [.movie, .image]
         panel.allowsMultipleSelection = false
 
-        if panel.runModal() == .OK {
-            if let selectedURL = panel.urls.first {
-                videoURL = selectedURL
-                VideoWallpaperManager.shared.setVideoWallpaper(url: selectedURL, stretchToFill: isVideoStretched)
+        if panel.runModal() == .OK, let url = panel.url {
+            appState.lastMediaURL = url
+
+            let fileType = UTType(filenameExtension: url.pathExtension)
+            if fileType?.conforms(to: .movie) == true {
+                SharedWallpaperWindowManager.shared.showVideo(
+                    url: url,
+                    stretch: appState.lastStretchToFill,
+                    volume: appState.lastVolume
+                )
+            } else if fileType?.conforms(to: .image) == true {
+                SharedWallpaperWindowManager.shared.showImage(
+                    url: url,
+                    stretch: appState.lastStretchToFill
+                )
             }
         }
     }
