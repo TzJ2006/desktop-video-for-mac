@@ -33,16 +33,21 @@ struct ContentView: View {
                     SharedWallpaperWindowManager.shared.clear()
                     appState.lastMediaURL = nil
                 }
-
-                Text("音量：\(Int(appState.lastVolume * 100))%")
-                Slider(value: $appState.lastVolume, in: 0...1, step: 0.01)
-                    .frame(width: 200)
-                    .onChange(of: appState.lastVolume) { newValue in
-                        SharedWallpaperWindowManager.shared.updateVideoSettings(
-                            stretch: appState.lastStretchToFill,
-                            volume: newValue
-                        )
+                
+                if let url = appState.lastMediaURL {
+                    let fileType = UTType(filenameExtension: url.pathExtension)
+                    if fileType?.conforms(to: .movie) == true {
+                        Text("音量：\(Int(appState.lastVolume * 100))%")
+                        Slider(value: $appState.lastVolume, in: 0...1, step: 0.01)
+                            .frame(width: 200)
+                            .onChange(of: appState.lastVolume) { newValue in
+                                SharedWallpaperWindowManager.shared.updateVideoSettings(
+                                    stretch: appState.lastStretchToFill,
+                                    volume: newValue
+                                )
+                            }
                     }
+                }
 
                 Toggle("拉伸填充屏幕", isOn: $appState.lastStretchToFill)
                     .onChange(of: appState.lastStretchToFill) { newValue in
