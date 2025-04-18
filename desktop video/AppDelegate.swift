@@ -18,6 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureAudioSession()
         openMainWindow()
+        SharedWallpaperWindowManager.shared.restoreFromBookmark()
     }
 
     func windowWillClose(_ notification: Notification) {

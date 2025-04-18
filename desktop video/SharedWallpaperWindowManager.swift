@@ -7,6 +7,8 @@
 
 import Cocoa
 import AVKit
+import Foundation
+import UniformTypeIdentifiers
 
 class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
@@ -62,6 +64,7 @@ class SharedWallpaperWindowManager {
         imageView.autoresizingMask = [.width, .height]
 
         self.screenContent[screen] = (.image, url, stretch, nil)
+        saveBookmark(for: url, stretch: stretch, volume: nil)
 
         switchContent(to: imageView)
     }
@@ -78,6 +81,15 @@ class SharedWallpaperWindowManager {
         let queuePlayer = AVQueuePlayer()
         let item = AVPlayerItem(url: url)
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
+//        queuePlayer.replaceCurrentItem(with: item)
+//        NotificationCenter.default.addObserver(
+//            forName: .AVPlayerItemDidPlayToEndTime,
+//            object: item,
+//            queue: .main
+//        ) { _ in
+//            queuePlayer.seek(to: .zero)
+//            queuePlayer.play()
+//        }
         queuePlayer.volume = volume
         queuePlayer.play()
 
@@ -91,6 +103,7 @@ class SharedWallpaperWindowManager {
         self.looper = looper
 
         self.screenContent[screen] = (.video, url, stretch, volume)
+        saveBookmark(for: url, stretch: stretch, volume: volume)
 
         switchContent(to: playerView)
     }
@@ -145,5 +158,40 @@ class SharedWallpaperWindowManager {
         currentView?.removeFromSuperview()
         contentView.addSubview(newView)
         currentView = newView
+    }
+
+    private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
+        do {
+            let bookmarkData = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+            UserDefaults.standard.set(bookmarkData, forKey: "lastUsedBookmark")
+            UserDefaults.standard.set(stretch, forKey: "lastUsedStretch")
+            if let volume = volume {
+                UserDefaults.standard.set(volume, forKey: "lastUsedVolume")
+            }
+        } catch {
+            print("❌ Failed to save bookmark: \(error)")
+        }
+    }
+
+    func restoreFromBookmark() {
+        guard let bookmarkData = UserDefaults.standard.data(forKey: "lastUsedBookmark") else { return }
+        var isStale = false
+        do {
+            let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+            if isStale {
+                print("⚠️ Bookmark is stale, consider refreshing it.")
+            }
+            guard url.startAccessingSecurityScopedResource() else { return }
+            let ext = url.pathExtension.lowercased()
+            let stretch = UserDefaults.standard.bool(forKey: "lastUsedStretch")
+            let volume = UserDefaults.standard.object(forKey: "lastUsedVolume") as? Float ?? 1.0
+            if ["mp4", "mov", "m4v"].contains(ext) {
+                showVideo(url: url, stretch: stretch, volume: volume)
+            } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+                showImage(url: url, stretch: stretch)
+            }
+        } catch {
+            print("❌ Failed to restore from bookmark: \(error)")
+        }
     }
 }
