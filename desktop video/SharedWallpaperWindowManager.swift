@@ -5,21 +5,28 @@
 //  Created by 汤子嘉 on 3/25/25.
 //
 
-
 import Cocoa
 import AVKit
 
 class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
 
-    private var window: WallpaperWindow?
+    private var windows: [NSScreen: WallpaperWindow] = [:]
     private var currentView: NSView?
     private var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
+    private var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
-    private func ensureWindow() {
-        guard window == nil else { return }
-        guard let screen = NSScreen.main else { return }
+    enum ContentType {
+        case image
+        case video
+    }
+
+    private func ensureWindow(for screen: NSScreen) {
+        if windows[screen] != nil {
+            windows[screen]?.orderFrontRegardless()
+            return
+        }
 
         let screenFrame = screen.frame
         let win = WallpaperWindow(
@@ -36,29 +43,37 @@ class SharedWallpaperWindowManager {
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
-        self.window = win
+        self.windows[screen] = win
     }
 
     func showImage(url: URL, stretch: Bool) {
-        ensureWindow()
+        guard let screen = NSScreen.screens.first(where: {
+            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
+        }) ?? NSScreen.main else { return }
+        ensureWindow(for: screen)
         stopVideoIfNeeded()
 
         guard let image = NSImage(contentsOf: url),
-              let contentView = window?.contentView else { return }
+              let contentView = windows[screen]?.contentView else { return }
 
         let imageView = NSImageView(frame: contentView.bounds)
         imageView.image = image
         imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
         imageView.autoresizingMask = [.width, .height]
 
+        self.screenContent[screen] = (.image, url, stretch, nil)
+
         switchContent(to: imageView)
     }
 
     func showVideo(url: URL, stretch: Bool, volume: Float) {
-        ensureWindow()
+        guard let screen = NSScreen.screens.first(where: {
+            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
+        }) ?? NSScreen.main else { return }
+        ensureWindow(for: screen)
         stopVideoIfNeeded()
 
-        guard let contentView = window?.contentView else { return }
+        guard let contentView = windows[screen]?.contentView else { return }
 
         let queuePlayer = AVQueuePlayer()
         let item = AVPlayerItem(url: url)
@@ -74,6 +89,8 @@ class SharedWallpaperWindowManager {
 
         self.player = queuePlayer
         self.looper = looper
+
+        self.screenContent[screen] = (.video, url, stretch, volume)
 
         switchContent(to: playerView)
     }
@@ -92,10 +109,25 @@ class SharedWallpaperWindowManager {
     }
 
     func clear() {
-        stopVideoIfNeeded()
-        currentView?.removeFromSuperview()
-        currentView = nil
-        window?.orderOut(nil)
+        if let screen = NSScreen.screens.first(where: {
+            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
+        }), let win = windows[screen] {
+            stopVideoIfNeeded()
+            currentView?.removeFromSuperview()
+            currentView = nil
+            win.orderOut(nil)
+            windows.removeValue(forKey: screen)
+        }
+    }
+
+    func restoreContent(for screen: NSScreen) {
+        guard let entry = screenContent[screen] else { return }
+        switch entry.type {
+        case .image:
+            showImage(url: entry.url, stretch: entry.stretch)
+        case .video:
+            showVideo(url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+        }
     }
 
     private func stopVideoIfNeeded() {
@@ -106,7 +138,10 @@ class SharedWallpaperWindowManager {
     }
 
     private func switchContent(to newView: NSView) {
-        guard let contentView = window?.contentView else { return }
+        guard let screen = NSScreen.screens.first(where: {
+            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
+        }) ?? NSScreen.main,
+              let contentView = windows[screen]?.contentView else { return }
         currentView?.removeFromSuperview()
         contentView.addSubview(newView)
         currentView = newView

@@ -21,11 +21,25 @@ class AppState: ObservableObject {
 
 struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
+    @State private var selectedScreenIndex: Int = 0
 
     var body: some View {
         VStack(spacing: 16) {
             Button(appState.lastMediaURL == nil ? "选择视频或图片" : "更换视频或图片") {
                 openFilePicker()
+            }
+            
+            if NSScreen.screens.count > 1 {
+                Picker("选择屏幕", selection: $selectedScreenIndex) {
+                    ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { index, screen in
+                        Text("屏幕 \(index + 1)").tag(index)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+                .onChange(of: selectedScreenIndex) { newIndex in
+                    let selectedScreen = NSScreen.screens[newIndex]
+                    SharedWallpaperWindowManager.shared.restoreContent(for: selectedScreen)
+                }
             }
 
             if appState.lastMediaURL != nil {
@@ -50,19 +64,19 @@ struct ContentView: View {
                 }
 
                 Toggle("拉伸填充屏幕", isOn: $appState.lastStretchToFill)
-                    .onChange(of: appState.lastStretchToFill) { newValue in
-                        if let url = appState.lastMediaURL {
-                            let fileType = UTType(filenameExtension: url.pathExtension)
-                            if fileType?.conforms(to: .movie) == true {
-                                SharedWallpaperWindowManager.shared.updateVideoSettings(
-                                    stretch: newValue,
-                                    volume: appState.lastVolume
-                                )
-                            } else if fileType?.conforms(to: .image) == true {
-                                SharedWallpaperWindowManager.shared.updateImageStretch(stretch: newValue)
-                            }
+                .onChange(of: appState.lastStretchToFill) { newValue in
+                    if let url = appState.lastMediaURL {
+                        let fileType = UTType(filenameExtension: url.pathExtension)
+                        if fileType?.conforms(to: .movie) == true {
+                            SharedWallpaperWindowManager.shared.updateVideoSettings(
+                                stretch: newValue,
+                                volume: appState.lastVolume
+                            )
+                        } else if fileType?.conforms(to: .image) == true {
+                            SharedWallpaperWindowManager.shared.updateImageStretch(stretch: newValue)
                         }
                     }
+                }
             }
         }
         .padding()
