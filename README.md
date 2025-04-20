@@ -10,21 +10,16 @@ A macOS dynamic wallpaper app built with Swift and SwiftUI that allows users to 
 
 - 🎥 将视频或图片设置为桌面壁纸 Set videos or images as wallpapers
 - 🖥 多屏幕独立设置（即使只有一个屏幕）Per-screen customization, even with a single display
-- 💾 支持重启后恢复媒体访问权限 Persistent access with Security-Scoped Bookmarks
 - 🔊 记住音量和拉伸模式 Remembers video settings like volume and stretch
 - 🖱 自动识别屏幕并提供选择菜单 Detects screens and lets user choose which to control
-- 🧠 减少磁盘读写，优化性能 Loads videos into memory to reduce disk I/O
 
 ---
 
 ## 🛠️ 构建方法 How to Build
 
-1. 使用 Xcode 打开项目 Open the project in Xcode
-2. 确保目标启用了以下设置 Ensure the target includes:
-   - ✅ 启用 App Sandbox App Sandbox enabled
-   - ✅ 启用 Security-Scoped Bookmarks 权限 Security-Scoped Bookmarks capability
-3. 运行于 macOS 12.0 或以上版本 Run on macOS 12.0+
-4. 支持 Intel & Apple 芯片 Support Intel & Apple Sillicon
+1. 下载 dmg 文件，点击就用 Download dmg in release
+2. 运行于 macOS 12.0 或以上版本 Run on macOS 12.0+
+3. 支持 Intel & Apple 芯片 Support Intel & Apple Sillicon
 
 ---
 
