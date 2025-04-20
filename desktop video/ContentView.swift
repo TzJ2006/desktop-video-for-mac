@@ -28,10 +28,14 @@ struct ContentView: View {
         VStack(spacing: 16) {
             if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
                 if SharedWallpaperWindowManager.shared.screenContent[screen] != nil {
-                    if let info = playbackInfoMap[screen] {
-                        Text(info)
+                    if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+                        let filename = entry.url.lastPathComponent.removingPercentEncoding ?? entry.url.lastPathComponent
+                        Text("正在「\(screen.localizedNameIfAvailableOrFallback)」上播放：\(filename)")
                             .font(.subheadline)
                             .foregroundColor(.gray)
+                    }
+                    Button("更换视频或图片") {
+                        openFilePicker()
                     }
                 } else {
                     Button("选择视频或图片") {
@@ -62,6 +66,7 @@ struct ContentView: View {
                 Button("关闭壁纸") {
                     SharedWallpaperWindowManager.shared.clear()
                     appState.lastMediaURL = nil
+                    playbackInfoMap.removeValue(forKey: SharedWallpaperWindowManager.shared.selectedScreen!)
                 }
                 
                 if let url = appState.lastMediaURL {
@@ -121,11 +126,14 @@ struct ContentView: View {
             var updated: [NSScreen: String] = [:]
             for screen in NSScreen.screens {
                 if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+                    let filename = entry.url.lastPathComponent.removingPercentEncoding ?? entry.url.lastPathComponent
                     if #available(macOS 14.0, *) {
-                        updated[screen] = "正在「\(screen.localizedName)」上播放：\(entry.url.absoluteString)"
+                        updated[screen] = "正在「\(screen.localizedName)」上播放：\(filename)"
                     } else if let idx = NSScreen.screens.firstIndex(of: screen) {
-                        updated[screen] = "正在「屏幕 \(idx + 1)」上播放：\(entry.url.absoluteString)"
+                        updated[screen] = "正在「屏幕 \(idx + 1)」上播放：\(filename)"
                     }
+                } else {
+                    updated.removeValue(forKey: screen)
                 }
             }
             playbackInfoMap = updated
@@ -153,6 +161,18 @@ struct ContentView: View {
                     stretch: appState.lastStretchToFill
                 )
             }
+        }
+    }
+}
+
+fileprivate extension NSScreen {
+    var localizedNameIfAvailableOrFallback: String {
+        if #available(macOS 14.0, *) {
+            return self.localizedName
+        } else if let idx = NSScreen.screens.firstIndex(of: self) {
+            return "屏幕 \(idx + 1)"
+        } else {
+            return "未知屏幕"
         }
     }
 }
