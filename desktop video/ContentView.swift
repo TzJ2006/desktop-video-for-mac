@@ -22,21 +22,37 @@ class AppState: ObservableObject {
 struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @State private var selectedScreenIndex: Int = 0
+    @State private var playbackInfoMap: [NSScreen: String] = [:]
 
     var body: some View {
         VStack(spacing: 16) {
-            Button(appState.lastMediaURL == nil ? "选择视频或图片" : "更换视频或图片") {
-                openFilePicker()
+            if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
+                if SharedWallpaperWindowManager.shared.screenContent[screen] != nil {
+                    if let info = playbackInfoMap[screen] {
+                        Text(info)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    Button("选择视频或图片") {
+                        openFilePicker()
+                    }
+                }
             }
-            
+
             if NSScreen.screens.count > 1 {
                 Picker("选择屏幕", selection: $selectedScreenIndex) {
                     ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { index, screen in
-                        Text("屏幕 \(index + 1)").tag(index)
+                        if #available(macOS 14.0, *) {
+                            Text("「\(screen.localizedName)」").tag(index)
+                        } else {
+                            Text("「屏幕 \(index + 1)」").tag(index)
+                        }
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
                 .onChange(of: selectedScreenIndex) { newIndex in
+                    SharedWallpaperWindowManager.shared.selectedScreenIndex = newIndex
                     let selectedScreen = NSScreen.screens[newIndex]
                     SharedWallpaperWindowManager.shared.restoreContent(for: selectedScreen)
                 }
@@ -80,8 +96,11 @@ struct ContentView: View {
             }
         }
         .padding()
-        .frame(width: 480, height: 300)
+//        .frame(width: 480, height: 300)
+        .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 300, maxHeight: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear {
+            SharedWallpaperWindowManager.shared.selectedScreenIndex = selectedScreenIndex
             if let url = appState.lastMediaURL {
                 let fileType = UTType(filenameExtension: url.pathExtension)
                 if fileType?.conforms(to: .movie) == true {
@@ -97,6 +116,19 @@ struct ContentView: View {
                     )
                 }
             }
+        }
+        .onReceive(Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()) { _ in
+            var updated: [NSScreen: String] = [:]
+            for screen in NSScreen.screens {
+                if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+                    if #available(macOS 14.0, *) {
+                        updated[screen] = "正在「\(screen.localizedName)」上播放：\(entry.url.absoluteString)"
+                    } else if let idx = NSScreen.screens.firstIndex(of: screen) {
+                        updated[screen] = "正在「屏幕 \(idx + 1)」上播放：\(entry.url.absoluteString)"
+                    }
+                }
+            }
+            playbackInfoMap = updated
         }
     }
 

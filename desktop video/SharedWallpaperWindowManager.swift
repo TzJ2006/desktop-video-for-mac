@@ -12,12 +12,23 @@ import UniformTypeIdentifiers
 
 class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
+    
+    var selectedScreenIndex: Int {
+        get { UserDefaults.standard.integer(forKey: "selectedScreenIndex") }
+        set { UserDefaults.standard.set(newValue, forKey: "selectedScreenIndex") }
+    }
+    
+    var selectedScreen: NSScreen? {
+        let screens = NSScreen.screens
+        guard selectedScreenIndex < screens.count else { return NSScreen.main }
+        return screens[selectedScreenIndex]
+    }
 
     private var windows: [NSScreen: WallpaperWindow] = [:]
     private var currentView: NSView?
     private var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
-    private var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
+    var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
     enum ContentType {
         case image
@@ -49,9 +60,7 @@ class SharedWallpaperWindowManager {
     }
 
     func showImage(url: URL, stretch: Bool) {
-        guard let screen = NSScreen.screens.first(where: {
-            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
-        }) ?? NSScreen.main else { return }
+    guard let screen = selectedScreen else { return }
         ensureWindow(for: screen)
         stopVideoIfNeeded()
 
@@ -70,9 +79,7 @@ class SharedWallpaperWindowManager {
     }
 
     func showVideo(url: URL, stretch: Bool, volume: Float) {
-        guard let screen = NSScreen.screens.first(where: {
-            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
-        }) ?? NSScreen.main else { return }
+    guard let screen = selectedScreen else { return }
         ensureWindow(for: screen)
         stopVideoIfNeeded()
 
@@ -122,9 +129,7 @@ class SharedWallpaperWindowManager {
     }
 
     func clear() {
-        if let screen = NSScreen.screens.first(where: {
-            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
-        }), let win = windows[screen] {
+        if let screen = selectedScreen, let win = windows[screen] {
             stopVideoIfNeeded()
             currentView?.removeFromSuperview()
             currentView = nil
@@ -151,10 +156,8 @@ class SharedWallpaperWindowManager {
     }
 
     private func switchContent(to newView: NSView) {
-        guard let screen = NSScreen.screens.first(where: {
-            $0.frame.contains(NSApp.mainWindow?.frame.origin ?? .zero)
-        }) ?? NSScreen.main,
-              let contentView = windows[screen]?.contentView else { return }
+    guard let screen = selectedScreen,
+          let contentView = windows[screen]?.contentView else { return }
         currentView?.removeFromSuperview()
         contentView.addSubview(newView)
         currentView = newView
@@ -192,6 +195,20 @@ class SharedWallpaperWindowManager {
             }
         } catch {
             print("❌ Failed to restore from bookmark: \(error)")
+        }
+    }
+
+    func currentPlaybackDescription() -> String? {
+        guard let screen = selectedScreen else { return nil }
+        guard let entry = screenContent[screen] else { return nil }
+
+        if #available(macOS 14.0, *) {
+            let name = screen.localizedName
+            return "正在「\(name)」上播放：\(entry.url.absoluteString)"
+        } else if let screenIndex = NSScreen.screens.firstIndex(of: screen) {
+            return "正在「屏幕 \(screenIndex + 1)」上播放：\(entry.url.absoluteString)"
+        } else {
+            return "正在某个屏幕上播放：\(entry.url.absoluteString)"
         }
     }
 }
