@@ -198,17 +198,17 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    func currentPlaybackDescription() -> String? {
-        guard let screen = selectedScreen else { return nil }
-        guard let entry = screenContent[screen] else { return nil }
-
-        if #available(macOS 14.0, *) {
-            let name = screen.localizedName
-            return "正在「\(name)」上播放：\(entry.url.absoluteString)"
-        } else if let screenIndex = NSScreen.screens.firstIndex(of: screen) {
-            return "正在「屏幕 \(screenIndex + 1)」上播放：\(entry.url.absoluteString)"
-        } else {
-            return "正在某个屏幕上播放：\(entry.url.absoluteString)"
-        }
-    }
+//    func currentPlaybackDescription() -> String? {
+//        guard let screen = selectedScreen else { return nil }
+//        guard let entry = screenContent[screen] else { return nil }
+//
+//        if #available(macOS 14.0, *) {
+//            let name = screen.localizedName
+//            return "正在「\(name)」上播放：\(entry.url.absoluteString)"
+//        } else if let screenIndex = NSScreen.screens.firstIndex(of: screen) {
+//            return "正在「屏幕 \(screenIndex + 1)」上播放：\(entry.url.absoluteString)"
+//        } else {
+//            return "正在某个屏幕上播放：\(entry.url.absoluteString)"
+//        }
+//    }
 }
