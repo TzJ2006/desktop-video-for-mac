@@ -23,7 +23,8 @@ A macOS dynamic wallpaper app built with Swift and SwiftUI that allows users to 
 2. 确保目标启用了以下设置 Ensure the target includes:
    - ✅ 启用 App Sandbox App Sandbox enabled
    - ✅ 启用 Security-Scoped Bookmarks 权限 Security-Scoped Bookmarks capability
-3. 运行于 macOS 13.0 或以上版本 Run on macOS 13.0+
+3. 运行于 macOS 12.0 或以上版本 Run on macOS 12.0+
+4. 支持 Intel & Apple 芯片 Support Intel & Apple Sillicon
 
 ---
 
