@@ -13,6 +13,22 @@ import UniformTypeIdentifiers
 class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
     
+    init() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleScreenChange),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func handleScreenChange() {
+        if let player = player, player.timeControlStatus != .playing {
+            print("📺 屏幕配置变更后恢复播放")
+            player.play()
+        }
+    }
+    
     var selectedScreenIndex: Int {
         get { UserDefaults.standard.integer(forKey: "selectedScreenIndex") }
         set { UserDefaults.standard.set(newValue, forKey: "selectedScreenIndex") }
