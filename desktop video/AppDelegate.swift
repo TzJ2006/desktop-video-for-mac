@@ -14,6 +14,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     var statusItem: NSStatusItem?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
+        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
 
@@ -21,6 +26,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let showMenuBar = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
 
         NSApp.setActivationPolicy(showDock ? .regular : .accessory)
+        if showDock {
+            NSApp.activate(ignoringOtherApps: true)
+        }
 
         if showMenuBar {
             StatusBarController.shared.updateStatusItemVisibility()

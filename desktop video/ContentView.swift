@@ -153,6 +153,8 @@ struct ContentView: View {
                     if value {
                         NSApp.setActivationPolicy(.accessory)
                         StatusBarController.shared.updateStatusItemVisibility()
+                        NSApp.activate(ignoringOtherApps: true)
+                        AppDelegate.shared.openMainWindow()
                     } else {
                         NSApp.setActivationPolicy(.regular)
                         StatusBarController.shared.updateStatusItemVisibility()
