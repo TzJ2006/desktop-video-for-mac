@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+
 @main
 struct desktop_videoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -15,10 +16,10 @@ struct desktop_videoApp: App {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Toggle("全局静音", isOn: Binding(
-                    get: { AppDelegate.shared.globalMute },
-                    set: { AppDelegate.shared.globalMute = $0 }
-                ))
+//                Toggle("全局静音", isOn: Binding(
+//                    get: { AppDelegate.shared.globalMute },
+//                    set: { AppDelegate.shared.globalMute = $0 }
+//                ))
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About Desktop Video") {

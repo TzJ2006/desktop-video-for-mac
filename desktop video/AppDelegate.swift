@@ -10,8 +10,34 @@ import SwiftUI
 import AVFoundation
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    static let shared = AppDelegate.sharedInstance
-    static let sharedInstance = AppDelegate()
+    static var shared: AppDelegate!
+    
+    var statusItem: NSStatusItem?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        AppDelegate.shared = self
+
+        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
+        let showMenuBar = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
+
+        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
+
+        if showMenuBar {
+            StatusBarController.shared.updateStatusItemVisibility()
+        } else {
+            StatusBarController.shared.removeStatusItem()
+        }
+
+        openMainWindow()
+        SharedWallpaperWindowManager.shared.restoreFromBookmark()
+    }
+
+    @objc func toggleMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first {
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
 
     var window: NSWindow?
 
@@ -41,12 +67,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //            }
 //        }
 //    }
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-//        configureAudioSession()
-        openMainWindow()
-        SharedWallpaperWindowManager.shared.restoreFromBookmark()
-    }
 
     func windowWillClose(_ notification: Notification) {
 //        print("🚪 windowWillClose 被调用了")
