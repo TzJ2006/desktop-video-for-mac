@@ -151,6 +151,7 @@ class SharedWallpaperWindowManager {
             currentView = nil
             win.orderOut(nil)
             windows.removeValue(forKey: screen)
+            screenContent.removeValue(forKey: screen)
         }
     }
 
@@ -214,17 +215,34 @@ class SharedWallpaperWindowManager {
         }
     }
 
-//    func currentPlaybackDescription() -> String? {
-//        guard let screen = selectedScreen else { return nil }
-//        guard let entry = screenContent[screen] else { return nil }
-//
-//        if #available(macOS 14.0, *) {
-//            let name = screen.localizedName
-//            return "正在「\(name)」上播放：\(entry.url.absoluteString)"
-//        } else if let screenIndex = NSScreen.screens.firstIndex(of: screen) {
-//            return "正在「屏幕 \(screenIndex + 1)」上播放：\(entry.url.absoluteString)"
-//        } else {
-//            return "正在某个屏幕上播放：\(entry.url.absoluteString)"
+//    func syncAutoFillToAllControllers() {
+//        for (screen, entry) in screenContent {
+//            switch entry.type {
+//            case .image:
+//                updateImageStretch(stretch: AppDelegate.shared.autoFill)
+//            case .video:
+//                updateVideoSettings(stretch: AppDelegate.shared.autoFill, volume: entry.volume ?? 1.0)
+//            }
 //        }
 //    }
+
+    func syncGlobalMuteToAllVolumes() {
+        guard AppDelegate.shared.globalMute else { return }
+        for (screen, entry) in screenContent {
+            if entry.type == .video {
+                updateVideoSettings(stretch: entry.stretch, volume: 0.0)
+                screenContent[screen] = (.video, entry.url, entry.stretch, 0.0)
+            }
+        }
+    }
+
+    func setVolume(_ volume: Float, for screen: NSScreen) {
+        if volume > 0 {
+            AppDelegate.shared.globalMute = false
+        }
+        if let entry = screenContent[screen], entry.type == .video {
+            updateVideoSettings(stretch: entry.stretch, volume: volume)
+            screenContent[screen] = (.video, entry.url, entry.stretch, volume)
+        }
+    }
 }

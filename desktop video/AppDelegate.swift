@@ -15,17 +15,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     var window: NSWindow?
 
+    var globalMute: Bool {
+        get { UserDefaults.standard.bool(forKey: "globalMute") }
+        set { UserDefaults.standard.set(newValue, forKey: "globalMute") }
+    }
+
+//    var autoFill: Bool {
+//        get { UserDefaults.standard.bool(forKey: "autoFill") }
+//        set {
+//            UserDefaults.standard.set(newValue, forKey: "autoFill")
+//            syncAutoFillToAllControllers()
+//        }
+//    }
+
+//    func syncAutoFillToAllControllers() {
+//        for (screen, entry) in SharedWallpaperWindowManager.shared.screenContent {
+//            switch entry.type {
+//            case .image:
+//                SharedWallpaperWindowManager.shared.updateImageStretch(stretch: self.autoFill)
+//            case .video:
+//                SharedWallpaperWindowManager.shared.updateVideoSettings(
+//                    stretch: self.autoFill,
+//                    volume: entry.volume ?? 1.0
+//                )
+//            }
+//        }
+//    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        configureAudioSession()
+//        configureAudioSession()
         openMainWindow()
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
     }
 
     func windowWillClose(_ notification: Notification) {
-        print("🚪 windowWillClose 被调用了")
+//        print("🚪 windowWillClose 被调用了")
         if let win = notification.object as? NSWindow, win == self.window {
             self.window = nil
-            print("✅ 已清空 self.window")
+//            print("✅ 已清空 self.window")
         }
     }
     
@@ -65,7 +92,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    func configureAudioSession() {
-    print("ℹ️ macOS does not use AVAudioSession. Skipping audio session configuration.")
-    }
+//    func configureAudioSession() {
+//    print("ℹ️ macOS does not use AVAudioSession. Skipping audio session configuration.")
+//    }
 }
