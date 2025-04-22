@@ -30,34 +30,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		25511A062D97041400F1CECE /* desktop */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = desktop;
-			sourceTree = "<group>";
-		};
-		25511A172D97041500F1CECE /* desktopTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = desktopTests;
-			sourceTree = "<group>";
-		};
-		25511A212D97041500F1CECE /* desktopUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = desktopUITests;
-			sourceTree = "<group>";
-		};
 		259833B42D8C79D40055FC27 /* desktop video */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "desktop video";
-			sourceTree = "<group>";
-		};
-		259833C62D8C79D50055FC27 /* desktop videoTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "desktop videoTests";
-			sourceTree = "<group>";
-		};
-		259833D02D8C79D50055FC27 /* desktop videoUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "desktop videoUITests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -91,11 +66,6 @@
 			isa = PBXGroup;
 			children = (
 				259833B42D8C79D40055FC27 /* desktop video */,
-				259833C62D8C79D50055FC27 /* desktop videoTests */,
-				259833D02D8C79D50055FC27 /* desktop videoUITests */,
-				25511A062D97041400F1CECE /* desktop */,
-				25511A172D97041500F1CECE /* desktopTests */,
-				25511A212D97041500F1CECE /* desktopUITests */,
 				259833B32D8C79D40055FC27 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -148,9 +118,6 @@
 			dependencies = (
 				259833C52D8C79D50055FC27 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				259833C62D8C79D50055FC27 /* desktop videoTests */,
-			);
 			name = "desktop videoTests";
 			packageProductDependencies = (
 			);
@@ -170,9 +137,6 @@
 			);
 			dependencies = (
 				259833CF2D8C79D50055FC27 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				259833D02D8C79D50055FC27 /* desktop videoUITests */,
 			);
 			name = "desktop videoUITests";
 			packageProductDependencies = (
