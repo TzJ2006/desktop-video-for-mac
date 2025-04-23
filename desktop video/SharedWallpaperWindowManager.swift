@@ -248,4 +248,21 @@ class SharedWallpaperWindowManager {
             screenContent[screen] = (.video, entry.url, entry.stretch, volume)
         }
     }
+    
+    func selectAndImportVideo() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.movie]
+        panel.allowsMultipleSelection = false
+        panel.begin { result in
+            if result == .OK, let url = panel.url {
+                let stretch = UserDefaults.standard.bool(forKey: "lastUsedStretch")
+                let volume = UserDefaults.standard.object(forKey: "lastUsedVolume") as? Float ?? 1.0
+                if let screen = self.selectedScreen {
+                    self.showVideo(for: screen, url: url, stretch: stretch, volume: volume)
+                }
+            }
+        }
+    }
 }
