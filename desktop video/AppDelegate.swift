@@ -14,18 +14,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     var statusItem: NSStatusItem?
 
-    func applicationWillFinishLaunching(_ notification: Notification) {
-        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
-        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
-    }
+//    func applicationWillFinishLaunching(_ notification: Notification) {
+//        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
+//        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
+//    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
 
+        // ✅ 在启动时设置 activationPolicy，避免运行时频繁切换导致多 PID 图标问题
         let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
         let showMenuBar = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
 
         NSApp.setActivationPolicy(showDock ? .regular : .accessory)
+
         if showDock {
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -39,11 +41,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         openMainWindow()
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
     }
-
+    
     @objc func toggleMainWindow() {
-        NSApp.activate(ignoringOtherApps: true)
-        if let window = NSApp.windows.first {
-            window.makeKeyAndOrderFront(nil)
+        NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        if let win = self.window {
+            win.makeKeyAndOrderFront(nil)
         }
     }
 
@@ -53,28 +55,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         get { UserDefaults.standard.bool(forKey: "globalMute") }
         set { UserDefaults.standard.set(newValue, forKey: "globalMute") }
     }
-
-//    var autoFill: Bool {
-//        get { UserDefaults.standard.bool(forKey: "autoFill") }
-//        set {
-//            UserDefaults.standard.set(newValue, forKey: "autoFill")
-//            syncAutoFillToAllControllers()
-//        }
-//    }
-
-//    func syncAutoFillToAllControllers() {
-//        for (screen, entry) in SharedWallpaperWindowManager.shared.screenContent {
-//            switch entry.type {
-//            case .image:
-//                SharedWallpaperWindowManager.shared.updateImageStretch(stretch: self.autoFill)
-//            case .video:
-//                SharedWallpaperWindowManager.shared.updateVideoSettings(
-//                    stretch: self.autoFill,
-//                    volume: entry.volume ?? 1.0
-//                )
-//            }
-//        }
-//    }
 
     func windowWillClose(_ notification: Notification) {
 //        print("🚪 windowWillClose 被调用了")
@@ -86,41 +66,39 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag || window == nil || !window!.isVisible {
-            NSApp.activate(ignoringOtherApps: true)
+            NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
             openMainWindow()
         }
         return true
     }
 
     func openMainWindow() {
-        if self.window == nil || (window != nil && !window!.isVisible) {
-            // 如果 window 不存在或不可见，就创建一个新的
-            let contentView = ContentView()
-            let newWindow = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
-                styleMask: [.titled, .closable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-
-            newWindow.center()
-            newWindow.title = "桌面壁纸控制器"
-            newWindow.contentView = NSHostingView(rootView: contentView)
-
-            newWindow.isReleasedWhenClosed = false
-            newWindow.delegate = self
-            newWindow.makeKeyAndOrderFront(nil)
-
-            self.window = newWindow
-        } else {
-            if let win = window, win.isMiniaturized {
+        if let win = self.window {
+            if win.isMiniaturized {
                 win.deminiaturize(nil)
             }
-            window?.makeKeyAndOrderFront(nil)
+            win.makeKeyAndOrderFront(nil)
+            NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            return
         }
-    }
 
-//    func configureAudioSession() {
-//    print("ℹ️ macOS does not use AVAudioSession. Skipping audio session configuration.")
-//    }
+        let contentView = ContentView()
+        let newWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        newWindow.center()
+        newWindow.title = "桌面壁纸控制器"
+        newWindow.contentView = NSHostingView(rootView: contentView)
+
+        newWindow.isReleasedWhenClosed = false
+        newWindow.delegate = self
+        newWindow.makeKeyAndOrderFront(nil)
+
+        self.window = newWindow
+        NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+    }
 }

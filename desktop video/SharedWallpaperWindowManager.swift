@@ -23,9 +23,11 @@ class SharedWallpaperWindowManager {
     }
     
     @objc private func handleScreenChange() {
-        if let player = player, player.timeControlStatus != .playing {
-            print("📺 屏幕配置变更后恢复播放")
-            player.play()
+        for (_, player) in players {
+            if player.timeControlStatus != .playing {
+                print("📺 屏幕配置变更后恢复播放")
+                player.play()
+            }
         }
     }
     
@@ -41,9 +43,9 @@ class SharedWallpaperWindowManager {
     }
 
     private var windows: [NSScreen: WallpaperWindow] = [:]
-    private var currentView: NSView?
-    private var player: AVQueuePlayer?
-    private var looper: AVPlayerLooper?
+    private var currentViews: [NSScreen: NSView] = [:]
+    private var players: [NSScreen: AVQueuePlayer] = [:]
+    private var loopers: [NSScreen: AVPlayerLooper] = [:]
     var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
     enum ContentType {
@@ -75,10 +77,9 @@ class SharedWallpaperWindowManager {
         self.windows[screen] = win
     }
 
-    func showImage(url: URL, stretch: Bool) {
-    guard let screen = selectedScreen else { return }
+    func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
         ensureWindow(for: screen)
-        stopVideoIfNeeded()
+        stopVideoIfNeeded(for: screen)
 
         guard let image = NSImage(contentsOf: url),
               let contentView = windows[screen]?.contentView else { return }
@@ -91,28 +92,18 @@ class SharedWallpaperWindowManager {
         self.screenContent[screen] = (.image, url, stretch, nil)
         saveBookmark(for: url, stretch: stretch, volume: nil)
 
-        switchContent(to: imageView)
+        switchContent(to: imageView, for: screen)
     }
 
-    func showVideo(url: URL, stretch: Bool, volume: Float) {
-    guard let screen = selectedScreen else { return }
+    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float) {
         ensureWindow(for: screen)
-        stopVideoIfNeeded()
+        stopVideoIfNeeded(for: screen)
 
         guard let contentView = windows[screen]?.contentView else { return }
 
         let queuePlayer = AVQueuePlayer()
         let item = AVPlayerItem(url: url)
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
-//        queuePlayer.replaceCurrentItem(with: item)
-//        NotificationCenter.default.addObserver(
-//            forName: .AVPlayerItemDidPlayToEndTime,
-//            object: item,
-//            queue: .main
-//        ) { _ in
-//            queuePlayer.seek(to: .zero)
-//            queuePlayer.play()
-//        }
         queuePlayer.volume = volume
         queuePlayer.play()
 
@@ -122,62 +113,59 @@ class SharedWallpaperWindowManager {
         playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
         playerView.autoresizingMask = [.width, .height]
 
-        self.player = queuePlayer
-        self.looper = looper
+        players[screen] = queuePlayer
+        loopers[screen] = looper
 
         self.screenContent[screen] = (.video, url, stretch, volume)
         saveBookmark(for: url, stretch: stretch, volume: volume)
 
-        switchContent(to: playerView)
+        switchContent(to: playerView, for: screen)
     }
 
-    func updateVideoSettings(stretch: Bool, volume: Float) {
-        self.player?.volume = volume
-        if let playerView = currentView as? AVPlayerView {
+    func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
+        players[screen]?.volume = volume
+        if let playerView = currentViews[screen] as? AVPlayerView {
             playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
         }
     }
 
-    func updateImageStretch(stretch: Bool) {
-        if let imageView = currentView as? NSImageView {
+    func updateImageStretch(for screen: NSScreen, stretch: Bool) {
+        if let imageView = currentViews[screen] as? NSImageView {
             imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
         }
     }
 
-    func clear() {
-        if let screen = selectedScreen, let win = windows[screen] {
-            stopVideoIfNeeded()
-            currentView?.removeFromSuperview()
-            currentView = nil
-            win.orderOut(nil)
-            windows.removeValue(forKey: screen)
-            screenContent.removeValue(forKey: screen)
-        }
+    func clear(for screen: NSScreen) {
+        stopVideoIfNeeded(for: screen)
+        currentViews[screen]?.removeFromSuperview()
+        currentViews.removeValue(forKey: screen)
+        windows[screen]?.orderOut(nil)
+        windows.removeValue(forKey: screen)
+        screenContent.removeValue(forKey: screen)
     }
 
     func restoreContent(for screen: NSScreen) {
         guard let entry = screenContent[screen] else { return }
         switch entry.type {
         case .image:
-            showImage(url: entry.url, stretch: entry.stretch)
+            showImage(for: screen, url: entry.url, stretch: entry.stretch)
         case .video:
-            showVideo(url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+            showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
         }
     }
 
-    private func stopVideoIfNeeded() {
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
-        player = nil
-        looper = nil
+    private func stopVideoIfNeeded(for screen: NSScreen) {
+        players[screen]?.pause()
+        players[screen]?.replaceCurrentItem(with: nil)
+        players.removeValue(forKey: screen)
+        loopers.removeValue(forKey: screen)
     }
 
-    private func switchContent(to newView: NSView) {
-    guard let screen = selectedScreen,
-          let contentView = windows[screen]?.contentView else { return }
-        currentView?.removeFromSuperview()
+    private func switchContent(to newView: NSView, for screen: NSScreen) {
+        guard let contentView = windows[screen]?.contentView else { return }
+        currentViews[screen]?.removeFromSuperview()
         contentView.addSubview(newView)
-        currentView = newView
+        currentViews[screen] = newView
     }
 
     private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
@@ -206,9 +194,13 @@ class SharedWallpaperWindowManager {
             let stretch = UserDefaults.standard.bool(forKey: "lastUsedStretch")
             let volume = UserDefaults.standard.object(forKey: "lastUsedVolume") as? Float ?? 1.0
             if ["mp4", "mov", "m4v"].contains(ext) {
-                showVideo(url: url, stretch: stretch, volume: volume)
+                if let screen = selectedScreen {
+                    showVideo(for: screen, url: url, stretch: stretch, volume: volume)
+                }
             } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
-                showImage(url: url, stretch: stretch)
+                if let screen = selectedScreen {
+                    showImage(for: screen, url: url, stretch: stretch)
+                }
             }
         } catch {
             print("❌ Failed to restore from bookmark: \(error)")
@@ -219,9 +211,9 @@ class SharedWallpaperWindowManager {
 //        for (screen, entry) in screenContent {
 //            switch entry.type {
 //            case .image:
-//                updateImageStretch(stretch: AppDelegate.shared.autoFill)
+//                updateImageStretch(for: screen, stretch: AppDelegate.shared.autoFill)
 //            case .video:
-//                updateVideoSettings(stretch: AppDelegate.shared.autoFill, volume: entry.volume ?? 1.0)
+//                updateVideoSettings(for: screen, stretch: AppDelegate.shared.autoFill, volume: entry.volume ?? 1.0)
 //            }
 //        }
 //    }
@@ -230,7 +222,7 @@ class SharedWallpaperWindowManager {
         guard AppDelegate.shared.globalMute else { return }
         for (screen, entry) in screenContent {
             if entry.type == .video {
-                updateVideoSettings(stretch: entry.stretch, volume: 0.0)
+                updateVideoSettings(for: screen, stretch: entry.stretch, volume: 0.0)
                 screenContent[screen] = (.video, entry.url, entry.stretch, 0.0)
             }
         }
@@ -241,7 +233,7 @@ class SharedWallpaperWindowManager {
             AppDelegate.shared.globalMute = false
         }
         if let entry = screenContent[screen], entry.type == .video {
-            updateVideoSettings(stretch: entry.stretch, volume: volume)
+            updateVideoSettings(for: screen, stretch: entry.stretch, volume: volume)
             screenContent[screen] = (.video, entry.url, entry.stretch, volume)
         }
     }
