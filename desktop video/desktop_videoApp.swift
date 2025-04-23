@@ -12,14 +12,24 @@ struct desktop_videoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var body: some Scene {
         Settings {
-            EmptyView()
+            VStack {
+                Toggle("仅显示在菜单栏（隐藏 Dock）", isOn: Binding(
+                    get: { UserDefaults.standard.bool(forKey: "isMenuBarOnly") },
+                    set: { newValue in
+                        UserDefaults.standard.set(newValue, forKey: "isMenuBarOnly")
+                        AppDelegate.shared?.applyAppAppearanceSetting(onlyShowInMenuBar: newValue)
+                    }
+                ))
+                .padding()
+            }
+            .frame(width: 300, height: 100)
+            .onAppear {
+                let onlyMenu = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
+                AppDelegate.shared?.applyAppAppearanceSetting(onlyShowInMenuBar: onlyMenu)
+            }
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
-//                Toggle("全局静音", isOn: Binding(
-//                    get: { AppDelegate.shared.globalMute },
-//                    set: { AppDelegate.shared.globalMute = $0 }
-//                ))
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About Desktop Video") {

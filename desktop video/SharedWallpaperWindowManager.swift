@@ -137,11 +137,15 @@ class SharedWallpaperWindowManager {
 
     func clear(for screen: NSScreen) {
         stopVideoIfNeeded(for: screen)
+        if let entry = screenContent[screen], entry.type == .video {
+            players[screen]?.replaceCurrentItem(with: nil)
+        }
         currentViews[screen]?.removeFromSuperview()
         currentViews.removeValue(forKey: screen)
         windows[screen]?.orderOut(nil)
-        windows.removeValue(forKey: screen)
         screenContent.removeValue(forKey: screen)
+        windows.removeValue(forKey: screen)
+        NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
     func restoreContent(for screen: NSScreen) {
@@ -170,12 +174,19 @@ class SharedWallpaperWindowManager {
 
     private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
         do {
+            guard url.startAccessingSecurityScopedResource() else {
+                print("❌ Failed to access security scoped resource for saving bookmark")
+                return
+            }
+
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
             UserDefaults.standard.set(bookmarkData, forKey: "lastUsedBookmark")
             UserDefaults.standard.set(stretch, forKey: "lastUsedStretch")
             if let volume = volume {
                 UserDefaults.standard.set(volume, forKey: "lastUsedVolume")
             }
+
+            url.stopAccessingSecurityScopedResource()
         } catch {
             print("❌ Failed to save bookmark: \(error)")
         }

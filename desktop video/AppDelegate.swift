@@ -22,21 +22,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
 
-        // ✅ 在启动时设置 activationPolicy，避免运行时频繁切换导致多 PID 图标问题
-        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
-        let showMenuBar = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
-
-        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
-
-        if showDock {
-            NSApp.activate(ignoringOtherApps: true)
-        }
-
-        if showMenuBar {
-            StatusBarController.shared.updateStatusItemVisibility()
-        } else {
-            StatusBarController.shared.removeStatusItem()
-        }
+        let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
+        applyAppAppearanceSetting(onlyShowInMenuBar: showOnlyInMenuBar)
 
         openMainWindow()
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
@@ -100,5 +87,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         self.window = newWindow
         NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+    }
+    
+    func applyAppAppearanceSetting(onlyShowInMenuBar: Bool) {
+        if onlyShowInMenuBar {
+            NSApp.setActivationPolicy(.accessory)
+            setupStatusBarIcon()
+        } else {
+            NSApp.setActivationPolicy(.regular)
+            removeStatusBarIcon()
+        }
+    }
+
+    func setupStatusBarIcon() {
+        if statusItem == nil {
+            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+            if let button = statusItem?.button {
+                button.image = NSImage(named: "MenuBarIcon")
+                button.image?.isTemplate = true
+                button.action = #selector(statusBarIconClicked)
+            }
+        }
+    }
+
+    @objc func statusBarIconClicked() {
+        toggleMainWindow()
+    }
+
+    func removeStatusBarIcon() {
+        if let item = statusItem {
+            NSStatusBar.system.removeStatusItem(item)
+            statusItem = nil
+        }
     }
 }

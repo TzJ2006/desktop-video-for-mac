@@ -8,6 +8,7 @@
 // ContentView.swift (使用 SharedWallpaperWindowManager)
 
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 import Foundation
 
@@ -41,14 +42,11 @@ struct ContentView: View {
             }
             Spacer()
             
-            Toggle("仅显示在菜单栏（隐藏 Dock）", isOn: $isMenuBarOnly)
-                .onChange(of: isMenuBarOnly) { value in
-                    UserDefaults.standard.set(value, forKey: "isMenuBarOnly")
-                    UserDefaults.standard.set(!value, forKey: "showDockIcon")
-                    UserDefaults.standard.set(value, forKey: "showMenuBarIcon")
-                    showRestartAlert()
-                }
-                .padding(.bottom)
+//            Toggle("仅显示在菜单栏（隐藏 Dock）* 需要重启应用生效", isOn: $isMenuBarOnly)
+//                .onChange(of: isMenuBarOnly) { value in
+//                    UserDefaults.standard.set(value, forKey: "isMenuBarOnly")
+//                }
+//                .padding(.bottom)
         }
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 300, maxHeight: .infinity)
         .padding()
@@ -59,42 +57,60 @@ struct SingleScreenView: View {
     let screen: NSScreen
     @ObservedObject private var appState = AppState.shared
     @State private var dummy: Bool = false  // 用于触发视图刷新
+    @State private var volume: Float = 1.0
+    @State private var stretchToFill: Bool = true
 
     var body: some View {
-        VStack(spacing: 12) {
+        let entry = SharedWallpaperWindowManager.shared.screenContent[screen]
+
+        return VStack(spacing: 12) {
             Text("「\(screen.localizedNameIfAvailableOrFallback)」")
                 .font(.headline)
 
-            if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+            if let entry {
                 let filename = entry.url.lastPathComponent.removingPercentEncoding ?? entry.url.lastPathComponent
+
                 Text("正在播放：\(filename)")
                     .font(.subheadline)
                     .foregroundColor(.gray)
+                    .onAppear {
+                        let currentVolume = entry.volume ?? 1.0
+                        if self.volume != currentVolume {
+                            self.volume = currentVolume
+                        }
+                        if currentVolume > 0 {
+                            AppDelegate.shared.globalMute = false
+                        }
+
+                        if self.stretchToFill != entry.stretch {
+                            self.stretchToFill = entry.stretch
+                        }
+                    }
 
                 Button("更换视频或图片") {
                     openFilePicker()
                 }
 
                 if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
-                    Text("音量：\(Int(appState.lastVolume * 100))%")
-                    Slider(value: $appState.lastVolume, in: 0...1, step: 0.01)
+                    Text("音量：\(Int(volume * 100))%")
+                    Slider(value: $volume, in: 0...1, step: 0.01)
                         .frame(width: 200)
-                        .onChange(of: appState.lastVolume) { newValue in
+                        .onChange(of: volume) { newValue in
                             SharedWallpaperWindowManager.shared.updateVideoSettings(
                                 for: screen,
-                                stretch: appState.lastStretchToFill,
+                                stretch: stretchToFill,
                                 volume: newValue
                             )
                         }
                 }
 
-                Toggle("拉伸填充屏幕", isOn: $appState.lastStretchToFill)
-                    .onChange(of: appState.lastStretchToFill) { newValue in
+                Toggle("拉伸填充屏幕", isOn: $stretchToFill)
+                    .onChange(of: stretchToFill) { newValue in
                         if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
                             SharedWallpaperWindowManager.shared.updateVideoSettings(
                                 for: screen,
                                 stretch: newValue,
-                                volume: appState.lastVolume
+                                volume: volume
                             )
                         } else {
                             SharedWallpaperWindowManager.shared.updateImageStretch(for: screen, stretch: newValue)
@@ -103,6 +119,7 @@ struct SingleScreenView: View {
 
                 Button("关闭壁纸") {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
+                    AppState.shared.lastMediaURL = nil
                     dummy.toggle()
                 }
             } else {
@@ -114,6 +131,9 @@ struct SingleScreenView: View {
         .padding()
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
+            dummy.toggle()
+        }
     }
 
     func openFilePicker() {
@@ -129,14 +149,14 @@ struct SingleScreenView: View {
                 SharedWallpaperWindowManager.shared.showVideo(
                     for: screen,
                     url: url,
-                    stretch: appState.lastStretchToFill,
-                    volume: appState.lastVolume
+                    stretch: stretchToFill,
+                    volume: volume
                 )
             } else if fileType?.conforms(to: .image) == true {
                 SharedWallpaperWindowManager.shared.showImage(
                     for: screen,
                     url: url,
-                    stretch: appState.lastStretchToFill
+                    stretch: stretchToFill
                 )
             }
         }
@@ -156,9 +176,18 @@ fileprivate extension NSScreen {
 }
 
 func showRestartAlert() {
+    let shouldSuppress = UserDefaults.standard.bool(forKey: "suppressRestartAlert")
+    if shouldSuppress { return }
+
     let alert = NSAlert()
     alert.messageText = "需要重新启动应用"
     alert.informativeText = "更改是否显示 Dock 图标的设置将在下次启动时生效。请重新打开 App。"
+    alert.addButton(withTitle: "不再显示")
     alert.addButton(withTitle: "好的")
-    alert.runModal()
+    
+
+    let response = alert.runModal()
+    if response == .alertSecondButtonReturn {
+        UserDefaults.standard.set(true, forKey: "suppressRestartAlert")
+    }
 }
