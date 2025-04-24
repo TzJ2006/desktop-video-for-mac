@@ -23,10 +23,6 @@ struct desktop_videoApp: App {
                 .padding()
             }
             .frame(width: 300, height: 100)
-            .onAppear {
-                let onlyMenu = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
-                AppDelegate.shared?.applyAppAppearanceSetting(onlyShowInMenuBar: onlyMenu)
-            }
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
@@ -39,7 +35,7 @@ struct desktop_videoApp: App {
                     let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
                     let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
                     alert.informativeText = """
-                    Desktop Video
+                    Desktop Video Wallpaper
                     Version \(version) (\(build))
                     
                     Presented by TzJ

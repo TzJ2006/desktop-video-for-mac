@@ -42,6 +42,15 @@ struct ContentView: View {
             }
             Spacer()
             
+            Toggle("显示 Dock 图标", isOn: Binding(
+                get: { !isMenuBarOnly },
+                set: { newValue in
+                    isMenuBarOnly = !newValue
+                    AppDelegate.shared?.setDockIconVisible(newValue)
+                }
+            ))
+            .padding(.bottom)
+            
 //            Toggle("仅显示在菜单栏（隐藏 Dock）* 需要重启应用生效", isOn: $isMenuBarOnly)
 //                .onChange(of: isMenuBarOnly) { value in
 //                    UserDefaults.standard.set(value, forKey: "isMenuBarOnly")

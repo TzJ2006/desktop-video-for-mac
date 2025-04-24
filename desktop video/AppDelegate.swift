@@ -21,18 +21,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
-
-        let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
-        applyAppAppearanceSetting(onlyShowInMenuBar: showOnlyInMenuBar)
-
-        openMainWindow()
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
+
+        // Move checkbox simulation logic here, after windows have loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
+            self.setDockIconVisible(true)
+            if showOnlyInMenuBar {
+                self.setDockIconVisible(!showOnlyInMenuBar)
+            }
+            if self.window == nil {
+                self.openMainWindow()
+            }
+        }
     }
     
     @objc func toggleMainWindow() {
         NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
         if let win = self.window {
             win.makeKeyAndOrderFront(nil)
+        } else {
+            openMainWindow()
         }
     }
 
@@ -89,7 +98,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
     }
     
+    private var lastAppearanceChangeTime: Date = .distantPast
+
     func applyAppAppearanceSetting(onlyShowInMenuBar: Bool) {
+        let now = Date()
+        guard now.timeIntervalSince(lastAppearanceChangeTime) > 1 else {
+//            print("⏱️ Ignored rapid toggle")
+            return
+        }
+        lastAppearanceChangeTime = now
         if onlyShowInMenuBar {
             NSApp.setActivationPolicy(.accessory)
             setupStatusBarIcon()
@@ -97,6 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             NSApp.setActivationPolicy(.regular)
             removeStatusBarIcon()
         }
+        self.statusBarIconClicked()
     }
 
     func setupStatusBarIcon() {
@@ -106,6 +124,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 button.image = NSImage(named: "MenuBarIcon")
                 button.image?.isTemplate = true
                 button.action = #selector(statusBarIconClicked)
+                button.target = self
             }
         }
     }
@@ -119,5 +138,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             NSStatusBar.system.removeStatusItem(item)
             statusItem = nil
         }
+    }
+
+    /// Toggles the Dock icon visibility dynamically.
+    /// - Parameter visible: Pass `true` to show the Dock icon, `false` to hide it.
+    public func setDockIconVisible(_ visible: Bool) {
+        applyAppAppearanceSetting(onlyShowInMenuBar: !visible)
+        UserDefaults.standard.set(!visible, forKey: "isMenuBarOnly")
     }
 }
