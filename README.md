@@ -12,6 +12,7 @@ A macOS dynamic wallpaper app built with Swift and SwiftUI that allows users to 
 - 🖥 多屏幕独立设置（即使只有一个屏幕）Per-screen customization, even with a single display
 - 🔊 记住音量和拉伸模式 Remembers video settings like volume and stretch
 - 🖱 自动识别屏幕并提供选择菜单 Detects screens and lets user choose which to control
+- 🖱 可切换仅菜单栏模式 No Docker mode available
 
 ---
 
