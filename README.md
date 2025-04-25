@@ -33,6 +33,10 @@
 
 <img width="1920" alt="image" src="https://github.com/user-attachments/assets/610241f3-57d7-49dd-ba7d-373ca5299646" />
 
+![2025-04-25-01-49-49](https://github.com/user-attachments/assets/39f8555f-e311-47ed-8d0c-00a610b10b22)
+
+
+
 ## 🔮 未来计划
 
 - ⏰ 定时自动更换壁纸
