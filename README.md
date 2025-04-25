@@ -29,16 +29,17 @@
 3. 点击 **“选择视频或图片”**
 4. 选择本地媒体文件，即可设置为桌面壁纸
 
-## Demo 示例
+## 🖼 Demo 示例
 
 <img width="1920" alt="image" src="https://github.com/user-attachments/assets/610241f3-57d7-49dd-ba7d-373ca5299646" />
 
 ## 🔮 未来计划
 
-- ⏰ 定时自动更换壁纸（Auto-switch wallpapers on schedule）
-- 🌄 接入在线壁纸库（Online wallpaper gallery）
-- 🪟 更多窗口缩放体验（More window resizing UX）
-- 🐞 多视频流性能优化（Performance optimization for multi-video setup）
+- ⏰ 定时自动更换壁纸
+- 🌄 接入在线壁纸库
+- 🪟 更多窗口缩放体验
+- 🐞 多视频流性能优化
+- 🎥 视频用法演示
 
 ## 📄 许可证
 
