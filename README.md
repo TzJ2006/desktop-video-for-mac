@@ -31,6 +31,8 @@
 
 ## 🖼 Demo 示例
 
+部分Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/demos)下载
+
 <img width="1920" alt="image" src="https://github.com/user-attachments/assets/610241f3-57d7-49dd-ba7d-373ca5299646" />
 
 ![2025-04-25-01-49-49](https://github.com/user-attachments/assets/39f8555f-e311-47ed-8d0c-00a610b10b22)
