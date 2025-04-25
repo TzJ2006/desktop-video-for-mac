@@ -1,39 +1,39 @@
-# Desktop Video App
+# Desktop Video Wallpaper
 
-macOS 上的动态壁纸应用，使用 Swift 和 SwiftUI 构建。支持用户为每个屏幕设置不同的视频或图片作为桌面背景。具备多屏幕支持、媒体访问持久化和用户设置保存等功能。
+**Desktop Video Wallpaper** 是一款 macOS 上运行的轻量级动态壁纸应用。应用完全本地运行，不涉及任何数据上传或云端交换，保障隐私与安全。
 
-A macOS dynamic wallpaper app built with Swift and SwiftUI that allows users to set custom videos or images as wallpapers on individual screens. The app supports multi-screen setups and persistent media access with Security-Scoped Bookmarks.
+## 🌟 功能特点
 
----
+- 🎬 **多显示器支持**：为每个显示器分别设置动态壁纸
+- 🔊 **音量调节**：支持视频播放音量调节
+- 🔁 **视频/图片支持**：支持本地视频与图片作为壁纸
+- 🖥 **拉伸适配**：自动拉伸填满整个屏幕
+- 🧭 **可选菜单栏/Dock 图标显示**：自由切换显示位置
 
-## 🌟 功能 Features
+## 🛠 技术栈
 
-- 🎥 将视频或图片设置为桌面壁纸 Set videos or images as wallpapers
-- 🖥 多屏幕独立设置（即使只有一个屏幕）Per-screen customization, even with a single display
-- 🔊 记住音量和拉伸模式 Remembers video settings like volume and stretch
-- 🖱 自动识别屏幕并提供选择菜单 Detects screens and lets user choose which to control
-- 🖱 可切换仅菜单栏模式 No Docker mode available
+- Swift
+- SwiftUI
+- AVFoundation
 
----
+## 📦 安装方式
 
-## 🛠️ 构建方法 How to Build
+请前往 [GitHub Releases](https://github.com/TzJ2006/desktop-video/releases/latest) 下载最新版本的 `.dmg` 安装包，双击安装即可使用。
 
-1. 下载 dmg 文件，点击就用 Download dmg in release
-2. 运行于 macOS 12.0 或以上版本 Run on macOS 12.0+
-3. 支持 Intel & Apple 芯片 Support Intel & Apple Sillicon
+## 🚀 使用方法
 
----
+1. 打开 Desktop Video Wallpaper 应用
+2. 选择想要设置壁纸的显示器
+3. 点击 **“选择视频或图片”**
+4. 选择本地媒体文件，即可设置为桌面壁纸
 
-## 🔮 未来改进 Future Improvements
+## 🔮 未来计划
 
-- 🔄 定时自动更换壁纸 Auto-switch wallpapers on schedule
-- 🧱 视频格式兼容性或自动转码 Fallback or conversion for unsupported formats
-- 🌄 接入在线壁纸库 Online wallpaper gallery
-- 🪟 更好窗口缩放体验 Improved window resizing UX
-- 🐞 多视频流性能优化 Performance optimization for multi-video setup
+- ⏰ 定时自动更换壁纸（Auto-switch wallpapers on schedule）
+- 🌄 接入在线壁纸库（Online wallpaper gallery）
+- 🪟 更多窗口缩放体验（More window resizing UX）
+- 🐞 多视频流性能优化（Performance optimization for multi-video setup）
 
----
-
-## 📄 许可证 License
+## 📄 许可证
 
 MIT License © 2025 Zijia Tang
