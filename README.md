@@ -29,12 +29,9 @@
 3. 点击 **“选择视频或图片”**
 4. 选择本地媒体文件，即可设置为桌面壁纸
 
-## demo 示例
+## Demo 示例
 
 <img width="1920" alt="image" src="https://github.com/user-attachments/assets/610241f3-57d7-49dd-ba7d-373ca5299646" />
-
-
-
 
 ## 🔮 未来计划
 
