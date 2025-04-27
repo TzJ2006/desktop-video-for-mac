@@ -14,6 +14,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     var statusItem: NSStatusItem?
 
+    private var appearanceChangeWorkItem: DispatchWorkItem?
+
 //    func applicationWillFinishLaunching(_ notification: Notification) {
 //        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
 //        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
@@ -80,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let contentView = ContentView()
         let newWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 325),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -101,20 +103,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var lastAppearanceChangeTime: Date = .distantPast
 
     func applyAppAppearanceSetting(onlyShowInMenuBar: Bool) {
-        let now = Date()
-        guard now.timeIntervalSince(lastAppearanceChangeTime) > 1 else {
-//            print("⏱️ Ignored rapid toggle")
-            return
+        appearanceChangeWorkItem?.cancel()
+        
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.lastAppearanceChangeTime = Date()
+            if onlyShowInMenuBar {
+                NSApp.setActivationPolicy(.accessory)
+                self.setupStatusBarIcon()
+            } else {
+                NSApp.setActivationPolicy(.regular)
+                self.removeStatusBarIcon()
+            }
+            self.statusBarIconClicked()
         }
-        lastAppearanceChangeTime = now
-        if onlyShowInMenuBar {
-            NSApp.setActivationPolicy(.accessory)
-            setupStatusBarIcon()
-        } else {
-            NSApp.setActivationPolicy(.regular)
-            removeStatusBarIcon()
-        }
-        self.statusBarIconClicked()
+        
+        appearanceChangeWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
 
     func setupStatusBarIcon() {

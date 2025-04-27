@@ -23,6 +23,7 @@ class AppState: ObservableObject {
 struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
+    @State private var syncAllScreens: Bool = false
 
     var body: some View {
         VStack {
@@ -30,17 +31,30 @@ struct ContentView: View {
             if NSScreen.screens.count > 1 {
                 TabView {
                     ForEach(NSScreen.screens, id: \.self) { screen in
-                        SingleScreenView(screen: screen)
+                        SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
                             .tabItem {
                                 Text(screen.localizedNameIfAvailableOrFallback)
                             }
                     }
                 }
-                .frame(minHeight: 300)
+                .frame(minHeight: 250)
             } else if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
-                SingleScreenView(screen: screen)
+                SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
             }
-            Spacer()
+//            Spacer()
+            
+            Button("同步到所有屏幕") {
+                if let sourceScreen = SharedWallpaperWindowManager.shared.selectedScreen,
+                   let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen],
+                   UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
+                    SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
+                } else {
+                    for screen in NSScreen.screens {
+                        SharedWallpaperWindowManager.shared.clear(for: screen)
+                    }
+                }
+            }
+            .padding()
             
             Toggle("显示 Dock 图标", isOn: Binding(
                 get: { !isMenuBarOnly },
@@ -50,20 +64,15 @@ struct ContentView: View {
                 }
             ))
             .padding(.bottom)
-            
-//            Toggle("仅显示在菜单栏（隐藏 Dock）* 需要重启应用生效", isOn: $isMenuBarOnly)
-//                .onChange(of: isMenuBarOnly) { value in
-//                    UserDefaults.standard.set(value, forKey: "isMenuBarOnly")
-//                }
-//                .padding(.bottom)
         }
-        .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 300, maxHeight: .infinity)
+        .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
         .padding()
     }
 }
 
 struct SingleScreenView: View {
     let screen: NSScreen
+    let syncAllScreens: Bool
     @ObservedObject private var appState = AppState.shared
     @State private var dummy: Bool = false  // 用于触发视图刷新
     @State private var volume: Float = 1.0
@@ -110,6 +119,9 @@ struct SingleScreenView: View {
                                 stretch: stretchToFill,
                                 volume: newValue
                             )
+                            if syncAllScreens {
+                                SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                            }
                         }
                 }
 
@@ -121,8 +133,14 @@ struct SingleScreenView: View {
                                 stretch: newValue,
                                 volume: volume
                             )
+                            if syncAllScreens {
+                                SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                            }
                         } else {
                             SharedWallpaperWindowManager.shared.updateImageStretch(for: screen, stretch: newValue)
+                            if syncAllScreens {
+                                SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                            }
                         }
                     }
 
@@ -161,12 +179,18 @@ struct SingleScreenView: View {
                     stretch: stretchToFill,
                     volume: volume
                 )
+                if syncAllScreens {
+                    SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                }
             } else if fileType?.conforms(to: .image) == true {
                 SharedWallpaperWindowManager.shared.showImage(
                     for: screen,
                     url: url,
                     stretch: stretchToFill
                 )
+                if syncAllScreens {
+                    SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                }
             }
         }
     }
@@ -184,19 +208,19 @@ fileprivate extension NSScreen {
     }
 }
 
-func showRestartAlert() {
-    let shouldSuppress = UserDefaults.standard.bool(forKey: "suppressRestartAlert")
-    if shouldSuppress { return }
-
-    let alert = NSAlert()
-    alert.messageText = "需要重新启动应用"
-    alert.informativeText = "更改是否显示 Dock 图标的设置将在下次启动时生效。请重新打开 App。"
-    alert.addButton(withTitle: "不再显示")
-    alert.addButton(withTitle: "好的")
-    
-
-    let response = alert.runModal()
-    if response == .alertSecondButtonReturn {
-        UserDefaults.standard.set(true, forKey: "suppressRestartAlert")
-    }
-}
+//func showRestartAlert() {
+//    let shouldSuppress = UserDefaults.standard.bool(forKey: "suppressRestartAlert")
+//    if shouldSuppress { return }
+//
+//    let alert = NSAlert()
+//    alert.messageText = "需要重新启动应用"
+//    alert.informativeText = "更改是否显示 Dock 图标的设置将在下次启动时生效。请重新打开 App。"
+//    alert.addButton(withTitle: "不再显示")
+//    alert.addButton(withTitle: "好的")
+//    
+//
+//    let response = alert.runModal()
+//    if response == .alertSecondButtonReturn {
+//        UserDefaults.standard.set(true, forKey: "suppressRestartAlert")
+//    }
+//}

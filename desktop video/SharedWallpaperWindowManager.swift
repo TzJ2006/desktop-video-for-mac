@@ -249,6 +249,41 @@ class SharedWallpaperWindowManager {
         }
     }
     
+    // Old syncAllWindows() is replaced by syncAllWindows(sourceScreen:)
+    /*
+    func syncAllWindows() {
+        // Deprecated: Use syncAllWindows(sourceScreen:) instead
+    }
+    */
+
+    func syncAllWindows(sourceScreen: NSScreen) {
+        guard let currentEntry = screenContent[sourceScreen] else {
+            return
+        }
+
+        let currentVolume = players[sourceScreen]?.volume ?? 1.0
+        let currentStretch = (currentViews[sourceScreen] as? AVPlayerView)?.videoGravity == .resizeAspectFill
+        let currentTime = players[sourceScreen]?.currentItem?.currentTime()
+
+        for screen in NSScreen.screens {
+            if screen == sourceScreen { continue }
+
+            if currentEntry.type == .video {
+                showVideo(for: screen, url: currentEntry.url, stretch: currentStretch, volume: currentVolume)
+                if let time = currentTime {
+                    players[screen]?.seek(to: time)
+                }
+                if players[sourceScreen]?.rate != 0 {
+                    players[screen]?.play()
+                } else {
+                    players[screen]?.pause()
+                }
+            } else if currentEntry.type == .image {
+                showImage(for: screen, url: currentEntry.url, stretch: currentStretch)
+            }
+        }
+    }
+
     func selectAndImportVideo() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
