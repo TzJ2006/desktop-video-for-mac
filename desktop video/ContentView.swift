@@ -10,6 +10,7 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+//import Foundation
 import Foundation
 
 class AppState: ObservableObject {
@@ -24,30 +25,44 @@ struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
     @State private var syncAllScreens: Bool = false
+    @State private var selectedTabScreen: NSScreen? = NSScreen.screens.first
 
     var body: some View {
         VStack {
             Spacer()
             if NSScreen.screens.count > 1 {
-                TabView {
+                TabView(selection: $selectedTabScreen) {
                     ForEach(NSScreen.screens, id: \.self) { screen in
                         SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
                             .tabItem {
                                 Text(screen.localizedNameIfAvailableOrFallback)
                             }
+                            .tag(screen)
                     }
                 }
-                .frame(minHeight: 250)
+//                .frame(minHeight: 250)
             } else if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
                 SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
             }
 //            Spacer()
             
-            Button("同步到所有屏幕") {
-                if let sourceScreen = SharedWallpaperWindowManager.shared.selectedScreen,
-                   let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen],
-                   UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
-                    SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
+            Button("同步当前屏幕状态到所有屏幕") {
+                if let sourceScreen = selectedTabScreen,
+                   let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
+                    
+                    if let fileType = UTType(filenameExtension: entry.url.pathExtension) {
+                        if fileType.conforms(to: .movie) || fileType.conforms(to: .image) {
+                            SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
+                        } else {
+                            for screen in NSScreen.screens {
+                                SharedWallpaperWindowManager.shared.clear(for: screen)
+                            }
+                        }
+                    } else {
+                        for screen in NSScreen.screens {
+                            SharedWallpaperWindowManager.shared.clear(for: screen)
+                        }
+                    }
                 } else {
                     for screen in NSScreen.screens {
                         SharedWallpaperWindowManager.shared.clear(for: screen)
@@ -56,7 +71,7 @@ struct ContentView: View {
             }
             .padding()
             
-            Toggle("显示 Dock 图标", isOn: Binding(
+            Toggle("切换 Dock/菜单栏 图标", isOn: Binding(
                 get: { !isMenuBarOnly },
                 set: { newValue in
                     isMenuBarOnly = !newValue
@@ -77,33 +92,19 @@ struct SingleScreenView: View {
     @State private var dummy: Bool = false  // 用于触发视图刷新
     @State private var volume: Float = 1.0
     @State private var stretchToFill: Bool = true
+    @State private var currentEntry: (type: SharedWallpaperWindowManager.ContentType, url: URL, stretch: Bool, volume: Float?)? = nil
 
     var body: some View {
-        let entry = SharedWallpaperWindowManager.shared.screenContent[screen]
-
         return VStack(spacing: 12) {
             Text("「\(screen.localizedNameIfAvailableOrFallback)」")
                 .font(.headline)
 
-            if let entry {
+            if let entry = currentEntry {
                 let filename = entry.url.lastPathComponent.removingPercentEncoding ?? entry.url.lastPathComponent
 
                 Text("正在播放：\(filename)")
                     .font(.subheadline)
                     .foregroundColor(.gray)
-                    .onAppear {
-                        let currentVolume = entry.volume ?? 1.0
-                        if self.volume != currentVolume {
-                            self.volume = currentVolume
-                        }
-                        if currentVolume > 0 {
-                            AppDelegate.shared.globalMute = false
-                        }
-
-                        if self.stretchToFill != entry.stretch {
-                            self.stretchToFill = entry.stretch
-                        }
-                    }
 
                 Button("更换视频或图片") {
                     openFilePicker()
@@ -114,13 +115,18 @@ struct SingleScreenView: View {
                     Slider(value: $volume, in: 0...1, step: 0.01)
                         .frame(width: 200)
                         .onChange(of: volume) { newValue in
-                            SharedWallpaperWindowManager.shared.updateVideoSettings(
-                                for: screen,
-                                stretch: stretchToFill,
-                                volume: newValue
-                            )
-                            if syncAllScreens {
-                                SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                let playerVolume = SharedWallpaperWindowManager.shared.players[screen]?.volume ?? newValue
+                                if abs(playerVolume - newValue) > 0.01 {
+                                    SharedWallpaperWindowManager.shared.updateVideoSettings(
+                                        for: screen,
+                                        stretch: stretchToFill,
+                                        volume: newValue
+                                    )
+                                    if syncAllScreens {
+                                        SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                                    }
+                                }
                             }
                         }
                 }
@@ -147,7 +153,6 @@ struct SingleScreenView: View {
                 Button("关闭壁纸") {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
                     AppState.shared.lastMediaURL = nil
-                    dummy.toggle()
                 }
             } else {
                 Button("选择视频或图片") {
@@ -159,7 +164,16 @@ struct SingleScreenView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
-            dummy.toggle()
+            if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+                self.currentEntry = entry
+                if entry.type == .video, let vol = entry.volume {
+                    self.volume = vol
+                }
+                self.stretchToFill = entry.stretch
+                self.dummy.toggle()
+            } else {
+                self.currentEntry = nil
+            }
         }
     }
 
@@ -217,7 +231,7 @@ fileprivate extension NSScreen {
 //    alert.informativeText = "更改是否显示 Dock 图标的设置将在下次启动时生效。请重新打开 App。"
 //    alert.addButton(withTitle: "不再显示")
 //    alert.addButton(withTitle: "好的")
-//    
+//
 //
 //    let response = alert.runModal()
 //    if response == .alertSecondButtonReturn {

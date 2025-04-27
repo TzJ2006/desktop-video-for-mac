@@ -44,7 +44,7 @@ class SharedWallpaperWindowManager {
 
     private var windows: [NSScreen: WallpaperWindow] = [:]
     private var currentViews: [NSScreen: NSView] = [:]
-    private var players: [NSScreen: AVQueuePlayer] = [:]
+    var players: [NSScreen: AVQueuePlayer] = [:]
     private var loopers: [NSScreen: AVPlayerLooper] = [:]
     var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
@@ -93,6 +93,7 @@ class SharedWallpaperWindowManager {
         saveBookmark(for: url, stretch: stretch, volume: nil)
 
         switchContent(to: imageView, for: screen)
+        NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float) {
@@ -105,7 +106,7 @@ class SharedWallpaperWindowManager {
         let item = AVPlayerItem(url: url)
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
         queuePlayer.volume = volume
-        queuePlayer.play()
+        // queuePlayer.play()  // Removed playback start here
 
         let playerView = AVPlayerView(frame: contentView.bounds)
         playerView.player = queuePlayer
@@ -116,10 +117,11 @@ class SharedWallpaperWindowManager {
         players[screen] = queuePlayer
         loopers[screen] = looper
 
-        self.screenContent[screen] = (.video, url, stretch, volume)
+        self.screenContent[screen] = (.video, url, stretch, queuePlayer.volume)
         saveBookmark(for: url, stretch: stretch, volume: volume)
 
         switchContent(to: playerView, for: screen)
+        NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
     func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
@@ -262,24 +264,29 @@ class SharedWallpaperWindowManager {
         }
 
         let currentVolume = players[sourceScreen]?.volume ?? 1.0
-        let currentStretch = (currentViews[sourceScreen] as? AVPlayerView)?.videoGravity == .resizeAspectFill
+        let isVideoStretch: Bool
+        if let gravity = (currentViews[sourceScreen] as? AVPlayerView)?.videoGravity {
+            isVideoStretch = (gravity == .resizeAspectFill)
+        } else {
+            isVideoStretch = false
+        }
+        let isImageStretch = (currentViews[sourceScreen] as? NSImageView)?.imageScaling == .scaleAxesIndependently
         let currentTime = players[sourceScreen]?.currentItem?.currentTime()
 
         for screen in NSScreen.screens {
             if screen == sourceScreen { continue }
 
             if currentEntry.type == .video {
-                showVideo(for: screen, url: currentEntry.url, stretch: currentStretch, volume: currentVolume)
+                showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume)
                 if let time = currentTime {
-                    players[screen]?.seek(to: time)
-                }
-                if players[sourceScreen]?.rate != 0 {
-                    players[screen]?.play()
-                } else {
-                    players[screen]?.pause()
+                    players[screen]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [self] _ in
+                        if players[sourceScreen]?.rate != 0 {
+                            players[screen]?.play()
+                        }
+                    }
                 }
             } else if currentEntry.type == .image {
-                showImage(for: screen, url: currentEntry.url, stretch: currentStretch)
+                showImage(for: screen, url: currentEntry.url, stretch: isImageStretch)
             }
         }
     }
