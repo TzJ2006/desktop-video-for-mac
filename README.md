@@ -11,6 +11,7 @@
 - 🔁 **视频/图片支持**：支持本地视频与图片作为壁纸
 - 🖥 **拉伸适配**：自动拉伸填满整个屏幕
 - 🧭 **可选菜单栏/Dock 图标显示**：自由切换显示位置
+- 🖥 **支持 HDR**: 为 HDR 视频提供最原本的体验
 
 ## 🛠 技术栈
 
@@ -26,12 +27,12 @@
 
 1. 打开 Desktop Video Wallpaper 应用
 2. 选择想要设置壁纸的显示器
-3. 点击 **“选择视频或图片”**
+3. 点击 **选择视频或图片**
 4. 选择本地媒体文件，即可设置为桌面壁纸
 
 ## 🖼 Demo 示例
 
-部分Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/demos)下载
+Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/demos)下载
 
 <img width="1920" alt="image" src="https://github.com/user-attachments/assets/610241f3-57d7-49dd-ba7d-373ca5299646" />
 
@@ -46,6 +47,7 @@
 - 🪟 更多窗口缩放体验
 - 🐞 多视频流性能优化
 - 🎥 视频用法演示
+- 🖥 多屏幕视频同步
 
 ## 📄 许可证
 
