@@ -12,17 +12,6 @@ struct desktop_videoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var body: some Scene {
         Settings {
-            VStack {
-                Toggle("仅显示在菜单栏（隐藏 Dock）", isOn: Binding(
-                    get: { UserDefaults.standard.bool(forKey: "isMenuBarOnly") },
-                    set: { newValue in
-                        UserDefaults.standard.set(newValue, forKey: "isMenuBarOnly")
-                        AppDelegate.shared?.applyAppAppearanceSetting(onlyShowInMenuBar: newValue)
-                    }
-                ))
-                .padding()
-            }
-            .frame(width: 300, height: 100)
         }
         .commands {
             CommandGroup(replacing: .appSettings) {

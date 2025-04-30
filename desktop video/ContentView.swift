@@ -40,12 +40,10 @@ struct ContentView: View {
                             .tag(screen)
                     }
                 }
-//                .frame(minHeight: 250)
             } else if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
                 SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
-//            Spacer()
             
             if NSScreen.screens.count > 1 {
                 Button("同步当前屏幕状态到所有屏幕") {
@@ -225,20 +223,3 @@ fileprivate extension NSScreen {
         }
     }
 }
-
-//func showRestartAlert() {
-//    let shouldSuppress = UserDefaults.standard.bool(forKey: "suppressRestartAlert")
-//    if shouldSuppress { return }
-//
-//    let alert = NSAlert()
-//    alert.messageText = "需要重新启动应用"
-//    alert.informativeText = "更改是否显示 Dock 图标的设置将在下次启动时生效。请重新打开 App。"
-//    alert.addButton(withTitle: "不再显示")
-//    alert.addButton(withTitle: "好的")
-//
-//
-//    let response = alert.runModal()
-//    if response == .alertSecondButtonReturn {
-//        UserDefaults.standard.set(true, forKey: "suppressRestartAlert")
-//    }
-//}

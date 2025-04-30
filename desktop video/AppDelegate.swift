@@ -16,11 +16,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private var appearanceChangeWorkItem: DispatchWorkItem?
 
-//    func applicationWillFinishLaunching(_ notification: Notification) {
-//        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
-//        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
-//    }
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
@@ -55,10 +50,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-//        print("🚪 windowWillClose 被调用了")
         if let win = notification.object as? NSWindow, win == self.window {
             self.window = nil
-//            print("✅ 已清空 self.window")
         }
     }
     
@@ -144,9 +137,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             statusItem = nil
         }
     }
-
-    /// Toggles the Dock icon visibility dynamically.
-    /// - Parameter visible: Pass `true` to show the Dock icon, `false` to hide it.
+    
     public func setDockIconVisible(_ visible: Bool) {
         applyAppAppearanceSetting(onlyShowInMenuBar: !visible)
         UserDefaults.standard.set(!visible, forKey: "isMenuBarOnly")
