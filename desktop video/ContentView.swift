@@ -43,16 +43,23 @@ struct ContentView: View {
 //                .frame(minHeight: 250)
             } else if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
                 SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
 //            Spacer()
             
-            Button("同步当前屏幕状态到所有屏幕") {
-                if let sourceScreen = selectedTabScreen,
-                   let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
-                    
-                    if let fileType = UTType(filenameExtension: entry.url.pathExtension) {
-                        if fileType.conforms(to: .movie) || fileType.conforms(to: .image) {
-                            SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
+            if NSScreen.screens.count > 1 {
+                Button("同步当前屏幕状态到所有屏幕") {
+                    if let sourceScreen = selectedTabScreen,
+                       let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
+                        
+                        if let fileType = UTType(filenameExtension: entry.url.pathExtension) {
+                            if fileType.conforms(to: .movie) || fileType.conforms(to: .image) {
+                                SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
+                            } else {
+                                for screen in NSScreen.screens {
+                                    SharedWallpaperWindowManager.shared.clear(for: screen)
+                                }
+                            }
                         } else {
                             for screen in NSScreen.screens {
                                 SharedWallpaperWindowManager.shared.clear(for: screen)
@@ -63,13 +70,9 @@ struct ContentView: View {
                             SharedWallpaperWindowManager.shared.clear(for: screen)
                         }
                     }
-                } else {
-                    for screen in NSScreen.screens {
-                        SharedWallpaperWindowManager.shared.clear(for: screen)
-                    }
                 }
+                .padding()
             }
-            .padding()
             
             Toggle("切换 Dock/菜单栏 图标", isOn: Binding(
                 get: { !isMenuBarOnly },
@@ -82,6 +85,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
         .padding()
+        .frame(maxHeight: .infinity)
     }
 }
 

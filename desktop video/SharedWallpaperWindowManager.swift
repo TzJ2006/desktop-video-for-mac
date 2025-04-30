@@ -14,19 +14,27 @@ class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
     
     init() {
-        NotificationCenter.default.addObserver(
+        NSWorkspace.shared.notificationCenter.addObserver(
             self,
-            selector: #selector(handleScreenChange),
-            name: NSApplication.didChangeScreenParametersNotification,
+            selector: #selector(handleWake),
+            name: NSWorkspace.didWakeNotification,
             object: nil
         )
     }
     
-    @objc private func handleScreenChange() {
-        for (_, player) in players {
-            if player.timeControlStatus != .playing {
-                print("📺 屏幕配置变更后恢复播放")
-                player.play()
+    @objc private func handleWake() {
+//        print("准备强制播放")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            for (screen, player) in self.players {
+                if let currentItem = player.currentItem {
+                    // 如果播放已经暂停但应该播放
+                    if player.timeControlStatus != .playing {
+                        print("🔄 唤醒后恢复播放 screen: \(screen.localizedName)")
+                        player.seek(to: currentItem.currentTime(), toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                            player.play()
+                        }
+                    }
+                }
             }
         }
     }
@@ -95,18 +103,19 @@ class SharedWallpaperWindowManager {
         switchContent(to: imageView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
-
+    
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float) {
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
 
         guard let contentView = windows[screen]?.contentView else { return }
 
-        let queuePlayer = AVQueuePlayer()
+        // ✅ 新建 Player & Looper
         let item = AVPlayerItem(url: url)
+        let queuePlayer = AVQueuePlayer()
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
+
         queuePlayer.volume = volume
-        // queuePlayer.play()  // Removed playback start here
 
         let playerView = AVPlayerView(frame: contentView.bounds)
         playerView.player = queuePlayer
@@ -116,12 +125,17 @@ class SharedWallpaperWindowManager {
 
         players[screen] = queuePlayer
         loopers[screen] = looper
+        screenContent[screen] = (.video, url, stretch, volume)
 
-        self.screenContent[screen] = (.video, url, stretch, queuePlayer.volume)
         saveBookmark(for: url, stretch: stretch, volume: volume)
-
         switchContent(to: playerView, for: screen)
+
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+
+        // ✅ 延迟播放以避免初始化后瞬间播放失败
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            queuePlayer.play()
+        }
     }
 
     func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
@@ -279,14 +293,22 @@ class SharedWallpaperWindowManager {
             if currentEntry.type == .video {
                 showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume)
                 if let time = currentTime {
-                    players[screen]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [self] _ in
-                        if players[sourceScreen]?.rate != 0 {
-                            players[screen]?.play()
-                        }
-                    }
+                    players[screen]?.pause()
+                    players[screen]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
                 }
             } else if currentEntry.type == .image {
                 showImage(for: screen, url: currentEntry.url, stretch: isImageStretch)
+            }
+        }
+
+        if currentEntry.type == .video, let time = currentTime {
+            let shouldPlay = players[sourceScreen]?.rate != 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                for screen in NSScreen.screens where screen != sourceScreen {
+                    if shouldPlay {
+                        self.players[screen]?.play()
+                    }
+                }
             }
         }
     }
