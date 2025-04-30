@@ -301,7 +301,7 @@ class SharedWallpaperWindowManager {
             }
         }
 
-        if currentEntry.type == .video, let time = currentTime {
+        if currentEntry.type == .video, let _ = currentTime {
             let shouldPlay = players[sourceScreen]?.rate != 0
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 for screen in NSScreen.screens where screen != sourceScreen {
