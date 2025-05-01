@@ -2,3 +2,7 @@
 releases
 .DS_Store
 .xcodeproj
+*.pbxproj
+*.xcworkspacedata
+*.plist
+*.xcuserstate
