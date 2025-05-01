@@ -1,3 +1,4 @@
 .dmg
 releases
 .DS_Store
+.xcodeproj
