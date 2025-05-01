@@ -33,7 +33,7 @@ struct ContentView: View {
             if NSScreen.screens.count > 1 {
                 TabView(selection: $selectedTabScreen) {
                     ForEach(NSScreen.screens, id: \.self) { screen in
-                        SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
+                        SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
                             .tabItem {
                                 Text(screen.localizedNameIfAvailableOrFallback)
                             }
@@ -41,7 +41,7 @@ struct ContentView: View {
                     }
                 }
             } else if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
-                SingleScreenView(screen: screen, syncAllScreens: syncAllScreens)
+                SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
             
@@ -90,11 +90,13 @@ struct ContentView: View {
 struct SingleScreenView: View {
     let screen: NSScreen
     let syncAllScreens: Bool
+    @Binding var selectedTabScreen: NSScreen?
     @ObservedObject private var appState = AppState.shared
     @State private var dummy: Bool = false  // 用于触发视图刷新
     @State private var volume: Float = 1.0
     @State private var stretchToFill: Bool = true
     @State private var currentEntry: (type: SharedWallpaperWindowManager.ContentType, url: URL, stretch: Bool, volume: Float?)? = nil
+    @AppStorage("useMemoryCache") var useMemoryCache: Bool = true
 
     var body: some View {
         return VStack(spacing: 12) {
@@ -102,7 +104,7 @@ struct SingleScreenView: View {
                 .font(.headline)
 
             if let entry = currentEntry {
-                let filename = entry.url.lastPathComponent.removingPercentEncoding ?? entry.url.lastPathComponent
+                let filename = appState.lastMediaURL?.lastPathComponent.removingPercentEncoding ?? appState.lastMediaURL?.lastPathComponent ?? "未知文件"
 
                 Text("正在播放：\(filename)")
                     .font(.subheadline)
@@ -176,6 +178,9 @@ struct SingleScreenView: View {
             } else {
                 self.currentEntry = nil
             }
+            if !NSScreen.screens.contains(screen) {
+                selectedTabScreen = NSScreen.screens.first
+            }
         }
     }
 
@@ -188,13 +193,28 @@ struct SingleScreenView: View {
             appState.lastMediaURL = url
 
             let fileType = UTType(filenameExtension: url.pathExtension)
+
             if fileType?.conforms(to: .movie) == true {
-                SharedWallpaperWindowManager.shared.showVideo(
-                    for: screen,
-                    url: url,
-                    stretch: stretchToFill,
-                    volume: volume
-                )
+                if useMemoryCache {
+                    do {
+                        let data = try Data(contentsOf: url)
+                        SharedWallpaperWindowManager.shared.showVideoFromMemory(
+                            for: screen,
+                            data: data,
+                            stretch: stretchToFill,
+                            volume: volume
+                        )
+                    } catch {
+                        print("Failed to load video into memory: \(error)")
+                    }
+                } else {
+                    SharedWallpaperWindowManager.shared.showVideo(
+                        for: screen,
+                        url: url,
+                        stretch: stretchToFill,
+                        volume: volume
+                    )
+                }
                 if syncAllScreens {
                     SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
                 }

@@ -10,11 +10,13 @@ import SwiftUI
 @main
 struct desktop_videoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @AppStorage("useMemoryCache") var useMemoryCache: Bool = true  // Global setting
     var body: some Scene {
         Settings {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
+                Toggle("开启视频缓存", isOn: $useMemoryCache)
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About Desktop Video") {

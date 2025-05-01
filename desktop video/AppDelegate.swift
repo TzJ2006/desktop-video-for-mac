@@ -18,6 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
+        let _ = SharedWallpaperWindowManager.shared
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
 
         // Move checkbox simulation logic here, after windows have loaded
