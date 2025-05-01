@@ -10,7 +10,6 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
-//import Foundation
 import Foundation
 
 class AppState: ObservableObject {
@@ -21,31 +20,69 @@ class AppState: ObservableObject {
     @Published var lastStretchToFill: Bool = true
 }
 
+class ScreenObserver: ObservableObject {
+    @Published var screens: [NSScreen] = NSScreen.screens
+
+    private var observer: NSObjectProtocol?
+    private var previousScreens: [NSScreen] = NSScreen.screens
+
+    init() {
+        observer = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                guard let self = self else { return }
+                let current = NSScreen.screens
+                let added = current.filter { !self.previousScreens.contains($0) }
+                self.screens = current
+                self.previousScreens = current
+
+                if UserDefaults.standard.bool(forKey: "autoSyncNewScreens"), let source = current.first {
+                    for screen in added {
+                        SharedWallpaperWindowManager.shared.syncWindow(to: screen, from: source)
+                    }
+                }
+            }
+        }
+    }
+
+    deinit {
+        if let observer = observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+}
+
 struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
+    @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true
     @State private var syncAllScreens: Bool = false
     @State private var selectedTabScreen: NSScreen? = NSScreen.screens.first
+    @StateObject private var screenObserver = ScreenObserver()
 
     var body: some View {
         VStack {
             Spacer()
-            if NSScreen.screens.count > 1 {
+            if screenObserver.screens.count > 1 {
                 TabView(selection: $selectedTabScreen) {
-                    ForEach(NSScreen.screens, id: \.self) { screen in
+                    ForEach(screenObserver.screens, id: \.self) { screen in
                         SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
+                            .id(UUID())
                             .tabItem {
                                 Text(screen.localizedNameIfAvailableOrFallback)
                             }
                             .tag(screen)
                     }
                 }
-            } else if let screen = SharedWallpaperWindowManager.shared.selectedScreen {
+            } else if let screen = screenObserver.screens.first {
                 SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
             
-            if NSScreen.screens.count > 1 {
+            if screenObserver.screens.count > 1 {
                 Button("同步当前屏幕状态到所有屏幕") {
                     if let sourceScreen = selectedTabScreen,
                        let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
@@ -54,17 +91,17 @@ struct ContentView: View {
                             if fileType.conforms(to: .movie) || fileType.conforms(to: .image) {
                                 SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
                             } else {
-                                for screen in NSScreen.screens {
+                                for screen in screenObserver.screens {
                                     SharedWallpaperWindowManager.shared.clear(for: screen)
                                 }
                             }
                         } else {
-                            for screen in NSScreen.screens {
+                            for screen in screenObserver.screens {
                                 SharedWallpaperWindowManager.shared.clear(for: screen)
                             }
                         }
                     } else {
-                        for screen in NSScreen.screens {
+                        for screen in screenObserver.screens {
                             SharedWallpaperWindowManager.shared.clear(for: screen)
                         }
                     }
@@ -104,7 +141,12 @@ struct SingleScreenView: View {
                 .font(.headline)
 
             if let entry = currentEntry {
-                let filename = appState.lastMediaURL?.lastPathComponent.removingPercentEncoding ?? appState.lastMediaURL?.lastPathComponent ?? "未知文件"
+                let filename = (
+                    AppState.shared.lastMediaURL?.lastPathComponent.removingPercentEncoding
+                    ?? AppState.shared.lastMediaURL?.lastPathComponent
+                    ?? entry.url.lastPathComponent.removingPercentEncoding
+                    ?? entry.url.lastPathComponent
+                )
 
                 Text("正在播放：\(filename)")
                     .font(.subheadline)
@@ -170,16 +212,28 @@ struct SingleScreenView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
             if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
                 self.currentEntry = entry
-                if entry.type == .video, let vol = entry.volume {
-                    self.volume = vol
-                }
+                self.volume = entry.volume ?? 1.0
                 self.stretchToFill = entry.stretch
+//                if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
+//                    AppState.shared.lastMediaURL = entry.url
+//                }
                 self.dummy.toggle()
             } else {
                 self.currentEntry = nil
             }
             if !NSScreen.screens.contains(screen) {
                 selectedTabScreen = NSScreen.screens.first
+            }
+        }
+        .onAppear {
+            if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+                self.currentEntry = entry
+                self.volume = entry.volume ?? 1.0
+                self.stretchToFill = entry.stretch
+                // If lastMediaURL is not set, populate it from entry.url
+//                if AppState.shared.lastMediaURL == nil {
+//                    AppState.shared.lastMediaURL = entry.url
+//                }
             }
         }
     }
@@ -190,11 +244,10 @@ struct SingleScreenView: View {
         panel.allowsMultipleSelection = false
 
         if panel.runModal() == .OK, let url = panel.url {
-            appState.lastMediaURL = url
-
             let fileType = UTType(filenameExtension: url.pathExtension)
 
             if fileType?.conforms(to: .movie) == true {
+                appState.lastMediaURL = url
                 if useMemoryCache {
                     do {
                         let data = try Data(contentsOf: url)
@@ -202,7 +255,8 @@ struct SingleScreenView: View {
                             for: screen,
                             data: data,
                             stretch: stretchToFill,
-                            volume: volume
+                            volume: volume,
+                            originalURL: url
                         )
                     } catch {
                         print("Failed to load video into memory: \(error)")
@@ -219,6 +273,7 @@ struct SingleScreenView: View {
                     SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
                 }
             } else if fileType?.conforms(to: .image) == true {
+                appState.lastMediaURL = url
                 SharedWallpaperWindowManager.shared.showImage(
                     for: screen,
                     url: url,

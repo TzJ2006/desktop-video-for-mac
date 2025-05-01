@@ -11,12 +11,15 @@ import SwiftUI
 struct desktop_videoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @AppStorage("useMemoryCache") var useMemoryCache: Bool = true  // Global setting
+    @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true  // Added to fix missing declaration
     var body: some Scene {
         Settings {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
                 Toggle("开启视频缓存", isOn: $useMemoryCache)
+                Toggle("自动同步新插入的显示器", isOn: $autoSyncNewScreens)
+                    .padding(.bottom)
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About Desktop Video") {
