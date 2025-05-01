@@ -211,16 +211,18 @@ struct SingleScreenView: View {
         .cornerRadius(10)
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
             if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
-                self.currentEntry = entry
-                self.volume = entry.volume ?? 1.0
-                self.stretchToFill = entry.stretch
-//                if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
-//                    AppState.shared.lastMediaURL = entry.url
-//                }
-                self.dummy.toggle()
+                if currentEntry?.url != entry.url ||
+                    currentEntry?.volume != entry.volume ||
+                    currentEntry?.stretch != entry.stretch {
+                    self.currentEntry = entry
+                    self.volume = entry.volume ?? 1.0
+                    self.stretchToFill = entry.stretch
+                    self.dummy.toggle()
+                }
             } else {
                 self.currentEntry = nil
             }
+
             if !NSScreen.screens.contains(screen) {
                 selectedTabScreen = NSScreen.screens.first
             }
