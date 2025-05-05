@@ -1,6 +1,6 @@
 # Desktop Video Wallpaper 
 
-[English Version](https://github.com/TzJ2006/desktop-video/blob/main/README-EN.md)
+[Readme of English Version](https://github.com/TzJ2006/desktop-video/blob/main/README-EN.md)
 
 **Desktop Video Wallpaper** 是一款 macOS 上运行的轻量级动态壁纸应用。应用完全本地运行，不涉及任何数据上传或云端交换，保障隐私与安全。
 
