@@ -9,6 +9,7 @@
 - 🖼 **Supports both video and image** files
 - 🔁 **Auto-scaling**: Stretch wallpapers to fill the screen
 - 🧭 **Choose between menu bar and Dock** visibility
+- 🔄 **Launch at startup**: Automatically run the app when the system starts
 
 ## 🛠 Tech Stack
 
@@ -34,6 +35,11 @@ Some of the Demo can be downloaded from the [Demo Folder](https://github.com/TzJ
 <img width="1920" alt="image" src="https://github.com/user-attachments/assets/610241f3-57d7-49dd-ba7d-373ca5299646" />
 
 ![2025-04-25-01-49-49](https://github.com/user-attachments/assets/39f8555f-e311-47ed-8d0c-00a610b10b22)
+
+## 🔘 **Global Settings**
+
+Some settings can be found here:
+`<img width="597" alt="WechatIMG19" src="https://github.com/user-attachments/assets/0531273f-b70a-4b9a-bf89-304cb631491a" />`
 
 ## 🔮 Coming Soon
 
