@@ -39,7 +39,10 @@ Some of the Demo can be downloaded from the [Demo Folder](https://github.com/TzJ
 ## 🔘 **Global Settings**
 
 Some settings can be found here:
+
 `<img width="597" alt="WechatIMG19" src="https://github.com/user-attachments/assets/0531273f-b70a-4b9a-bf89-304cb631491a" />`
+
+*Note: Because of macOS’s system behavior, these settings can only be modified when the Dock icon is displayed.*
 
 ## 🔮 Coming Soon
 
