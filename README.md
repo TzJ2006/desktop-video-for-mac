@@ -12,6 +12,7 @@
 - 🖥 **拉伸适配**：自动拉伸填满整个屏幕
 - 🧭 **可选菜单栏/Dock 图标显示**：自由切换显示位置
 - 🖥 **支持 HDR**: 为 HDR 视频提供最原本的体验
+- 🔄 **开机自启动**：系统启动时自动运行应用
 
 ## 🛠 技术栈
 
@@ -38,6 +39,10 @@ Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/
 
 ![2025-04-25-01-49-49](https://github.com/user-attachments/assets/39f8555f-e311-47ed-8d0c-00a610b10b22)
 
+## 🔘 全局设置按钮
+
+部分设置可以在这里找到：
+<img width="597" alt="WechatIMG19" src="https://github.com/user-attachments/assets/0531273f-b70a-4b9a-bf89-304cb631491a" />
 
 
 ## 🔮 未来计划
