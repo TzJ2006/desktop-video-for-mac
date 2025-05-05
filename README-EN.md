@@ -10,6 +10,7 @@
 - 🔁 **Auto-scaling**: Stretch wallpapers to fill the screen
 - 🧭 **Choose between menu bar and Dock** visibility
 - 🔄 **Launch at startup**: Automatically run the app when the system starts
+- 🖥 **Sync wallpaper to all the screens**: Now you can sync wallpaper to all the screens
 
 ## 🛠 Tech Stack
 
