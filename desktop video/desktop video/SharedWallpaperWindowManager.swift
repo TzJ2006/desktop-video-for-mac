@@ -152,10 +152,10 @@ func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
     imageView.autoresizingMask = [.width, .height]
     
     self.screenContent[screen] = (.image, url, stretch, nil)
-    saveBookmark(for: url, stretch: stretch, volume: nil)
+    saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
     
     switchContent(to: imageView, for: screen)
-    NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+    NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidC吃hange"), object: nil)
 }
 
 /// Plays a video for the given screen, always using memory-cached video data.
@@ -193,11 +193,12 @@ func clear(for screen: NSScreen) {
     windows.removeValue(forKey: screen)
     NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
-    // 如果是 selectedScreen，清除 bookmark
-    if screen == selectedScreen {
-        UserDefaults.standard.removeObject(forKey: "lastUsedBookmark")
-        UserDefaults.standard.removeObject(forKey: "lastUsedStretch")
-        UserDefaults.standard.removeObject(forKey: "lastUsedVolume")
+    // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
+    if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
+        UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+        UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+        UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+        UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
     }
 }
 
@@ -225,20 +226,21 @@ private func switchContent(to newView: NSView, for screen: NSScreen) {
     currentViews[screen] = newView
 }
 
-private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
+private func saveBookmark(for url: URL, stretch: Bool, volume: Float?, screen: NSScreen) {
+    guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { return }
     do {
         guard url.startAccessingSecurityScopedResource() else {
             dlog("Failed to access security scoped resource for saving bookmark: \(url)")
             return
         }
-        
         let bookmarkData = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-        UserDefaults.standard.set(bookmarkData, forKey: "lastUsedBookmark")
-        UserDefaults.standard.set(stretch, forKey: "lastUsedStretch")
+        UserDefaults.standard.set(bookmarkData, forKey: "bookmark-\(displayID)")
+        UserDefaults.standard.set(stretch, forKey: "stretch-\(displayID)")
         if let volume = volume {
-            UserDefaults.standard.set(volume, forKey: "lastUsedVolume")
+            UserDefaults.standard.set(volume, forKey: "volume-\(displayID)")
         }
-        
+        // Save current timestamp
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "savedAt-\(displayID)")
         url.stopAccessingSecurityScopedResource()
     } catch {
         dlog("Failed to save bookmark for \(url): \(error)")
@@ -246,64 +248,39 @@ private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
 }
 
 func restoreFromBookmark() {
-    guard let bookmarkData = UserDefaults.standard.data(forKey: "lastUsedBookmark") else {
-#if DEBUG
-        let alert = NSAlert()
-        alert.messageText = "未找到上次使用的壁纸"
-        alert.informativeText = "您可能还没有选择过壁纸，或者记录已被清除。"
-        alert.alertStyle = .informational
-        alert.runModal()
-#endif
-        return
-    }
-    var isStale = false
-    do {
-        let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
-        guard url.startAccessingSecurityScopedResource() else {
-#if DEBUG
-            let alert = NSAlert()
-            alert.messageText = "无法访问上次的壁纸"
-            alert.informativeText = "文件可能已被删除或移动。"
-            alert.alertStyle = .warning
-            alert.runModal()
-#endif
-            return
+    for screen in NSScreen.screens {
+        guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
+        guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(displayID)") else { continue }
+
+        // Check saved time
+        let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
+        if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+            // 超过 24 小时，删除记录
+            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
+            continue
         }
-        let ext = url.pathExtension.lowercased()
-        let stretch = UserDefaults.standard.bool(forKey: "lastUsedStretch")
-        let volume = UserDefaults.standard.object(forKey: "lastUsedVolume") as? Float ?? 1.0
-        if ["mp4", "mov", "m4v"].contains(ext) {
-            if let screen = selectedScreen {
+
+        var isStale = false
+        do {
+            let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+            guard url.startAccessingSecurityScopedResource() else { continue }
+            let ext = url.pathExtension.lowercased()
+            let stretch = UserDefaults.standard.bool(forKey: "stretch-\(displayID)")
+            let volume = UserDefaults.standard.object(forKey: "volume-\(displayID)") as? Float ?? 1.0
+
+            if ["mp4", "mov", "m4v"].contains(ext) {
                 showVideo(for: screen, url: url, stretch: stretch, volume: volume)
-            }
-        } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
-            if let screen = selectedScreen {
+            } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
                 showImage(for: screen, url: url, stretch: stretch)
             }
-        } else {
-            // 文件扩展名无法识别
+        } catch {
+            dlog("Failed to restore bookmark for screen \(displayID): \(error)")
         }
-    } catch {
-#if DEBUG
-        let alert = NSAlert()
-        alert.messageText = "恢复壁纸失败"
-        alert.informativeText = "可能文件已被删除、移动或已失效。\n错误信息：\(error.localizedDescription)"
-        alert.alertStyle = .warning
-        alert.runModal()
-#endif
     }
 }
-
-//    func syncAutoFillToAllControllers() {
-//        for (screen, entry) in screenContent {
-//            switch entry.type {
-//            case .image:
-//                updateImageStretch(for: screen, stretch: AppDelegate.shared.autoFill)
-//            case .video:
-//                updateVideoSettings(for: screen, stretch: AppDelegate.shared.autoFill, volume: entry.volume ?? 1.0)
-//            }
-//        }
-//    }
 
 func syncGlobalMuteToAllVolumes() {
     guard AppDelegate.shared.globalMute else { return }
@@ -336,6 +313,16 @@ private func cleanupDisconnectedScreens() {
     let activeScreens = Set(NSScreen.screens)
     for screen in Array(windows.keys) {
         if !activeScreens.contains(screen) {
+            // Check if over 24 hours, then remove bookmark and related data
+            if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
+                let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
+                if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+                    UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+                    UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+                    UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+                    UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
+                }
+            }
             clear(for: screen)
         }
     }
@@ -473,7 +460,7 @@ func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume
     screenContent[screen] = (.video, originalURL ?? tempURL, stretch, volume)
     
     if let sourceURL = originalURL {
-        saveBookmark(for: sourceURL, stretch: stretch, volume: volume)
+        saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
     }
 
     switchContent(to: playerView, for: screen)

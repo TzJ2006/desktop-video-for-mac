@@ -7,52 +7,52 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-		2592819F2DC913280025C963 /* PBXContainerItemProxy */ = {
+		253C8BB02DC957E300AD6BC8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 259281882DC913270025C963 /* Project object */;
+			containerPortal = 253C8B992DC957E200AD6BC8 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2592818F2DC913270025C963;
-			remoteInfo = "Desktop-Video";
+			remoteGlobalIDString = 253C8BA02DC957E200AD6BC8;
+			remoteInfo = "desktop video";
 		};
-		259281A92DC913280025C963 /* PBXContainerItemProxy */ = {
+		253C8BBA2DC957E300AD6BC8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 259281882DC913270025C963 /* Project object */;
+			containerPortal = 253C8B992DC957E200AD6BC8 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2592818F2DC913270025C963;
-			remoteInfo = "Desktop-Video";
+			remoteGlobalIDString = 253C8BA02DC957E200AD6BC8;
+			remoteInfo = "desktop video";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		259281902DC913270025C963 /* Desktop-Video.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Desktop-Video.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2592819E2DC913280025C963 /* Desktop-VideoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop-VideoTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		259281A82DC913280025C963 /* Desktop-VideoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop-VideoUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		253C8BA12DC957E200AD6BC8 /* desktop video.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "desktop video.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		253C8BAF2DC957E300AD6BC8 /* desktop videoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "desktop videoTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		253C8BB92DC957E300AD6BC8 /* desktop videoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "desktop videoUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		259281922DC913270025C963 /* Desktop-Video */ = {
+		253C8BA32DC957E200AD6BC8 /* desktop video */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop-Video";
+			path = "desktop video";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		2592818D2DC913270025C963 /* Frameworks */ = {
+		253C8B9E2DC957E200AD6BC8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		2592819B2DC913280025C963 /* Frameworks */ = {
+		253C8BAC2DC957E300AD6BC8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		259281A52DC913280025C963 /* Frameworks */ = {
+		253C8BB62DC957E300AD6BC8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -62,20 +62,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		259281872DC913270025C963 = {
+		253C8B982DC957E200AD6BC8 = {
 			isa = PBXGroup;
 			children = (
-				259281922DC913270025C963 /* Desktop-Video */,
-				259281912DC913270025C963 /* Products */,
+				253C8BA32DC957E200AD6BC8 /* desktop video */,
+				253C8BA22DC957E200AD6BC8 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		259281912DC913270025C963 /* Products */ = {
+		253C8BA22DC957E200AD6BC8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				259281902DC913270025C963 /* Desktop-Video.app */,
-				2592819E2DC913280025C963 /* Desktop-VideoTests.xctest */,
-				259281A82DC913280025C963 /* Desktop-VideoUITests.xctest */,
+				253C8BA12DC957E200AD6BC8 /* desktop video.app */,
+				253C8BAF2DC957E300AD6BC8 /* desktop videoTests.xctest */,
+				253C8BB92DC957E300AD6BC8 /* desktop videoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,128 +83,128 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2592818F2DC913270025C963 /* Desktop-Video */ = {
+		253C8BA02DC957E200AD6BC8 /* desktop video */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 259281B22DC913280025C963 /* Build configuration list for PBXNativeTarget "Desktop-Video" */;
+			buildConfigurationList = 253C8BC32DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop video" */;
 			buildPhases = (
-				2592818C2DC913270025C963 /* Sources */,
-				2592818D2DC913270025C963 /* Frameworks */,
-				2592818E2DC913270025C963 /* Resources */,
+				253C8B9D2DC957E200AD6BC8 /* Sources */,
+				253C8B9E2DC957E200AD6BC8 /* Frameworks */,
+				253C8B9F2DC957E200AD6BC8 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				259281922DC913270025C963 /* Desktop-Video */,
+				253C8BA32DC957E200AD6BC8 /* desktop video */,
 			);
-			name = "Desktop-Video";
+			name = "desktop video";
 			packageProductDependencies = (
 			);
-			productName = "Desktop-Video";
-			productReference = 259281902DC913270025C963 /* Desktop-Video.app */;
+			productName = "desktop video";
+			productReference = 253C8BA12DC957E200AD6BC8 /* desktop video.app */;
 			productType = "com.apple.product-type.application";
 		};
-		2592819D2DC913280025C963 /* Desktop-VideoTests */ = {
+		253C8BAE2DC957E300AD6BC8 /* desktop videoTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 259281B52DC913280025C963 /* Build configuration list for PBXNativeTarget "Desktop-VideoTests" */;
+			buildConfigurationList = 253C8BC62DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop videoTests" */;
 			buildPhases = (
-				2592819A2DC913280025C963 /* Sources */,
-				2592819B2DC913280025C963 /* Frameworks */,
-				2592819C2DC913280025C963 /* Resources */,
+				253C8BAB2DC957E300AD6BC8 /* Sources */,
+				253C8BAC2DC957E300AD6BC8 /* Frameworks */,
+				253C8BAD2DC957E300AD6BC8 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				259281A02DC913280025C963 /* PBXTargetDependency */,
+				253C8BB12DC957E300AD6BC8 /* PBXTargetDependency */,
 			);
-			name = "Desktop-VideoTests";
+			name = "desktop videoTests";
 			packageProductDependencies = (
 			);
-			productName = "Desktop-VideoTests";
-			productReference = 2592819E2DC913280025C963 /* Desktop-VideoTests.xctest */;
+			productName = "desktop videoTests";
+			productReference = 253C8BAF2DC957E300AD6BC8 /* desktop videoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		259281A72DC913280025C963 /* Desktop-VideoUITests */ = {
+		253C8BB82DC957E300AD6BC8 /* desktop videoUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 259281B82DC913280025C963 /* Build configuration list for PBXNativeTarget "Desktop-VideoUITests" */;
+			buildConfigurationList = 253C8BC92DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop videoUITests" */;
 			buildPhases = (
-				259281A42DC913280025C963 /* Sources */,
-				259281A52DC913280025C963 /* Frameworks */,
-				259281A62DC913280025C963 /* Resources */,
+				253C8BB52DC957E300AD6BC8 /* Sources */,
+				253C8BB62DC957E300AD6BC8 /* Frameworks */,
+				253C8BB72DC957E300AD6BC8 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				259281AA2DC913280025C963 /* PBXTargetDependency */,
+				253C8BBB2DC957E300AD6BC8 /* PBXTargetDependency */,
 			);
-			name = "Desktop-VideoUITests";
+			name = "desktop videoUITests";
 			packageProductDependencies = (
 			);
-			productName = "Desktop-VideoUITests";
-			productReference = 259281A82DC913280025C963 /* Desktop-VideoUITests.xctest */;
+			productName = "desktop videoUITests";
+			productReference = 253C8BB92DC957E300AD6BC8 /* desktop videoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		259281882DC913270025C963 /* Project object */ = {
+		253C8B992DC957E200AD6BC8 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
-					2592818F2DC913270025C963 = {
+					253C8BA02DC957E200AD6BC8 = {
 						CreatedOnToolsVersion = 16.3;
 					};
-					2592819D2DC913280025C963 = {
+					253C8BAE2DC957E300AD6BC8 = {
 						CreatedOnToolsVersion = 16.3;
-						TestTargetID = 2592818F2DC913270025C963;
+						TestTargetID = 253C8BA02DC957E200AD6BC8;
 					};
-					259281A72DC913280025C963 = {
+					253C8BB82DC957E300AD6BC8 = {
 						CreatedOnToolsVersion = 16.3;
-						TestTargetID = 2592818F2DC913270025C963;
+						TestTargetID = 253C8BA02DC957E200AD6BC8;
 					};
 				};
 			};
-			buildConfigurationList = 2592818B2DC913270025C963 /* Build configuration list for PBXProject "Desktop-Video" */;
+			buildConfigurationList = 253C8B9C2DC957E200AD6BC8 /* Build configuration list for PBXProject "desktop video" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 259281872DC913270025C963;
+			mainGroup = 253C8B982DC957E200AD6BC8;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 259281912DC913270025C963 /* Products */;
+			productRefGroup = 253C8BA22DC957E200AD6BC8 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2592818F2DC913270025C963 /* Desktop-Video */,
-				2592819D2DC913280025C963 /* Desktop-VideoTests */,
-				259281A72DC913280025C963 /* Desktop-VideoUITests */,
+				253C8BA02DC957E200AD6BC8 /* desktop video */,
+				253C8BAE2DC957E300AD6BC8 /* desktop videoTests */,
+				253C8BB82DC957E300AD6BC8 /* desktop videoUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		2592818E2DC913270025C963 /* Resources */ = {
+		253C8B9F2DC957E200AD6BC8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		2592819C2DC913280025C963 /* Resources */ = {
+		253C8BAD2DC957E300AD6BC8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		259281A62DC913280025C963 /* Resources */ = {
+		253C8BB72DC957E300AD6BC8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -214,21 +214,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		2592818C2DC913270025C963 /* Sources */ = {
+		253C8B9D2DC957E200AD6BC8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		2592819A2DC913280025C963 /* Sources */ = {
+		253C8BAB2DC957E300AD6BC8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		259281A42DC913280025C963 /* Sources */ = {
+		253C8BB52DC957E300AD6BC8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -238,20 +238,20 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		259281A02DC913280025C963 /* PBXTargetDependency */ = {
+		253C8BB12DC957E300AD6BC8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2592818F2DC913270025C963 /* Desktop-Video */;
-			targetProxy = 2592819F2DC913280025C963 /* PBXContainerItemProxy */;
+			target = 253C8BA02DC957E200AD6BC8 /* desktop video */;
+			targetProxy = 253C8BB02DC957E300AD6BC8 /* PBXContainerItemProxy */;
 		};
-		259281AA2DC913280025C963 /* PBXTargetDependency */ = {
+		253C8BBB2DC957E300AD6BC8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2592818F2DC913270025C963 /* Desktop-Video */;
-			targetProxy = 259281A92DC913280025C963 /* PBXContainerItemProxy */;
+			target = 253C8BA02DC957E200AD6BC8 /* desktop video */;
+			targetProxy = 253C8BBA2DC957E300AD6BC8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		259281B02DC913280025C963 /* Debug */ = {
+		253C8BC12DC957E300AD6BC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -313,7 +313,7 @@
 			};
 			name = Debug;
 		};
-		259281B12DC913280025C963 /* Release */ = {
+		253C8BC22DC957E300AD6BC8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -367,13 +367,12 @@
 			};
 			name = Release;
 		};
-		259281B32DC913280025C963 /* Debug */ = {
+		253C8BC42DC957E300AD6BC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = "Desktop-Video/Desktop_Video.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "desktop video/desktop_video.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20250505;
 				DEVELOPMENT_TEAM = 2R958J3YT6;
@@ -390,12 +389,12 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 2.2;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Video";
+				PRODUCT_BUNDLE_IDENTIFIER = TzJ.desktopvideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -407,13 +406,12 @@
 			};
 			name = Debug;
 		};
-		259281B42DC913280025C963 /* Release */ = {
+		253C8BC52DC957E300AD6BC8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = "Desktop-Video/Desktop_Video.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "desktop video/desktop_video.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20250505;
 				DEVELOPMENT_TEAM = 2R958J3YT6;
@@ -430,12 +428,12 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 2.2;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Video";
+				PRODUCT_BUNDLE_IDENTIFIER = TzJ.desktopvideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -447,7 +445,7 @@
 			};
 			name = Release;
 		};
-		259281B62DC913280025C963 /* Debug */ = {
+		253C8BC72DC957E300AD6BC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -458,19 +456,19 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.desktop-videoTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Desktop-Video.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Desktop-Video";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/desktop video.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/desktop video";
 				XROS_DEPLOYMENT_TARGET = 2.4;
 			};
 			name = Debug;
 		};
-		259281B72DC913280025C963 /* Release */ = {
+		253C8BC82DC957E300AD6BC8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -481,19 +479,19 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.desktop-videoTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Desktop-Video.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Desktop-Video";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/desktop video.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/desktop video";
 				XROS_DEPLOYMENT_TARGET = 2.4;
 			};
 			name = Release;
 		};
-		259281B92DC913280025C963 /* Debug */ = {
+		253C8BCA2DC957E300AD6BC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -503,19 +501,19 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.desktop-videoUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = "Desktop-Video";
+				TEST_TARGET_NAME = "desktop video";
 				XROS_DEPLOYMENT_TARGET = 2.4;
 			};
 			name = Debug;
 		};
-		259281BA2DC913280025C963 /* Release */ = {
+		253C8BCB2DC957E300AD6BC8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -525,14 +523,14 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.desktop-videoUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = "Desktop-Video";
+				TEST_TARGET_NAME = "desktop video";
 				XROS_DEPLOYMENT_TARGET = 2.4;
 			};
 			name = Release;
@@ -540,43 +538,43 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2592818B2DC913270025C963 /* Build configuration list for PBXProject "Desktop-Video" */ = {
+		253C8B9C2DC957E200AD6BC8 /* Build configuration list for PBXProject "desktop video" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				259281B02DC913280025C963 /* Debug */,
-				259281B12DC913280025C963 /* Release */,
+				253C8BC12DC957E300AD6BC8 /* Debug */,
+				253C8BC22DC957E300AD6BC8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		259281B22DC913280025C963 /* Build configuration list for PBXNativeTarget "Desktop-Video" */ = {
+		253C8BC32DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop video" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				259281B32DC913280025C963 /* Debug */,
-				259281B42DC913280025C963 /* Release */,
+				253C8BC42DC957E300AD6BC8 /* Debug */,
+				253C8BC52DC957E300AD6BC8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		259281B52DC913280025C963 /* Build configuration list for PBXNativeTarget "Desktop-VideoTests" */ = {
+		253C8BC62DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop videoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				259281B62DC913280025C963 /* Debug */,
-				259281B72DC913280025C963 /* Release */,
+				253C8BC72DC957E300AD6BC8 /* Debug */,
+				253C8BC82DC957E300AD6BC8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		259281B82DC913280025C963 /* Build configuration list for PBXNativeTarget "Desktop-VideoUITests" */ = {
+		253C8BC92DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop videoUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				259281B92DC913280025C963 /* Debug */,
-				259281BA2DC913280025C963 /* Release */,
+				253C8BCA2DC957E300AD6BC8 /* Debug */,
+				253C8BCB2DC957E300AD6BC8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 259281882DC913270025C963 /* Project object */;
+	rootObject = 253C8B992DC957E200AD6BC8 /* Project object */;
 }
