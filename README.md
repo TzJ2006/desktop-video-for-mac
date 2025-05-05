@@ -42,7 +42,10 @@ Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/
 ## 🔘 全局设置按钮
 
 部分设置可以在这里找到：
+
 <img width="597" alt="WechatIMG19" src="https://github.com/user-attachments/assets/0531273f-b70a-4b9a-bf89-304cb631491a" />
+
+*注：由于 MacOS 固定了操作逻辑，这些设置只有当 Docker 图标显示的时候可以更改*
 
 
 ## 🔮 未来计划
