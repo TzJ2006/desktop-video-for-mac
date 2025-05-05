@@ -14,9 +14,7 @@ struct desktop_videoApp: App {
 
     @AppStorage("useMemoryCache") var useMemoryCache: Bool = true  // Global setting
     @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true  // Added to fix missing declaration
-
-    // 新增：记录开机启动状态
-    @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
+    @AppStorage("launchAtLogin") var launchAtLogin: Bool = true // 新增：记录开机启动状态
 
     var body: some Scene {
         Settings {
@@ -32,7 +30,15 @@ struct desktop_videoApp: App {
                                 try SMAppService.mainApp.unregister()
                             }
                         } catch {
-                            print("设置开机启动失败：\(error.localizedDescription)")
+                            // 弹窗提示
+                            let alert = NSAlert()
+                            alert.messageText = "设置开机启动失败"
+                            alert.informativeText = error.localizedDescription
+                            alert.alertStyle = .warning
+                            alert.runModal()
+
+                            // 取消勾选（恢复状态）
+                            launchAtLogin = false
                         }
                     }
             }
@@ -43,6 +49,7 @@ struct desktop_videoApp: App {
             CommandGroup(replacing: .appSettings) {
                 Toggle("开启视频缓存", isOn: $useMemoryCache)
                 Toggle("自动同步新插入的显示器", isOn: $autoSyncNewScreens)
+                Toggle("开机自启动", isOn: $launchAtLogin)
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About Desktop Video") {
@@ -56,7 +63,7 @@ struct desktop_videoApp: App {
                     Version \(version) (\(build))
 
                     Presented by TzJ
-                    Created just for you
+                    Created Just For You
                     """
                     alert.runModal()
                 }

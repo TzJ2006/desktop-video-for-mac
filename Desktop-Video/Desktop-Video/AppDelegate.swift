@@ -10,6 +10,7 @@ import SwiftUI
 import AVFoundation
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+
     static var shared: AppDelegate!
     
     var statusItem: NSStatusItem?
@@ -19,8 +20,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
         let _ = SharedWallpaperWindowManager.shared
+        
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
-
+        
         // Move checkbox simulation logic here, after windows have loaded
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
@@ -81,7 +83,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-
+        newWindow.identifier = NSUserInterfaceItemIdentifier("MainWindow")
         newWindow.center()
         newWindow.title = "桌面壁纸控制器"
         newWindow.contentView = NSHostingView(rootView: contentView)

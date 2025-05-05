@@ -56,6 +56,7 @@ class ScreenObserver: ObservableObject {
 }
 
 struct ContentView: View {
+    
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
     @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true

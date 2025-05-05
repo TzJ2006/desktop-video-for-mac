@@ -1,3 +1,9 @@
+// Debug log function: Only prints in DEBUG builds
+func dlog(_ message: String) {
+#if DEBUG
+    print(message)
+#endif
+}
 /// Synchronize the wallpaper content from a source screen to a target screen.
 
 //
@@ -33,13 +39,11 @@ init() {
 }
 
 @objc private func handleWake() {
-    //        print("准备强制播放")
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-        for (screen, player) in self.players {
+        for (_, player) in self.players {
             if let currentItem = player.currentItem {
                 // 如果播放已经暂停但应该播放
                 if player.timeControlStatus != .playing {
-                    print("🔄 唤醒后恢复播放 screen: \(screen.localizedName)")
                     player.seek(to: currentItem.currentTime(), toleranceBefore: .zero, toleranceAfter: .zero) { _ in
                         player.play()
                     }
@@ -160,7 +164,7 @@ func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onR
         let data = try Data(contentsOf: url)
         showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: volume, originalURL: url, onReady: onReady)
     } catch {
-        print("❌ Failed to read video data from file: \(error)")
+        // Error reading video data from file
     }
 }
 
@@ -188,6 +192,13 @@ func clear(for screen: NSScreen) {
     screenContent.removeValue(forKey: screen)
     windows.removeValue(forKey: screen)
     NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+
+    // 如果是 selectedScreen，清除 bookmark
+    if screen == selectedScreen {
+        UserDefaults.standard.removeObject(forKey: "lastUsedBookmark")
+        UserDefaults.standard.removeObject(forKey: "lastUsedStretch")
+        UserDefaults.standard.removeObject(forKey: "lastUsedVolume")
+    }
 }
 
 func restoreContent(for screen: NSScreen) {
@@ -217,7 +228,7 @@ private func switchContent(to newView: NSView, for screen: NSScreen) {
 private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
     do {
         guard url.startAccessingSecurityScopedResource() else {
-            print("❌ Failed to access security scoped resource for saving bookmark")
+            dlog("Failed to access security scoped resource for saving bookmark: \(url)")
             return
         }
         
@@ -230,19 +241,34 @@ private func saveBookmark(for url: URL, stretch: Bool, volume: Float?) {
         
         url.stopAccessingSecurityScopedResource()
     } catch {
-        print("❌ Failed to save bookmark: \(error)")
+        dlog("Failed to save bookmark for \(url): \(error)")
     }
 }
 
 func restoreFromBookmark() {
-    guard let bookmarkData = UserDefaults.standard.data(forKey: "lastUsedBookmark") else { return }
+    guard let bookmarkData = UserDefaults.standard.data(forKey: "lastUsedBookmark") else {
+#if DEBUG
+        let alert = NSAlert()
+        alert.messageText = "未找到上次使用的壁纸"
+        alert.informativeText = "您可能还没有选择过壁纸，或者记录已被清除。"
+        alert.alertStyle = .informational
+        alert.runModal()
+#endif
+        return
+    }
     var isStale = false
     do {
         let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
-        if isStale {
-            print("⚠️ Bookmark is stale, consider refreshing it.")
+        guard url.startAccessingSecurityScopedResource() else {
+#if DEBUG
+            let alert = NSAlert()
+            alert.messageText = "无法访问上次的壁纸"
+            alert.informativeText = "文件可能已被删除或移动。"
+            alert.alertStyle = .warning
+            alert.runModal()
+#endif
+            return
         }
-        guard url.startAccessingSecurityScopedResource() else { return }
         let ext = url.pathExtension.lowercased()
         let stretch = UserDefaults.standard.bool(forKey: "lastUsedStretch")
         let volume = UserDefaults.standard.object(forKey: "lastUsedVolume") as? Float ?? 1.0
@@ -254,9 +280,17 @@ func restoreFromBookmark() {
             if let screen = selectedScreen {
                 showImage(for: screen, url: url, stretch: stretch)
             }
+        } else {
+            // 文件扩展名无法识别
         }
     } catch {
-        print("❌ Failed to restore from bookmark: \(error)")
+#if DEBUG
+        let alert = NSAlert()
+        alert.messageText = "恢复壁纸失败"
+        alert.informativeText = "可能文件已被删除、移动或已失效。\n错误信息：\(error.localizedDescription)"
+        alert.alertStyle = .warning
+        alert.runModal()
+#endif
     }
 }
 
@@ -416,7 +450,7 @@ func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume
     do {
         try data.write(to: tempURL)
     } catch {
-        print("❌ Failed to write video data to temp file: \(error)")
+        dlog("Failed to write video data to temp file: \(error)")
         return
     }
 
@@ -437,6 +471,10 @@ func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume
     loopers[screen] = looper
     // Track the original source URL, not the temp path, to preserve user intent.
     screenContent[screen] = (.video, originalURL ?? tempURL, stretch, volume)
+    
+    if let sourceURL = originalURL {
+        saveBookmark(for: sourceURL, stretch: stretch, volume: volume)
+    }
 
     switchContent(to: playerView, for: screen)
     NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
