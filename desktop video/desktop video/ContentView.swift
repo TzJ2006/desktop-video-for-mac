@@ -12,9 +12,10 @@ import AppKit
 import UniformTypeIdentifiers
 import Foundation
 
+
+
 class AppState: ObservableObject {
     static let shared = AppState()
-
     @Published var lastMediaURL: URL?
     @Published var lastVolume: Float = 1.0
     @Published var lastStretchToFill: Bool = true
@@ -60,6 +61,7 @@ struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
     @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true
+    @AppStorage("globalMute") private var globalMute: Bool = false   // <─ New line
     @State private var syncAllScreens: Bool = false
     @State private var selectedTabScreen: NSScreen? = NSScreen.screens.first
     @StateObject private var screenObserver = ScreenObserver()
@@ -117,6 +119,10 @@ struct ContentView: View {
                     AppDelegate.shared?.setDockIconVisible(newValue)
                 }
             ))
+            Toggle("全局静音", isOn: $globalMute)
+                .onChange(of: globalMute) { newValue in
+                    desktop_videoApp.applyGlobalMute(newValue)
+                }
             .padding(.bottom)
         }
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
@@ -133,8 +139,11 @@ struct SingleScreenView: View {
     @State private var dummy: Bool = false  // 用于触发视图刷新
     @State private var volume: Float = 1.0
     @State private var stretchToFill: Bool = true
+    @State private var muted: Bool = false
+    @State private var previousVolume: Float = 1.0
     @State private var currentEntry: (type: SharedWallpaperWindowManager.ContentType, url: URL, stretch: Bool, volume: Float?)? = nil
-    @AppStorage("useMemoryCache") var useMemoryCache: Bool = true
+//    let useMemoryCache: Bool = true
+//    @AppStorage("globalMute") var globalMute: Bool = true
 
     var body: some View {
         return VStack(spacing: 12) {
@@ -142,12 +151,18 @@ struct SingleScreenView: View {
                 .font(.headline)
 
             if let entry = currentEntry {
-                let filename = (
-                    AppState.shared.lastMediaURL?.lastPathComponent.removingPercentEncoding
-                    ?? AppState.shared.lastMediaURL?.lastPathComponent
-                    ?? entry.url.lastPathComponent.removingPercentEncoding
-                    ?? entry.url.lastPathComponent
-                )
+                let filename: String = {
+                    if let name = AppState.shared.lastMediaURL?.lastPathComponent.removingPercentEncoding {
+                        return name
+                    } else if let name = AppState.shared.lastMediaURL?.lastPathComponent {
+                        return name
+                    } else if let name = entry.url.lastPathComponent.removingPercentEncoding {
+                        return name
+                    } else {
+                        return entry.url.lastPathComponent
+                    }
+                }()
+
 
                 Text("正在播放：\(filename)")
                     .font(.subheadline)
@@ -158,24 +173,53 @@ struct SingleScreenView: View {
                 }
 
                 if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
-                    Text("音量：\(Int(volume * 100))%")
-                    Slider(value: $volume, in: 0...1, step: 0.01)
-                        .frame(width: 200)
-                        .onChange(of: volume) { newValue in
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                let playerVolume = SharedWallpaperWindowManager.shared.players[screen]?.volume ?? newValue
-                                if abs(playerVolume - newValue) > 0.01 {
-                                    SharedWallpaperWindowManager.shared.updateVideoSettings(
-                                        for: screen,
-                                        stretch: stretchToFill,
-                                        volume: newValue
-                                    )
-                                    if syncAllScreens {
-                                        SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                    HStack(spacing: 12) {
+                        Text("音量：\(Int(volume * 100))%")
+
+                        Slider(value: $volume, in: 0...1)
+                            .frame(width: 100)
+                            .onChange(of: volume) { newVolume in
+                                // If the user drags the slider above 0, un‑mute
+                                if newVolume > 0, muted {
+                                    muted = false
+                                }
+
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    let playerVolume = SharedWallpaperWindowManager.shared.players[screen]?.volume ?? newVolume
+                                    if abs(playerVolume - newVolume) > 0.01 {
+
+                                        if newVolume > 0 && desktop_videoApp.shared.globalMute {
+                                            desktop_videoApp.shared.globalMute = false
+                                        }
+
+                                        SharedWallpaperWindowManager.shared.updateVideoSettings(
+                                            for: screen,
+                                            stretch: stretchToFill,
+                                            volume: newVolume
+                                        )
+                                        if syncAllScreens {
+                                            SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                                        }
                                     }
                                 }
                             }
+
+                        Button {
+                            if muted {
+                                // restore previous volume
+                                volume = previousVolume
+                                muted = false
+                            } else {
+                                // remember current volume and mute
+                                previousVolume = volume
+                                volume = 0
+                                muted = true
+                            }
+                        } label: {
+                            Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                         }
+                        .buttonStyle(.borderless)
+                    }
                 }
 
                 Toggle("拉伸填充屏幕", isOn: $stretchToFill)
@@ -217,6 +261,7 @@ struct SingleScreenView: View {
                     currentEntry?.stretch != entry.stretch {
                     self.currentEntry = entry
                     self.volume = entry.volume ?? 1.0
+                    muted = desktop_videoApp.shared.globalMute || (self.volume == 0)
                     self.stretchToFill = entry.stretch
                     self.dummy.toggle()
                 }
@@ -233,10 +278,6 @@ struct SingleScreenView: View {
                 self.currentEntry = entry
                 self.volume = entry.volume ?? 1.0
                 self.stretchToFill = entry.stretch
-                // If lastMediaURL is not set, populate it from entry.url
-//                if AppState.shared.lastMediaURL == nil {
-//                    AppState.shared.lastMediaURL = entry.url
-//                }
             }
         }
     }
@@ -251,27 +292,12 @@ struct SingleScreenView: View {
 
             if fileType?.conforms(to: .movie) == true {
                 appState.lastMediaURL = url
-                if useMemoryCache {
-                    do {
-                        let data = try Data(contentsOf: url)
-                        SharedWallpaperWindowManager.shared.showVideoFromMemory(
-                            for: screen,
-                            data: data,
-                            stretch: stretchToFill,
-                            volume: volume,
-                            originalURL: url
-                        )
-                    } catch {
-                        print("Failed to load video into memory: \(error)")
-                    }
-                } else {
-                    SharedWallpaperWindowManager.shared.showVideo(
-                        for: screen,
-                        url: url,
-                        stretch: stretchToFill,
-                        volume: volume
-                    )
-                }
+                SharedWallpaperWindowManager.shared.showVideo(
+                    for: screen,
+                    url: url,
+                    stretch: stretchToFill,
+                    volume: volume
+                )
                 if syncAllScreens {
                     SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
                 }

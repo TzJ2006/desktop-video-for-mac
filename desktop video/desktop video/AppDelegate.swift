@@ -9,21 +9,30 @@ import AppKit
 import SwiftUI
 import AVFoundation
 
+// AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     static var shared: AppDelegate!
-    
+    var window: NSWindow?
     var statusItem: NSStatusItem?
 
+    // window: 主窗口，用于显示壁纸
+    // statusItem: True则显示菜单栏图标，否则显示Docker栏图标
+    
+    private var lastAppearanceChangeTime: Date = .distantPast
     private var appearanceChangeWorkItem: DispatchWorkItem?
+    // lastAppearanceChangeTime 用于删除 bookmark, 24 小时后自动删除
+    // appearanceChangeWorkItem 用于设置 bookmark
+    
+    
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
-        let _ = SharedWallpaperWindowManager.shared
         
+        // 从书签中恢复窗口
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
         
-        // Move checkbox simulation logic here, after windows have loaded
+        // Docker / 菜单栏切换
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
             self.setDockIconVisible(true)
@@ -36,36 +45,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     
+    // 打开主控制器界面
     @objc func toggleMainWindow() {
         NSRunningApplication.current.activate(options: [.activateAllWindows])
+        // 如果已经有窗口了就不新建窗口
         if let win = self.window {
             win.makeKeyAndOrderFront(nil)
         } else {
             openMainWindow()
         }
     }
-
-    var window: NSWindow?
-
-    var globalMute: Bool {
-        get { UserDefaults.standard.bool(forKey: "globalMute") }
-        set { UserDefaults.standard.set(newValue, forKey: "globalMute") }
-    }
-
+    
+    // 关闭窗口
     func windowWillClose(_ notification: Notification) {
         if let win = notification.object as? NSWindow, win == self.window {
             self.window = nil
         }
     }
     
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag || window == nil || !window!.isVisible {
-            NSRunningApplication.current.activate(options: [.activateAllWindows])
-            openMainWindow()
-        }
-        return true
-    }
-
+    // 打开窗口
     func openMainWindow() {
         if let win = self.window {
             if win.isMiniaturized {
@@ -96,8 +94,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSRunningApplication.current.activate(options: [.activateAllWindows])
     }
     
-    private var lastAppearanceChangeTime: Date = .distantPast
+    // 重新打开窗口
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag || window == nil || !window!.isVisible {
+            NSRunningApplication.current.activate(options: [.activateAllWindows])
+            openMainWindow()
+        }
+        return true
+    }
 
+    // 设置定时删除 bookmark 避免被塞垃圾
     func applyAppAppearanceSetting(onlyShowInMenuBar: Bool) {
         appearanceChangeWorkItem?.cancel()
         
@@ -118,6 +124,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
 
+    // 设置菜单栏
     func setupStatusBarIcon() {
         if statusItem == nil {
             statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -129,18 +136,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
     }
-
-    @objc func statusBarIconClicked() {
-        toggleMainWindow()
-    }
-
+    
+    // 删除菜单栏图标
     func removeStatusBarIcon() {
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
             statusItem = nil
         }
     }
+
+    // 如果点击菜单栏按钮就打开主控制器界面
+    @objc func statusBarIconClicked() {
+        toggleMainWindow()
+    }
     
+    // 是否显示 Docker 栏图标
     public func setDockIconVisible(_ visible: Bool) {
         applyAppAppearanceSetting(onlyShowInMenuBar: !visible)
         UserDefaults.standard.set(!visible, forKey: "isMenuBarOnly")
