@@ -126,6 +126,36 @@ struct ContentView: View {
             .padding(.bottom)
         }
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            guard let provider = providers.first else { return false }
+            _ = provider.loadObject(ofClass: URL.self) { url, error in
+                guard let url = url else { return }
+
+                let type = UTType(filenameExtension: url.pathExtension)
+
+                DispatchQueue.main.async {
+                    guard let selected = selectedTabScreen ?? NSScreen.screens.first else { return }
+
+                    if type?.conforms(to: .movie) == true {
+                        AppState.shared.lastMediaURL = url
+                        SharedWallpaperWindowManager.shared.showVideo(
+                            for: selected,
+                            url: url,
+                            stretch: true,
+                            volume: 1.0
+                        )
+                    } else if type?.conforms(to: .image) == true {
+                        AppState.shared.lastMediaURL = url
+                        SharedWallpaperWindowManager.shared.showImage(
+                            for: selected,
+                            url: url,
+                            stretch: true
+                        )
+                    }
+                }
+            }
+            return true
+        }
         .padding()
         .frame(maxHeight: .infinity)
     }
@@ -249,7 +279,7 @@ struct SingleScreenView: View {
                     AppState.shared.lastMediaURL = nil
                 }
             } else {
-                Button("选择视频或图片") {
+                Button("选择或拖拽视频或图片") {
                     openFilePicker()
                 }
             }
