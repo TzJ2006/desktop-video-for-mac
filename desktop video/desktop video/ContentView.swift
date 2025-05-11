@@ -119,10 +119,10 @@ struct ContentView: View {
                     AppDelegate.shared?.setDockIconVisible(newValue)
                 }
             ))
-            Toggle("全局静音", isOn: $globalMute)
-                .onChange(of: globalMute) { newValue in
-                    desktop_videoApp.applyGlobalMute(newValue)
-                }
+//            Toggle("全局静音", isOn: $globalMute)
+//                .onChange(of: globalMute) { newValue in
+//                    desktop_videoApp.applyGlobalMute(newValue)
+//                }
             .padding(.bottom)
         }
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
@@ -179,6 +179,9 @@ struct SingleScreenView: View {
                         Slider(value: $volume, in: 0...1)
                             .frame(width: 100)
                             .onChange(of: volume) { newVolume in
+                                // Always remember the last non‑zero volume
+                                if newVolume > 0 { previousVolume = newVolume }
+
                                 // If the user drags the slider above 0, un‑mute
                                 if newVolume > 0, muted {
                                     muted = false
@@ -254,13 +257,14 @@ struct SingleScreenView: View {
         .padding()
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .wallpaperContentDidChange)) { _ in
             if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
                 if currentEntry?.url != entry.url ||
                     currentEntry?.volume != entry.volume ||
                     currentEntry?.stretch != entry.stretch {
                     self.currentEntry = entry
                     self.volume = entry.volume ?? 1.0
+                    if self.volume > 0 { previousVolume = self.volume }
                     muted = desktop_videoApp.shared.globalMute || (self.volume == 0)
                     self.stretchToFill = entry.stretch
                     self.dummy.toggle()

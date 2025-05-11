@@ -104,6 +104,8 @@ class SharedWallpaperWindowManager {
         return screens[selectedScreenIndex]
     }
     
+    /// Remember each screen's volume before a global mute is applied
+    private var savedVolumes: [NSScreen: Float] = [:]
     private var windows: [NSScreen: WallpaperWindow] = [:]
     private var currentViews: [NSScreen: NSView] = [:]
     var players: [NSScreen: AVQueuePlayer] = [:]
@@ -169,27 +171,50 @@ class SharedWallpaperWindowManager {
     }
     
     /// Mute every screen by re‑using the same logic as the per‑screen mute button.
-    /// This simply sets each screen's volume to 0 through `setVolume`, ensuring
-    /// UI state, bookmarks, and notifications stay consistent.
+    /// This saves each screen's last non‑zero volume before muting.
     func muteAllScreens() {
+        // Save each screen's last non‑zero volume, then mute.
         for screen in screenContent.keys {
+            let currentVol = screenContent[screen]?.volume ?? 0
+            if currentVol > 0 { savedVolumes[screen] = currentVol }
             setVolume(0, for: screen)
         }
     }
 
+    /// Restore every screen's volume to what it was before the last global mute.
+    /// Screens that were already at 0 remain muted.
+    func restoreAllScreens() {
+        for screen in screenContent.keys {
+            let newVol = savedVolumes[screen] ?? (screenContent[screen]?.volume ?? 0)
+            setVolume(newVol, for: screen)
+        }
+        savedVolumes.removeAll()
+
+        // Notify UI panels so sliders refresh
+        NotificationCenter.default.post(
+            name: Notification.Name("WallpaperContentDidChange"),
+            object: nil
+        )
+    }
+
     func syncGlobalMuteToAllVolumes() {
-        guard desktop_videoApp.shared.globalMute else { return }
-        muteAllScreens()
+        if desktop_videoApp.shared.globalMute {
+            muteAllScreens()
+        } else {
+            restoreAllScreens()
+        }
     }
     
     func applyGlobalMuteIfNeeded() {
         if desktop_videoApp.shared.globalMute {
             muteAllScreens()
-            NotificationCenter.default.post(
-                name: Notification.Name("WallpaperContentDidChange"),
-                object: nil
-            )
+        } else {
+            restoreAllScreens()
         }
+        NotificationCenter.default.post(
+            name: Notification.Name("WallpaperContentDidChange"),
+            object: nil
+        )
     }
     
     // if update, the video is no longer showing from memory

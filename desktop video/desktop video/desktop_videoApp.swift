@@ -23,19 +23,22 @@ struct desktop_videoApp: App {
     // globalMute: True则静音所有视频，如果调整某视频音量则自动取消
     
     /// Unified handler for toggling the global‑mute switch.
-    /// Always updates the stored flag first so any view bound with
-    /// `@AppStorage("globalMute")` refreshes immediately.
+    /// Writes the new flag, mutes all screens only when `enabled == true`,
+    /// then notifies all views to refresh.
     static func applyGlobalMute(_ enabled: Bool) {
-        // ① write back the new value
+        // ① persist the new value
         shared.globalMute = enabled
 
-        // ② apply side‑effects
+        // ② side‑effects
         if enabled {
-            // mute every playing video via the new helper
+            // Turning ON: save & mute every screen
             SharedWallpaperWindowManager.shared.muteAllScreens()
+        } else {
+            // Turning OFF: restore previous volumes
+            SharedWallpaperWindowManager.shared.restoreAllScreens()
         }
 
-        // ③ notify all SingleScreenView instances to refresh their slider/text
+        // ③ broadcast so every SingleScreenView updates immediately
         NotificationCenter.default.post(
             name: Notification.Name("WallpaperContentDidChange"),
             object: nil
