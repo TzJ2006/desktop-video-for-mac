@@ -59,4 +59,4 @@ Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/
 
 ## 📄 许可证
 
-MIT License © 2025 Zijia Tang
+GNU GENERAL PUBLIC Version 3 License © 2025 Zijia Tang
