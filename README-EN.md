@@ -55,4 +55,4 @@ Some settings can be found here:
 
 ## 📄 License
 
-MIT License © 2025 Zijia Tang
+GNU GENERAL PUBLIC Version 3 License © 2025 Zijia Tang
