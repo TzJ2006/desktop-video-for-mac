@@ -1,4 +1,4 @@
-"AutoSyncNewScreens" = "Auto sync newly connected displays";
+"AutoSyncNewScreens" = "Auto sync to new displays";
 "LaunchAtLogin" = "Launch at Login";
 "GlobalMute" = "Global Mute";
 "SwitchIconMode" = "Toggle Dock/Menu Bar Icon";
@@ -11,3 +11,11 @@
 "SyncAllScreens" = "Sync current screen to all screens";
 "Screen" = "Screen";
 "UnknownScreen" = "UnknownScreen";
+"Language" = "Language";
+"Confirm" = "Confirm";
+"RestartRequiredTitle" = "Restart Required!";
+"RestartRequiredMessage" = "All changes will be available after restart";
+"AboutDesktopVideo" = "About Desktop Video";
+"LaunchAtLoginFailed" = "Auto launch at login failed!";
+"PreferencesTitle" = "Preferences";
+"Controller" = "Desktop Video Controller";

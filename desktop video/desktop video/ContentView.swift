@@ -12,8 +12,6 @@ import AppKit
 import UniformTypeIdentifiers
 import Foundation
 
-
-
 class AppState: ObservableObject {
     static let shared = AppState()
     @Published var lastMediaURL: URL?
@@ -57,7 +55,6 @@ class ScreenObserver: ObservableObject {
 }
 
 struct ContentView: View {
-    
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
     @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true
@@ -65,6 +62,7 @@ struct ContentView: View {
     @State private var syncAllScreens: Bool = false
     @State private var selectedTabScreen: NSScreen? = NSScreen.screens.first
     @StateObject private var screenObserver = ScreenObserver()
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {
         VStack {
@@ -84,12 +82,12 @@ struct ContentView: View {
                 SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
-            
+
             if screenObserver.screens.count > 1 {
-                Button(LocalizedStringKey("SyncAllScreens")) {
+                Button {
                     if let sourceScreen = selectedTabScreen,
                        let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
-                        
+
                         if let fileType = UTType(filenameExtension: entry.url.pathExtension) {
                             if fileType.conforms(to: .movie) || fileType.conforms(to: .image) {
                                 SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
@@ -108,11 +106,13 @@ struct ContentView: View {
                             SharedWallpaperWindowManager.shared.clear(for: screen)
                         }
                     }
+                } label: {
+                    Text(L("SyncAllScreens"))
                 }
                 .padding()
             }
-            
-            Toggle(LocalizedStringKey("SwitchIconMode"), isOn: Binding(
+
+            Toggle(L("SwitchIconMode"), isOn: Binding(
                 get: { !isMenuBarOnly },
                 set: { newValue in
                     isMenuBarOnly = !newValue
@@ -123,8 +123,8 @@ struct ContentView: View {
 //                .onChange(of: globalMute) { newValue in
 //                    desktop_videoApp.applyGlobalMute(newValue)
 //                }
-            .padding(.bottom)
         }
+        .padding(.bottom)
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
@@ -172,8 +172,6 @@ struct SingleScreenView: View {
     @State private var muted: Bool = false
     @State private var previousVolume: Float = 1.0
     @State private var currentEntry: (type: SharedWallpaperWindowManager.ContentType, url: URL, stretch: Bool, volume: Float?)? = nil
-//    let useMemoryCache: Bool = true
-//    @AppStorage("globalMute") var globalMute: Bool = true
 
     var body: some View {
         return VStack(spacing: 12) {
@@ -193,20 +191,19 @@ struct SingleScreenView: View {
                     }
                 }()
 
-
-                Text("\(NSLocalizedString("NowPlaying", comment: "")) \(filename)")
+                Text("\(L("NowPlaying")) \(filename)")
                     .font(.subheadline)
                     .foregroundColor(.gray)
 
-                // 2. Localized "ChangeFile"
-                Button(LocalizedStringKey("ChangeFile")) {
+                Button {
                     openFilePicker()
+                } label: {
+                    Text(L("ChangeFile"))
                 }
 
                 if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
                     HStack(spacing: 12) {
-                        // 3. Localized "Volume"
-                        Text("\(NSLocalizedString("Volume", comment: "")) \(Int(volume * 100))%")
+                        Text("\(L("Volume")): \(Int(volume * 100))%")
 
                         Slider(value: $volume, in: 0...1)
                             .frame(width: 100)
@@ -223,8 +220,8 @@ struct SingleScreenView: View {
                                     let playerVolume = SharedWallpaperWindowManager.shared.players[screen]?.volume ?? newVolume
                                     if abs(playerVolume - newVolume) > 0.01 {
 
-                                        if newVolume > 0 && desktop_videoApp.shared.globalMute {
-                                            desktop_videoApp.shared.globalMute = false
+                                        if newVolume > 0 && desktop_videoApp.shared!.globalMute {
+                                            desktop_videoApp.shared!.globalMute = false
                                         }
 
                                         SharedWallpaperWindowManager.shared.updateVideoSettings(
@@ -257,8 +254,7 @@ struct SingleScreenView: View {
                     }
                 }
 
-                // 4. Localized "StretchToFill"
-                Toggle(LocalizedStringKey("StretchToFill"), isOn: $stretchToFill)
+                Toggle(L("StretchToFill"), isOn: $stretchToFill)
                     .onChange(of: stretchToFill) { newValue in
                         if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
                             SharedWallpaperWindowManager.shared.updateVideoSettings(
@@ -277,15 +273,17 @@ struct SingleScreenView: View {
                         }
                     }
 
-                // 5. Localized "CloseWallpaper"
-                Button(LocalizedStringKey("CloseWallpaper")) {
+                Button {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
                     AppState.shared.lastMediaURL = nil
+                } label: {
+                    Text(L("CloseWallpaper"))
                 }
             } else {
-                // 6. Localized "SelectFile"
-                Button(LocalizedStringKey("SelectFile")) {
+                Button {
                     openFilePicker()
+                } label: {
+                    Text(L("SelectFile"))
                 }
             }
         }
@@ -300,7 +298,7 @@ struct SingleScreenView: View {
                     self.currentEntry = entry
                     self.volume = entry.volume ?? 1.0
                     if self.volume > 0 { previousVolume = self.volume }
-                    muted = desktop_videoApp.shared.globalMute || (self.volume == 0)
+                    muted = desktop_videoApp.shared!.globalMute || (self.volume == 0)
                     self.stretchToFill = entry.stretch
                     self.dummy.toggle()
                 }

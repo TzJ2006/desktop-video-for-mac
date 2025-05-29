@@ -15,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static var shared: AppDelegate!
     var window: NSWindow?
     var statusItem: NSStatusItem?
+    private var preferencesWindow: NSWindow?
 
     // window: 主窗口，用于显示壁纸
     // statusItem: True则显示菜单栏图标，否则显示Docker栏图标
@@ -24,7 +25,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // lastAppearanceChangeTime 用于删除 bookmark, 24 小时后自动删除
     // appearanceChangeWorkItem 用于设置 bookmark
     
-    
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
@@ -33,7 +33,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
         
         // Docker / 菜单栏切换
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
             self.setDockIconVisible(true)
             if showOnlyInMenuBar {
@@ -53,6 +53,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             win.makeKeyAndOrderFront(nil)
         } else {
             openMainWindow()
+        }
+    }
+    
+    @objc func openPreferences() {
+        if let win = preferencesWindow {
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            let prefsView = PreferencesView()
+            let hosting = NSHostingController(rootView: prefsView)
+            let win = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 300, height: 250),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            win.center()
+            win.title = NSLocalizedString("PreferencesTitle", comment: "")
+            win.contentView = hosting.view
+            win.isReleasedWhenClosed = false
+            win.delegate = self
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            preferencesWindow = win
         }
     }
     
@@ -83,7 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         newWindow.identifier = NSUserInterfaceItemIdentifier("MainWindow")
         newWindow.center()
-        newWindow.title = "桌面壁纸控制器"
+        newWindow.title = L("Controller")
         newWindow.contentView = NSHostingView(rootView: contentView)
 
         newWindow.isReleasedWhenClosed = false
@@ -131,8 +155,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if let button = statusItem?.button {
                 button.image = NSImage(named: "MenuBarIcon")
                 button.image?.isTemplate = true
-                button.action = #selector(statusBarIconClicked)
-                button.target = self
+                let menu = NSMenu()
+                menu.addItem(
+                    withTitle: NSLocalizedString("Open Main Window", comment: ""),
+                    action: #selector(toggleMainWindow),
+                    keyEquivalent: ""
+                )
+                menu.addItem(
+                    withTitle: NSLocalizedString("Preferences...", comment: ""),
+                    action: #selector(openPreferences),
+                    keyEquivalent: ""
+                )
+                statusItem?.menu = menu
             }
         }
     }

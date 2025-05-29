@@ -2,6 +2,12 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 2.4 (2025-05-28)
+- 新增了 Preference 页面
+- 支持了最新系统 Sequoia 15.5
+- Add Preference Page
+- Support Sequoia 15.5
+
 ### Version 2.3.2 (2025-05-28)
 
 - 添加了多语言支持

@@ -164,7 +164,7 @@ class SharedWallpaperWindowManager {
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
         do {
             let data = try Data(contentsOf: url)
-            showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: desktop_videoApp.shared.globalMute ? 0.0 : volume, originalURL: url, onReady: onReady)
+            showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume, originalURL: url, onReady: onReady)
         } catch {
             print("Cannot load from memory!")
         }
@@ -198,7 +198,7 @@ class SharedWallpaperWindowManager {
     }
 
     func syncGlobalMuteToAllVolumes() {
-        if desktop_videoApp.shared.globalMute {
+        if desktop_videoApp.shared!.globalMute {
             muteAllScreens()
         } else {
             restoreAllScreens()
@@ -206,7 +206,7 @@ class SharedWallpaperWindowManager {
     }
     
     func applyGlobalMuteIfNeeded() {
-        if desktop_videoApp.shared.globalMute {
+        if desktop_videoApp.shared!.globalMute {
             muteAllScreens()
         } else {
             restoreAllScreens()
@@ -220,7 +220,7 @@ class SharedWallpaperWindowManager {
     // if update, the video is no longer showing from memory
     // actually, this is a weird problem that it will only occur when handeling large videos.
     func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
-        players[screen]?.volume = desktop_videoApp.shared.globalMute ? 0.0 : volume
+        players[screen]?.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
         print(players[screen]!.volume)
         if let playerView = currentViews[screen] as? AVPlayerView {
             playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
@@ -343,7 +343,7 @@ class SharedWallpaperWindowManager {
         if let entry = screenContent[screen], entry.type == .video {
             // Any manual change to volume disables global mute
             if volume > 0 {
-                desktop_videoApp.shared.globalMute = false
+                desktop_videoApp.shared!.globalMute = false
             }
 
             // Apply to the player and persist
