@@ -5,20 +5,14 @@
 ## 🌟 Features
 
 - 🎬 **Multi-Monitor Support**: Set dynamic wallpapers individually for each display
-
 - 🔊 **Volume Control**: Adjust video playback volume
-
 - 🔁 **Video/Image Support**: Use local videos and images as wallpapers
-
 - 🔄 **Launch at Startup**: Automatically run the app when the system starts
-
 - 🧭 **Optional Menu Bar/Dock Icon**: Freely switch between displaying the icon in the menu bar or Dock
-
 - 🖥 **Stretch to Fit**: Automatically stretches the wallpaper to fill the entire screen
-
 - 🖥 **HDR Support**: Provides the most authentic experience for HDR videos
-
 - 🖥 **Multi-Screen Video Sync**: Automatically sync the current wallpaper across all displays
+- 🔠 **Multiple Language Support**：Automatically change the language to your system language.
 
 ## 🛠 Tech Stack
 

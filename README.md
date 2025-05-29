@@ -1,4 +1,5 @@
-# Desktop Video Wallpaper 
+# Desktop Video Wallpaper
+
 [Readme of English Version](https://github.com/TzJ2006/desktop-video/blob/main/README-EN.md)
 
 **Desktop Video Wallpaper** 是一款 macOS 上运行的轻量级动态壁纸应用。应用完全本地运行，不涉及任何数据上传或云端交换，保障隐私与安全。
@@ -14,6 +15,7 @@
 - 🖥 **拉伸适配**：自动拉伸填满整个屏幕
 - 🖥 **支持 HDR**: 为 HDR 视频提供最原本的体验
 - 🖥 **多屏幕视频同步**：可自动同步当前壁纸到其他所有屏幕
+- 🔠 **多语言支持**：可以自动切换语言
 
 ## 🛠 技术栈
 
@@ -47,7 +49,6 @@ Demo可以在[Demo文件夹](https://github.com/TzJ2006/desktop-video/tree/main/
 <img width="597" alt="WechatIMG19" src="https://github.com/user-attachments/assets/0531273f-b70a-4b9a-bf89-304cb631491a" />
 
 *注：由于 MacOS 固定了操作逻辑，这些设置只有当 Docker 图标显示的时候可以更改*
-
 
 ## 🔮 未来计划
 
