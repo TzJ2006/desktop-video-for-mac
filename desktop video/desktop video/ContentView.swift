@@ -86,7 +86,7 @@ struct ContentView: View {
             }
             
             if screenObserver.screens.count > 1 {
-                Button("同步当前屏幕状态到所有屏幕") {
+                Button(LocalizedStringKey("SyncAllScreens")) {
                     if let sourceScreen = selectedTabScreen,
                        let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
                         
@@ -112,7 +112,7 @@ struct ContentView: View {
                 .padding()
             }
             
-            Toggle("切换 Dock/菜单栏 图标", isOn: Binding(
+            Toggle(LocalizedStringKey("SwitchIconMode"), isOn: Binding(
                 get: { !isMenuBarOnly },
                 set: { newValue in
                     isMenuBarOnly = !newValue
@@ -177,7 +177,7 @@ struct SingleScreenView: View {
 
     var body: some View {
         return VStack(spacing: 12) {
-            Text("「\(screen.localizedNameIfAvailableOrFallback)」")
+            Text("「\(screen.localizedNameIfAvailableOrFallback)」") // keep screen name literal
                 .font(.headline)
 
             if let entry = currentEntry {
@@ -194,17 +194,19 @@ struct SingleScreenView: View {
                 }()
 
 
-                Text("正在播放：\(filename)")
+                Text("\(NSLocalizedString("NowPlaying", comment: "")) \(filename)")
                     .font(.subheadline)
                     .foregroundColor(.gray)
 
-                Button("更换视频或图片") {
+                // 2. Localized "ChangeFile"
+                Button(LocalizedStringKey("ChangeFile")) {
                     openFilePicker()
                 }
 
                 if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
                     HStack(spacing: 12) {
-                        Text("音量：\(Int(volume * 100))%")
+                        // 3. Localized "Volume"
+                        Text("\(NSLocalizedString("Volume", comment: "")) \(Int(volume * 100))%")
 
                         Slider(value: $volume, in: 0...1)
                             .frame(width: 100)
@@ -255,7 +257,8 @@ struct SingleScreenView: View {
                     }
                 }
 
-                Toggle("拉伸填充屏幕", isOn: $stretchToFill)
+                // 4. Localized "StretchToFill"
+                Toggle(LocalizedStringKey("StretchToFill"), isOn: $stretchToFill)
                     .onChange(of: stretchToFill) { newValue in
                         if UTType(filenameExtension: entry.url.pathExtension)?.conforms(to: .movie) == true {
                             SharedWallpaperWindowManager.shared.updateVideoSettings(
@@ -274,12 +277,14 @@ struct SingleScreenView: View {
                         }
                     }
 
-                Button("关闭壁纸") {
+                // 5. Localized "CloseWallpaper"
+                Button(LocalizedStringKey("CloseWallpaper")) {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
                     AppState.shared.lastMediaURL = nil
                 }
             } else {
-                Button("选择或拖拽视频或图片") {
+                // 6. Localized "SelectFile"
+                Button(LocalizedStringKey("SelectFile")) {
                     openFilePicker()
                 }
             }
@@ -355,9 +360,11 @@ fileprivate extension NSScreen {
         if #available(macOS 14.0, *) {
             return self.localizedName
         } else if let idx = NSScreen.screens.firstIndex(of: self) {
-            return "屏幕 \(idx + 1)"
+            // Localized fallback name for screen with index
+            return String(format: NSLocalizedString("Screen %d", comment: ""), idx + 1)
         } else {
-            return "未知屏幕"
+            // Localized fallback for unknown screen
+            return NSLocalizedString("UnknownScreen", comment: "")
         }
     }
 }

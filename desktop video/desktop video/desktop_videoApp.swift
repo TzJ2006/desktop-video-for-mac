@@ -48,9 +48,9 @@ struct desktop_videoApp: App {
     var body: some Scene {
         Settings {
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("自动同步新插入的显示器", isOn: $autoSyncNewScreens)
-                Toggle("开机自启动", isOn: $launchAtLogin)
-                Toggle("全局静音", isOn: $globalMute)
+                Toggle(LocalizedStringKey("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
+                Toggle(LocalizedStringKey("LaunchAtLogin"), isOn: $launchAtLogin)
+                Toggle(LocalizedStringKey("GlobalMute"), isOn: $globalMute)
                     .onChange(of: globalMute) { newValue in
                         desktop_videoApp.applyGlobalMute(newValue)
                     }
@@ -58,8 +58,8 @@ struct desktop_videoApp: App {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Toggle("自动同步新插入的显示器", isOn: $autoSyncNewScreens)
-                Toggle("开机自启动", isOn: $launchAtLogin)
+                Toggle(LocalizedStringKey("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
+                Toggle(LocalizedStringKey("LaunchAtLogin"), isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { newValue in
                     do {
                         if newValue {
@@ -70,7 +70,7 @@ struct desktop_videoApp: App {
                     } catch {
                         // 弹窗提示
                         let alert = NSAlert()
-                        alert.messageText = "设置开机启动失败"
+                        alert.messageText = NSLocalizedString("LaunchAtLoginFailed", comment: "")
                         alert.informativeText = error.localizedDescription
                         alert.alertStyle = .warning
                         alert.runModal()
@@ -79,14 +79,14 @@ struct desktop_videoApp: App {
                         launchAtLogin = false
                     }
                 }
-                Toggle("全局静音", isOn: $globalMute)
+                Toggle(LocalizedStringKey("GlobalMute"), isOn: $globalMute)
                     .onChange(of: globalMute) { newValue in
                         desktop_videoApp.applyGlobalMute(newValue)
                     }
             }
             
             CommandGroup(replacing: .appInfo) {
-                Button("About Desktop Video") {
+                Button(LocalizedStringKey("AboutDesktopVideo")) {
                     let alert = NSAlert()
                     alert.messageText = ""
                     alert.icon = NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "512", ofType: "png") ?? ""))
