@@ -106,10 +106,10 @@ class SharedWallpaperWindowManager {
     
     /// Remember each screen's volume before a global mute is applied
     private var savedVolumes: [NSScreen: Float] = [:]
-    private var windows: [NSScreen: WallpaperWindow] = [:]
     private var currentViews: [NSScreen: NSView] = [:]
-    var players: [NSScreen: AVQueuePlayer] = [:]
     private var loopers: [NSScreen: AVPlayerLooper] = [:]
+    var windows: [NSScreen: WallpaperWindow] = [:]
+    var players: [NSScreen: AVQueuePlayer] = [:]
     var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
     
     enum ContentType {

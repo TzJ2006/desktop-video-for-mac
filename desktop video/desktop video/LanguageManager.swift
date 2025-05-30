@@ -13,6 +13,8 @@ enum SupportedLanguage: String, CaseIterable, Identifiable {
     case system = "system"
     case english = "en"
     case chinese = "zh-Hans"
+    case traditional = "zh-Hant"
+    case french      = "fr"
 
     var id: String { rawValue }
 
@@ -21,6 +23,8 @@ enum SupportedLanguage: String, CaseIterable, Identifiable {
         case .system: return "系统默认"
         case .english: return "English"
         case .chinese: return "简体中文"
+        case .traditional: return "繁體中文"
+        case .french:      return "Français"
         }
     }
 }

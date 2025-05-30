@@ -8,6 +8,7 @@
 import AppKit
 import SwiftUI
 import AVFoundation
+import CoreGraphics
 
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -17,14 +18,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var statusItem: NSStatusItem?
     private var preferencesWindow: NSWindow?
 
-    // window: 主窗口，用于显示壁纸
-    // statusItem: True则显示菜单栏图标，否则显示Docker栏图标
-    
     private var lastAppearanceChangeTime: Date = .distantPast
     private var appearanceChangeWorkItem: DispatchWorkItem?
+
+    private var idleTimer: Timer?
+    private var idleStartTime: Date?
+    private var isPausedDueToIdle: Bool = false
+
     // lastAppearanceChangeTime 用于删除 bookmark, 24 小时后自动删除
     // appearanceChangeWorkItem 用于设置 bookmark
-    
+
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
@@ -43,8 +46,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self.openMainWindow()
             }
         }
+
+        // 监听桌面切换，恢复或重置空闲计时器
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(spaceDidChange(_:)),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil
+        )
     }
-    
+
     // 打开主控制器界面
     @objc func toggleMainWindow() {
         NSRunningApplication.current.activate(options: [.activateAllWindows])
@@ -55,7 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             openMainWindow()
         }
     }
-    
+
     @objc func openPreferences() {
         if let win = preferencesWindow {
             win.makeKeyAndOrderFront(nil)
@@ -79,14 +90,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             preferencesWindow = win
         }
     }
-    
+
     // 关闭窗口
     func windowWillClose(_ notification: Notification) {
         if let win = notification.object as? NSWindow, win == self.window {
             self.window = nil
         }
     }
-    
+
     // 打开窗口
     func openMainWindow() {
         if let win = self.window {
@@ -117,7 +128,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.window = newWindow
         NSRunningApplication.current.activate(options: [.activateAllWindows])
     }
-    
+
     // 重新打开窗口
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag || window == nil || !window!.isVisible {
@@ -170,7 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
     }
-    
+
     // 删除菜单栏图标
     func removeStatusBarIcon() {
         if let item = statusItem {
@@ -183,10 +194,94 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func statusBarIconClicked() {
         toggleMainWindow()
     }
-    
+
     // 是否显示 Docker 栏图标
     public func setDockIconVisible(_ visible: Bool) {
         applyAppAppearanceSetting(onlyShowInMenuBar: !visible)
         UserDefaults.standard.set(!visible, forKey: "isMenuBarOnly")
+    }
+
+    // MARK: - Idle Timer Methods
+    private func resetIdleTimer() {
+        guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
+
+        idleStartTime = Date()
+        idleTimer?.invalidate()
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self, let start = self.idleStartTime else { return }
+            let interval = Date().timeIntervalSince(start)
+            let threshold = TimeInterval(UserDefaults.standard.integer(forKey: "idlePauseSeconds"))
+
+            if interval >= threshold {
+                self.idleTimer?.invalidate()
+                self.pauseVideoForAllScreens()
+                self.isPausedDueToIdle = true
+            }
+        }
+    }
+
+    private func pauseVideoForAllScreens() {
+        for (screen, player) in SharedWallpaperWindowManager.shared.players {
+            if shouldPauseVideo(on: screen) {
+                player.pause()
+            }
+        }
+    }
+
+    private func resumeVideoIfPausedByIdle() {
+        if isPausedDueToIdle {
+            for player in SharedWallpaperWindowManager.shared.players.values {
+                player.play()
+            }
+            isPausedDueToIdle = false
+        }
+    }
+    
+    /// 判断指定屏幕是否需要暂停视频
+    private func shouldPauseVideo(on screen: NSScreen) -> Bool {
+        guard SharedWallpaperWindowManager.shared.windows[screen] != nil else {
+            return false
+        }
+        let screenFrame = screen.frame
+        let thresholdWidth = screenFrame.width * 0.8
+        let thresholdHeight = screenFrame.height * 0.8
+
+        // 查询全局窗口列表，包含其他应用的窗口
+        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        // 检查是否存在大窗口
+        return windowList.contains { info in
+            if let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid == getpid() {
+                return false
+            }
+            guard let boundsDict = info[kCGWindowBounds as String] as? [String: Any],
+                  let width = boundsDict["Width"] as? CGFloat,
+                  let height = boundsDict["Height"] as? CGFloat else {
+                return false
+            }
+            return width >= thresholdWidth && height >= thresholdHeight
+        }
+    }
+
+    // MARK: - NSApplicationDelegate Idle Pause
+    func applicationDidBecomeActive(_ notification: Notification) {
+        resumeVideoIfPausedByIdle()
+        resetIdleTimer()
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        resetIdleTimer()
+    }
+
+    @objc private func spaceDidChange(_ notification: Notification) {
+        // 桌面切换时，根据窗口大小决定是暂停还是播放
+        for (screen, player) in SharedWallpaperWindowManager.shared.players {
+            if shouldPauseVideo(on: screen) {
+                player.pause()
+            } else {
+                player.play()
+            }
+        }
+        // 重置空闲计时器
+        resetIdleTimer()
     }
 }

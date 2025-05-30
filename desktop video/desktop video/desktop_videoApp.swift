@@ -99,12 +99,16 @@ struct PreferencesView: View {
     @AppStorage("launchAtLogin")     private var launchAtLoginStorage:     Bool = true
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
+    @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
+    @AppStorage("idlePauseSeconds")  private var idlePauseSecondsStorage:  Int = 30
 
     // 本地 State，用于暂存用户在界面上的修改
     @State private var autoSyncNewScreens: Bool = true
     @State private var launchAtLogin:     Bool = true
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
+    @State private var idlePauseEnabled:  Bool = false
+    @State private var idlePauseSeconds:  Int = 30
 
     /// 是否有未保存的更改
     private var hasChanges: Bool {
@@ -112,6 +116,8 @@ struct PreferencesView: View {
         || launchAtLogin != launchAtLoginStorage
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
+        || idlePauseEnabled != idlePauseEnabledStorage
+        || idlePauseSeconds != idlePauseSecondsStorage
     }
 
     // 注入 LanguageManager
@@ -139,6 +145,14 @@ struct PreferencesView: View {
                     .buttonStyle(.bordered)
                     .disabled(!hasChanges)
                 }
+                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
+
+                HStack {
+                    Text(L("IdlePauseSeconds"))
+                    TextField("", value: $idlePauseSeconds, formatter: NumberFormatter())
+                        .frame(width: 60)
+                }
+                .disabled(!idlePauseEnabled)
             }
         }
         .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, minHeight: 150, idealHeight: 200, maxHeight: 300)
@@ -152,6 +166,8 @@ struct PreferencesView: View {
         launchAtLogin = launchAtLoginStorage
         globalMute = globalMuteStorage
         selectedLanguage = languageStorage
+        idlePauseEnabled = idlePauseEnabledStorage
+        idlePauseSeconds = idlePauseSecondsStorage
     }
     
     private func confirmChanges() {
@@ -159,6 +175,8 @@ struct PreferencesView: View {
         autoSyncNewScreensStorage = autoSyncNewScreens
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
+        idlePauseEnabledStorage = idlePauseEnabled
+        idlePauseSecondsStorage = idlePauseSeconds
         
         // Handle launch at login separately with error handling
         if launchAtLoginStorage != launchAtLogin {
