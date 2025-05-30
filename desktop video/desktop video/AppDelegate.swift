@@ -214,18 +214,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Idle Timer Methods
     private func resetIdleTimer() {
         guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
-
-        idleStartTime = Date()
         idleTimer?.invalidate()
-        idleTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self, let start = self.idleStartTime else { return }
-            let interval = Date().timeIntervalSince(start)
-            let threshold = TimeInterval(UserDefaults.standard.integer(forKey: "idlePauseSeconds"))
-
-            if interval >= threshold {
-                self.idleTimer?.invalidate()
-                self.pauseVideoForAllScreens()
-                self.isPausedDueToIdle = true
+        let interval = TimeInterval(UserDefaults.standard.integer(forKey: "idlePauseSeconds"))
+        idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            for (screen, player) in SharedWallpaperWindowManager.shared.players {
+                if self.shouldPauseVideo(on: screen) {
+                    player.pause()
+                } else {
+                    player.play()
+                }
             }
         }
     }

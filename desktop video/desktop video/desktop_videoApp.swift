@@ -108,7 +108,7 @@ struct PreferencesView: View {
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
     @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
-    @AppStorage("idlePauseSeconds")  private var idlePauseSecondsStorage:  Int = 30
+    @AppStorage("idlePauseSeconds")  private var idlePauseSecondsStorage:  Int = 10
 
     // 本地 State，用于暂存用户在界面上的修改
     @State private var autoSyncNewScreens: Bool = true
@@ -133,34 +133,44 @@ struct PreferencesView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 12) {
-                Toggle(L("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
-                Toggle(L("LaunchAtLogin"), isOn: $launchAtLogin)
+            VStack(spacing: 12.5) {
                 Toggle(L("GlobalMute"), isOn: $globalMute)
-                Text(L("Language"))
-                    .font(.headline)
-                Picker(selection: $selectedLanguage, label: EmptyView()) {
-                    ForEach(SupportedLanguage.allCases) { lang in
-                        Text(lang.displayName).tag(lang.rawValue)
+                Toggle(L("LaunchAtLogin"), isOn: $launchAtLogin)
+                Toggle(L("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
+//                    .padding(.top, 10)
+//                Spacer(minLength: 1)
+//                Divider()
+                HStack{
+                    Text(L("Language"))
+                    Picker(selection: $selectedLanguage, label: EmptyView()) {
+                        ForEach(SupportedLanguage.allCases) { lang in
+                            Text(lang.displayName).tag(lang.rawValue)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .frame(width: 100)
                 }
-                .pickerStyle(.menu)
-                .frame(width: 100)
+                .padding(.top, 10)
+//                Divider()
+//                Spacer(minLength: 1)
+                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled).padding(.top, 10)
+                HStack {
+                    Text(L("IdlePauseSeconds"))
+                    TextField("", value: $idlePauseSeconds, formatter: NumberFormatter())
+                        .frame(width: 30)
+                    Text(L("Seconds"))
+                }
+                .disabled(!idlePauseEnabled)
+                
+//                Divider()
+                
                 HStack {
                     Button(L("Confirm")) {
                         confirmChanges()
                     }
                     .buttonStyle(.bordered)
                     .disabled(!hasChanges)
-                }
-                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
-
-                HStack {
-                    Text(L("IdlePauseSeconds"))
-                    TextField("", value: $idlePauseSeconds, formatter: NumberFormatter())
-                        .frame(width: 60)
-                }
-                .disabled(!idlePauseEnabled)
+                }.padding(.top, 10)
             }
         }
         .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, minHeight: 150, idealHeight: 200, maxHeight: 300)

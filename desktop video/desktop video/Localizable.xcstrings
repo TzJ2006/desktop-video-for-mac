@@ -244,6 +244,12 @@
             "state" : "translated",
             "value" : "自动暂停播放"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动暂停播放"
+          }
         }
       }
     },
@@ -257,6 +263,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动暂停播放间隔"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "自动暂停播放间隔"
@@ -546,6 +558,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "螢幕 %d"
+          }
+        }
+      }
+    },
+    "Seconds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seconds"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "秒"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "秒"
           }
         }
       }
