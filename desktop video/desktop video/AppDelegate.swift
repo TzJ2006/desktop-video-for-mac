@@ -10,6 +10,10 @@ import SwiftUI
 import AVFoundation
 import CoreGraphics
 
+// Import localization function if needed
+// If not already defined somewhere, uncomment the following line:
+// func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
+
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
@@ -168,6 +172,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 button.image?.isTemplate = true
                 let menu = NSMenu()
                 menu.addItem(
+                    withTitle: L("AboutDesktopVideo"),
+                    action: #selector(showAboutFromStatus),
+                    keyEquivalent: ""
+                )
+                menu.addItem(NSMenuItem.separator())
+                menu.addItem(
                     withTitle: NSLocalizedString("Open Main Window", comment: ""),
                     action: #selector(toggleMainWindow),
                     keyEquivalent: ""
@@ -283,5 +293,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         // 重置空闲计时器
         resetIdleTimer()
+    }
+    // Show About dialog from status bar
+    @objc func showAboutFromStatus() {
+        desktop_videoApp.shared?.showAboutDialog()
     }
 }

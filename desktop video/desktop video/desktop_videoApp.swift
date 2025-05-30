@@ -69,7 +69,7 @@ struct desktop_videoApp: App {
         }
     }
     
-    private func showAboutDialog() {
+    func showAboutDialog() {
         let alert = NSAlert()
         alert.messageText = ""
         
@@ -80,12 +80,20 @@ struct desktop_videoApp: App {
         
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+//        alert.informativeText = """
+//        Desktop Video Wallpaper
+//        Version \(version) (\(build))
+//
+//        Presented by TzJ
+//        Created Just For You~
+//        """
         alert.informativeText = """
         Desktop Video Wallpaper
         Version \(version) (\(build))
 
         Presented by TzJ
-        Created Just For You~
+        Happy Birthday to everyone that is born at May 30! 🎂
+        彩蛋：如果你看到了这个彩蛋，请私信我“！乐快日生”
         """
         alert.runModal()
     }

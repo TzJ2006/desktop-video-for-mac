@@ -13,6 +13,7 @@
 - 🖥 **HDR Support**: Provides the most authentic experience for HDR videos
 - 🖥 **Multi-Screen Video Sync**: Automatically sync the current wallpaper across all displays
 - 🔠 **Multiple Language Support**：Automatically change the language to your system language.
+- 🔋 **Autostop**: Stop Automatically to lower energy consumption.
 
 ## 🛠 Tech Stack
 

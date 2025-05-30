@@ -2,10 +2,10 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.3.x   | :white_check_mark: |
-| < 2.3   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| 2.5+    | ✅        |
+| < 2.5   | ❌        |
 
 ## Reporting a Vulnerability
 
@@ -14,5 +14,6 @@ You can report it by either:
 
 - Submitting an issue on GitHub
 - Emailing me directly at zt81@duke.edu
+- Find me on WeChat if you are a sponser or a friend of mine
 
 Your help in improving the app is greatly appreciated!
