@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {
-
+      "shouldTranslate" : false
     },
     "「%@」" : {
       "localizations" : {
@@ -18,7 +18,8 @@
             "value" : "「%@」"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ %@" : {
       "localizations" : {
@@ -40,7 +41,8 @@
             "value" : "%1$@ %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@: %lld%%" : {
       "localizations" : {
@@ -62,7 +64,8 @@
             "value" : "%1$@: %2$lld%%"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "AboutDesktopVideo" : {
       "extractionState" : "manual",
@@ -71,6 +74,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "About Desktop Video"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de Desktop Video"
           }
         },
         "fr" : {
@@ -102,6 +111,12 @@
             "value" : "Auto sync to new displays"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronización automática con nuevas pantallas"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -131,9 +146,15 @@
             "value" : "Click to Change Video or Image"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haga clic para cambiar video o imagen"
+          }
+        },
         "fr" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Changer de vidéo ou d'image"
           }
         },
@@ -145,7 +166,7 @@
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "更換影片或圖片"
           }
         }
@@ -158,6 +179,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Close Wallpaper"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar fondo de pantalla"
           }
         },
         "fr" : {
@@ -189,6 +216,12 @@
             "value" : "Confirm"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirmar"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -218,6 +251,12 @@
             "value" : "Desktop Video Controller"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controlador de Desktop Video"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -238,6 +277,35 @@
         }
       }
     },
+    "DiscardChange" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Change"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non Change"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原修改"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不更換"
+          }
+        }
+      }
+    },
     "DropFileHere" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -247,10 +315,63 @@
             "value" : "Or Drop File Here"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arrastre el archivo aquí"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou déposez un fichier ici"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "或拖拽内容至此窗口"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或拖曳內容至此視窗"
+          }
+        }
+      }
+    },
+    "EnableScreenSaver" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Current Video as Screen Saver"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar el video actual como protector de pantalla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser la vidéo actuelle comme économiseur d’écran"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前壁纸设为屏保"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將目前影片設為螢幕保護程式"
           }
         }
       }
@@ -262,6 +383,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Global Mute"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silenciar globalmente"
           }
         },
         "fr" : {
@@ -293,6 +420,18 @@
             "value" : "Idle Enabled"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausa automática activada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause automatique activée"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -316,6 +455,18 @@
             "value" : "Idle Pause Seconds"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segundos para pausa automática"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secondes pour pause automatique"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -337,6 +488,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Language"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma"
           }
         },
         "fr" : {
@@ -368,6 +525,12 @@
             "value" : "Launch at Login"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar al iniciar sesión"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -397,6 +560,12 @@
             "value" : "Auto launch at login failed!"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Fallo al iniciar automáticamente al iniciar sesión!"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -417,6 +586,41 @@
         }
       }
     },
+    "MinutetoSaver" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分钟后进入屏保"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分鐘"
+          }
+        }
+      }
+    },
     "NowPlaying" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -424,6 +628,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Now Playing:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reproduciendo ahora:"
           }
         },
         "fr" : {
@@ -454,6 +664,18 @@
             "value" : "Open Main Window"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir ventana principal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir la fenêtre principale"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -474,6 +696,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open Preference"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir preferencias"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir les préférences"
           }
         },
         "zh-Hans" : {
@@ -497,6 +731,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preferences"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preferencias"
           }
         },
         "fr" : {
@@ -528,10 +768,57 @@
             "value" : "Quit DesktopVideo"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir de Desktop Video"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter DesktopVideo"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "退出 Desktop Video"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出 Desktop Video"
+          }
+        }
+      }
+    },
+    "RestartNow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart Now"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redémarrage"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "现在重启"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新啟動"
           }
         }
       }
@@ -543,6 +830,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All changes will be available after restart"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todos los cambios estarán disponibles después del reinicio"
           }
         },
         "fr" : {
@@ -574,6 +867,12 @@
             "value" : "Restart Required!"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Reinicio requerido!"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -601,6 +900,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Screen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla"
           }
         },
         "fr" : {
@@ -631,6 +936,18 @@
             "value" : "Screen %d"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla %d"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écran %d"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -645,6 +962,41 @@
         }
       }
     },
+    "ScreenSaverDelay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Screen Saver After"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar protector de pantalla después de"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrer l’économiseur d’écran après"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟動螢幕保護程式於"
+          }
+        }
+      }
+    },
     "Seconds" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -652,6 +1004,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Seconds"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segundos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secondes"
           }
         },
         "zh-Hans" : {
@@ -677,9 +1041,15 @@
             "value" : "Click to Select Video or Image"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haga clic para seleccionar video o imagen"
+          }
+        },
         "fr" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Sélectionner une vidéo ou une image"
           }
         },
@@ -691,7 +1061,7 @@
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "選擇影片或圖片"
           }
         }
@@ -706,10 +1076,28 @@
             "value" : "Set As Screen Saver"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Establecer como protector de pantalla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Définir comme économiseur d’écran"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "设为屏保"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設為螢幕保護程式"
           }
         }
       }
@@ -721,6 +1109,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stretch to Fill Screen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustar para llenar la pantalla"
           }
         },
         "fr" : {
@@ -752,6 +1146,12 @@
             "value" : "Toggle Dock/Menu Bar Icon"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternar icono de Dock/Barra de menú"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -779,6 +1179,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sync current screen to all screens"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizar pantalla actual con todas las pantallas"
           }
         },
         "fr" : {
@@ -810,6 +1216,12 @@
             "value" : "UnknownScreen"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla desconocida"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -837,6 +1249,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Volume"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volumen"
           }
         },
         "fr" : {

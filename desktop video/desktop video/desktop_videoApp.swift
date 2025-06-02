@@ -12,6 +12,7 @@ import ServiceManagement
 struct desktop_videoApp: App {
     static var shared: desktop_videoApp?
 
+    // 关联 AppDelegate，所有"打开主窗口"或"打开偏好窗口"逻辑都在 AppDelegate 中处理
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // 这些 AppStorage 只在菜单命令里保持最新状态，不直接绑定到 PreferencesView
@@ -19,8 +20,32 @@ struct desktop_videoApp: App {
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
     @AppStorage("globalMute")        var globalMute:        Bool = false
 
-    init() { Self.shared = self }
+    init() {
+        Self.shared = self
+    }
 
+    var body: some Scene {
+        // Add the Settings scene to provide native Settings menu item
+        Settings {
+        }
+        .commands {
+            // Replace the About menu item
+            CommandGroup(replacing: .appInfo) {
+                Button(L("AboutDesktopVideo")) {
+                    showAboutDialog()
+                }
+            }
+            
+            // Replace the default Settings menu to prevent conflicts
+            CommandGroup(replacing: .appSettings) {
+                Button(L("Preferences…")) {
+                    AppDelegate.openPreferencesWindow() // 调用AppDelegate中的方法
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
+        }
+    }
+    
     /// 切换静音的统一处理（菜单命令也会调用）
     static func applyGlobalMute(_ enabled: Bool) {
         guard let shared = shared else { return }
@@ -36,69 +61,25 @@ struct desktop_videoApp: App {
         )
     }
 
-    var body: some Scene {
-        Settings {
-            // 用一个单独 View 展示所有设置，并延迟到"确认"后才写入 AppStorage
-            PreferencesView()
-        }
-        .commands {
-            CommandGroup(replacing: .appInfo) {
-                Button(L("AboutDesktopVideo")) {
-                    showAboutDialog()
-                }
-            }
-        }
-    }
-    
-    private func handleLaunchAtLoginChange(_ newValue: Bool) {
-        do {
-            if newValue {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-        } catch {
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = NSLocalizedString("LaunchAtLoginFailed", comment: "")
-                alert.informativeText = error.localizedDescription
-                alert.alertStyle = .warning
-                alert.runModal()
-                self.launchAtLogin = false
-            }
-        }
-    }
-    
     func showAboutDialog() {
         let alert = NSAlert()
         alert.messageText = ""
-        
         // Safer icon loading
         if let iconPath = Bundle.main.path(forResource: "512", ofType: "png") {
             alert.icon = NSImage(contentsOfFile: iconPath)
         }
-        
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
-//        alert.informativeText = """
-//        Desktop Video Wallpaper
-//        Version \(version) (\(build))
-//
-//        Presented by TzJ
-//        Created Just For You~
-//        """
         alert.informativeText = """
         Desktop Video Wallpaper
         Version \(version) (\(build))
 
         Presented by TzJ
-        Happy Birthday to everyone that is born at May 30! 🎂
-        彩蛋：如果你看到了这个彩蛋，请私信我“！乐快日生”
+        Created Just For You~
         """
         alert.runModal()
     }
 }
-
 
 /// **首选项面板**：在 Settings 窗口中显示，修改延迟到"确认"后才写入
 struct PreferencesView: View {
@@ -109,6 +90,8 @@ struct PreferencesView: View {
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
     @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
     @AppStorage("idlePauseSeconds")  private var idlePauseSecondsStorage:  Int = 10
+    @AppStorage("screensaverEnabled") private var screensaverEnabledStorage: Bool = false
+    @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Int = 5
 
     // 本地 State，用于暂存用户在界面上的修改
     @State private var autoSyncNewScreens: Bool = true
@@ -116,7 +99,19 @@ struct PreferencesView: View {
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
     @State private var idlePauseEnabled:  Bool = false
-    @State private var idlePauseSeconds:  Int = 30
+    @State private var idlePauseSeconds:  Int = 10
+    @State private var screensaverEnabled: Bool = false
+    @State private var screensaverDelayMinutes: Int = 5
+
+    // 原始值缓存，用于恢复
+    @State private var originalAutoSyncNewScreens: Bool = true
+    @State private var originalLaunchAtLogin:     Bool = true
+    @State private var originalGlobalMute:        Bool = false
+    @State private var originalSelectedLanguage:  String = "system"
+    @State private var originalIdlePauseEnabled:  Bool = false
+    @State private var originalIdlePauseSeconds:  Int = 10
+    @State private var originalScreensaverEnabled: Bool = false
+    @State private var originalScreensaverDelayMinutes: Int = 5
 
     /// 是否有未保存的更改
     private var hasChanges: Bool {
@@ -126,6 +121,8 @@ struct PreferencesView: View {
         || selectedLanguage != languageStorage
         || idlePauseEnabled != idlePauseEnabledStorage
         || idlePauseSeconds != idlePauseSecondsStorage
+        || screensaverEnabled != screensaverEnabledStorage
+        || screensaverDelayMinutes != screensaverDelayMinutesStorage
     }
 
     // 注入 LanguageManager
@@ -133,14 +130,12 @@ struct PreferencesView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 12.5) {
+            VStack(spacing: 12) {
                 Toggle(L("GlobalMute"), isOn: $globalMute)
                 Toggle(L("LaunchAtLogin"), isOn: $launchAtLogin)
                 Toggle(L("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
-//                    .padding(.top, 10)
-//                Spacer(minLength: 1)
-//                Divider()
-                HStack{
+
+                HStack {
                     Text(L("Language"))
                     Picker(selection: $selectedLanguage, label: EmptyView()) {
                         ForEach(SupportedLanguage.allCases) { lang in
@@ -151,65 +146,84 @@ struct PreferencesView: View {
                     .frame(width: 100)
                 }
                 .padding(.top, 10)
-//                Divider()
-//                Spacer(minLength: 1)
-                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled).padding(.top, 10)
+
+                Toggle(L("EnableScreenSaver"), isOn: $screensaverEnabled)
+                    .padding(.top, 10)
+
+                HStack {
+                    Text(L("ScreenSaverDelay"))
+                    TextField("5", value: $screensaverDelayMinutes, formatter: NumberFormatter())
+                        .frame(width: 40)
+                    Text(L("MinutetoSaver"))
+                }
+                .disabled(!screensaverEnabled)
+
+                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
+                    .padding(.top, 10)
+
                 HStack {
                     Text(L("IdlePauseSeconds"))
-                    TextField("", value: $idlePauseSeconds, formatter: NumberFormatter())
-                        .frame(width: 30)
+                    TextField("5", value: $idlePauseSeconds, formatter: NumberFormatter())
+                        .frame(width: 40)
                     Text(L("Seconds"))
                 }
                 .disabled(!idlePauseEnabled)
-                
-//                Divider()
-                
+
                 HStack {
                     Button(L("Confirm")) {
-                        confirmChanges()
+                        showRestartAlert()
                     }
                     .buttonStyle(.bordered)
                     .disabled(!hasChanges)
-                }.padding(.top, 10)
+                }
+                .padding(.top, 10)
             }
         }
-        .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, minHeight: 150, idealHeight: 200, maxHeight: 300)
+        .frame(minWidth: 300, maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
+        .padding(20)
         .onAppear {
+            // 首次出现时缓存原始值
+            originalAutoSyncNewScreens = autoSyncNewScreensStorage
+            originalLaunchAtLogin = launchAtLoginStorage
+            originalGlobalMute = globalMuteStorage
+            originalSelectedLanguage = languageStorage
+            originalIdlePauseEnabled = idlePauseEnabledStorage
+            originalIdlePauseSeconds = idlePauseSecondsStorage
+            originalScreensaverEnabled = screensaverEnabledStorage
+            originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
             loadStoredValues()
         }
     }
-    
+
     private func loadStoredValues() {
-        autoSyncNewScreens = autoSyncNewScreensStorage
-        launchAtLogin = launchAtLoginStorage
-        globalMute = globalMuteStorage
-        selectedLanguage = languageStorage
-        idlePauseEnabled = idlePauseEnabledStorage
-        idlePauseSeconds = idlePauseSecondsStorage
+        autoSyncNewScreens = originalAutoSyncNewScreens
+        launchAtLogin = originalLaunchAtLogin
+        globalMute = originalGlobalMute
+        selectedLanguage = originalSelectedLanguage
+        idlePauseEnabled = originalIdlePauseEnabled
+        idlePauseSeconds = originalIdlePauseSeconds
+        screensaverEnabled = originalScreensaverEnabled
+        screensaverDelayMinutes = originalScreensaverDelayMinutes
     }
-    
+
     private func confirmChanges() {
-        // 写回 AppStorage
+        // 只保存设置到 AppStorage，但不立即应用
         autoSyncNewScreensStorage = autoSyncNewScreens
+        launchAtLoginStorage = launchAtLogin
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
         idlePauseEnabledStorage = idlePauseEnabled
         idlePauseSecondsStorage = idlePauseSeconds
-        
-        // Handle launch at login separately with error handling
-        if launchAtLoginStorage != launchAtLogin {
+        screensaverEnabledStorage = screensaverEnabled
+        screensaverDelayMinutesStorage = screensaverDelayMinutes
+
+        if launchAtLogin != launchAtLoginStorage {
             handleLaunchAtLoginChange()
         }
-
-        // 静音开关立刻生效
+        
         desktop_videoApp.applyGlobalMute(globalMute)
-        // 通知 LanguageManager 刷新
-        languageManager.selectedLanguage = selectedLanguage
-
-        // 提示重启
-        showRestartAlert()
     }
-    
+
     private func handleLaunchAtLoginChange() {
         do {
             if launchAtLogin {
@@ -228,12 +242,32 @@ struct PreferencesView: View {
             launchAtLogin = launchAtLoginStorage
         }
     }
+
+    private func restartApplication() {
+        let url = URL(fileURLWithPath: Bundle.main.resourcePath!)
+        let path = url.deletingLastPathComponent().deletingLastPathComponent().absoluteString
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = [path]
+        task.launch()
+        NSApp.terminate(nil)
+    }
     
     private func showRestartAlert() {
         let alert = NSAlert()
         alert.messageText = L("RestartRequiredTitle")
         alert.informativeText = L("RestartRequiredMessage")
         alert.alertStyle = .informational
-        alert.runModal()
+        alert.addButton(withTitle: L("RestartNow"))
+        alert.addButton(withTitle: L("DiscardChange"))
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // 立即重启应用
+            confirmChanges()
+            restartApplication()
+        } else {
+            loadStoredValues()
+        }
     }
 }

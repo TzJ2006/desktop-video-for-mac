@@ -9,10 +9,9 @@ import AppKit
 import SwiftUI
 import AVFoundation
 import CoreGraphics
-
-// Import localization function if needed
-// If not already defined somewhere, uncomment the following line:
-// func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
+import AVKit
+import Combine
+import IOKit
 
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -28,6 +27,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var idleTimer: Timer?
     private var idleStartTime: Date?
     private var isPausedDueToIdle: Bool = false
+
+    // Screensaver related
+    private var screensaverTimer: Timer?
+    private var screensaverWindows: [NSWindow] = []
+    private var eventMonitors: [Any] = []
+    private var isInScreensaver = false
+    
+    // UserDefaults keys
+    private let screensaverEnabledKey = "screensaverEnabled"
+    private let screensaverDelayMinutesKey = "screensaverDelayMinutes"
+    
+    private var cancellables = Set<AnyCancellable>()
 
     // lastAppearanceChangeTime 用于删除 bookmark, 24 小时后自动删除
     // appearanceChangeWorkItem 用于设置 bookmark
@@ -58,6 +69,174 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             name: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil
         )
+        
+        // Observe screensaver settings changes and start screensaver timer
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .sink { [weak self] _ in
+                self?.startScreensaverTimer()
+            }
+            .store(in: &cancellables)
+        
+        // Observe app active/inactive notifications to reset screensaver timer
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActiveNotification), name: NSApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationDidResignActiveNotification), name: NSApplication.didResignActiveNotification, object: nil)
+
+        startScreensaverTimer()
+    }
+
+    // MARK: - Screensaver Timer Methods
+    
+    func startScreensaverTimer() {
+        // If already in screensaver, do not start timer
+        if isInScreensaver { return }
+
+        screensaverTimer?.invalidate()
+
+        guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else {
+            closeScreensaverWindows()
+            return
+        }
+
+        let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
+        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
+
+        screensaverTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let idleTime = self.getSystemIdleTime()
+            if idleTime >= delaySeconds {
+                self.screensaverTimer?.invalidate()
+                self.runScreenSaver()
+            }
+        }
+    }
+
+    // 获取系统级用户空闲时间（秒）
+    private func getSystemIdleTime() -> TimeInterval {
+        var iterator: io_iterator_t = 0
+        let result = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOHIDSystem"), &iterator)
+        if result != KERN_SUCCESS { return 0 }
+
+        let entry = IOIteratorNext(iterator)
+        IOObjectRelease(iterator)
+
+        var dict: Unmanaged<CFMutableDictionary>?
+        let kr = IORegistryEntryCreateCFProperties(entry, &dict, kCFAllocatorDefault, 0)
+        IOObjectRelease(entry)
+
+        guard kr == KERN_SUCCESS, let cfDict = dict?.takeRetainedValue() as? [String: Any],
+              let idleNS = cfDict["HIDIdleTime"] as? UInt64 else {
+            return 0
+        }
+
+        return TimeInterval(idleNS) / 1_000_000_000
+    }
+    
+    @objc func runScreenSaver() {
+        guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
+        if isInScreensaver { return }
+        isInScreensaver = true
+        
+        // 使用主播放器而不是创建新播放器
+        for (_, player) in SharedWallpaperWindowManager.shared.players {
+            player.pause()
+        }
+        
+        screensaverWindows.removeAll()
+        eventMonitors.forEach { NSEvent.removeMonitor($0) }
+        eventMonitors.removeAll()
+        
+        for screen in NSScreen.screens {
+            let screenFrame = screen.frame
+            let saverWindow = NSWindow(
+                contentRect: screenFrame,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false,
+                screen: screen
+            )
+            saverWindow.level = .screenSaver
+            saverWindow.backgroundColor = .clear
+            saverWindow.isOpaque = false
+            saverWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            saverWindow.ignoresMouseEvents = false
+            saverWindow.makeKeyAndOrderFront(nil)
+            
+            // 直接使用现有的壁纸视图
+            if let wallpaperWindow = SharedWallpaperWindowManager.shared.windows[screen],
+               let wallpaperView = wallpaperWindow.contentView {
+                
+                // 创建视图快照并添加到屏保窗口
+                let snapshot = NSImageView(frame: wallpaperView.bounds)
+                snapshot.image = wallpaperView.bitmapImageRepForCachingDisplay(in: wallpaperView.bounds)?.representation(using: .png, properties: [:])
+                    .flatMap { NSImage(data: $0) }
+                snapshot.imageScaling = .scaleAxesIndependently
+                saverWindow.contentView?.addSubview(snapshot)
+                
+                // 恢复播放（但保持静音状态）
+                SharedWallpaperWindowManager.shared.players[screen]?.play()
+            }
+            
+            screensaverWindows.append(saverWindow)
+        }
+        
+        // 添加事件监听器 - 使用更可靠的方式
+        let eventTypes: [NSEvent.EventTypeMask] = [
+            .leftMouseDown, .rightMouseDown, .otherMouseDown,
+            .mouseMoved, .scrollWheel, .keyDown, .gesture
+        ]
+        
+        for eventType in eventTypes {
+            let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType) { [weak self] _ in
+                self?.closeScreensaverWindows()
+            }
+            if let monitor = monitor {
+                eventMonitors.append(monitor)
+            }
+        }
+        
+        // 添加本地监听器以确保捕获所有事件
+        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
+            self?.closeScreensaverWindows()
+            return event
+        }
+        if let localMonitor = localMonitor {
+            eventMonitors.append(localMonitor)
+        }
+    }
+    
+    func closeScreensaverWindows() {
+        if !isInScreensaver { return }
+        isInScreensaver = false
+        
+        for window in screensaverWindows {
+            window.orderOut(nil)
+        }
+        screensaverWindows.removeAll()
+        
+        eventMonitors.forEach { NSEvent.removeMonitor($0) }
+        eventMonitors.removeAll()
+        
+        // 恢复主壁纸播放器
+        for player in SharedWallpaperWindowManager.shared.players.values {
+            player.play()
+        }
+        
+        // 重置屏保计时器
+        startScreensaverTimer()
+    }
+    
+    @objc private func applicationDidBecomeActiveNotification() {
+        // Only close screensaver if currently in screensaver
+        if isInScreensaver {
+            closeScreensaverWindows()
+        }
+    }
+    
+    @objc private func applicationDidResignActiveNotification() {
+        // Only restart timer if not currently in screensaver
+        if !isInScreensaver {
+            startScreensaverTimer()
+        }
     }
 
     // 打开主控制器界面
@@ -71,34 +250,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    @objc func openPreferences() {
-        if let win = preferencesWindow {
+    static func openPreferencesWindow() {
+        guard let delegate = shared else { return }
+        
+        if let win = delegate.preferencesWindow {
             win.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         } else {
             let prefsView = PreferencesView()
             let hosting = NSHostingController(rootView: prefsView)
             let win = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 300, height: 250),
+                contentRect: NSRect(x: 0, y: 0, width: 240, height: 320), // 修改尺寸为240×320
                 styleMask: [.titled, .closable, .resizable],
                 backing: .buffered,
                 defer: false
             )
             win.center()
-            win.title = NSLocalizedString("PreferencesTitle", comment: "")
+            win.title = L("PreferencesTitle")
             win.contentView = hosting.view
             win.isReleasedWhenClosed = false
-            win.delegate = self
+            win.delegate = delegate
             win.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-            preferencesWindow = win
+            delegate.preferencesWindow = win
         }
     }
 
-    // 关闭窗口
+    @objc func openPreferences() {
+        AppDelegate.openPreferencesWindow() // 调用静态方法
+    }
+
     func windowWillClose(_ notification: Notification) {
         if let win = notification.object as? NSWindow, win == self.window {
             self.window = nil
+        }
+        // 添加处理preferences窗口关闭
+        if let win = notification.object as? NSWindow, win == self.preferencesWindow {
+            self.preferencesWindow = nil
         }
     }
 
@@ -196,7 +384,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
     }
-
+    
     // 删除菜单栏图标
     func removeStatusBarIcon() {
         if let item = statusItem {

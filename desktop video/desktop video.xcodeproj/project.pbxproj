@@ -24,18 +24,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2536AC0F2DED69A800EE336C /* Desktop Video Screen Saver.saver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop Video Screen Saver.saver"; sourceTree = BUILT_PRODUCTS_DIR; };
 		253C8BA12DC957E200AD6BC8 /* desktop video.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "desktop video.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		253C8BAF2DC957E300AD6BC8 /* desktop videoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "desktop videoTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		253C8BB92DC957E300AD6BC8 /* desktop videoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "desktop videoUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		2536AC102DED69A800EE336C /* Desktop Video Screen Saver */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop Video Screen Saver";
-			sourceTree = "<group>";
-		};
 		253C8BA32DC957E200AD6BC8 /* desktop video */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "desktop video";
@@ -44,13 +38,6 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		2536AC0C2DED69A800EE336C /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		253C8B9E2DC957E200AD6BC8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -79,7 +66,6 @@
 			isa = PBXGroup;
 			children = (
 				253C8BA32DC957E200AD6BC8 /* desktop video */,
-				2536AC102DED69A800EE336C /* Desktop Video Screen Saver */,
 				253C8BA22DC957E200AD6BC8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,47 +76,13 @@
 				253C8BA12DC957E200AD6BC8 /* desktop video.app */,
 				253C8BAF2DC957E300AD6BC8 /* desktop videoTests.xctest */,
 				253C8BB92DC957E300AD6BC8 /* desktop videoUITests.xctest */,
-				2536AC0F2DED69A800EE336C /* Desktop Video Screen Saver.saver */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
-/* Begin PBXHeadersBuildPhase section */
-		2536AC0A2DED69A800EE336C /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXHeadersBuildPhase section */
-
 /* Begin PBXNativeTarget section */
-		2536AC0E2DED69A800EE336C /* Desktop Video Screen Saver */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 2536AC152DED69A800EE336C /* Build configuration list for PBXNativeTarget "Desktop Video Screen Saver" */;
-			buildPhases = (
-				2536AC0A2DED69A800EE336C /* Headers */,
-				2536AC0B2DED69A800EE336C /* Sources */,
-				2536AC0C2DED69A800EE336C /* Frameworks */,
-				2536AC0D2DED69A800EE336C /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				2536AC102DED69A800EE336C /* Desktop Video Screen Saver */,
-			);
-			name = "Desktop Video Screen Saver";
-			packageProductDependencies = (
-			);
-			productName = "Desktop Video Screen Saver";
-			productReference = 2536AC0F2DED69A800EE336C /* Desktop Video Screen Saver.saver */;
-			productType = "com.apple.product-type.bundle";
-		};
 		253C8BA02DC957E200AD6BC8 /* desktop video */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 253C8BC32DC957E300AD6BC8 /* Build configuration list for PBXNativeTarget "desktop video" */;
@@ -203,10 +155,6 @@
 				LastSwiftUpdateCheck = 1630;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
-					2536AC0E2DED69A800EE336C = {
-						CreatedOnToolsVersion = 16.3;
-						LastSwiftMigration = 1630;
-					};
 					253C8BA02DC957E200AD6BC8 = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -239,19 +187,11 @@
 				253C8BA02DC957E200AD6BC8 /* desktop video */,
 				253C8BAE2DC957E300AD6BC8 /* desktop videoTests */,
 				253C8BB82DC957E300AD6BC8 /* desktop videoUITests */,
-				2536AC0E2DED69A800EE336C /* Desktop Video Screen Saver */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		2536AC0D2DED69A800EE336C /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		253C8B9F2DC957E200AD6BC8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -276,13 +216,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		2536AC0B2DED69A800EE336C /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		253C8B9D2DC957E200AD6BC8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -320,59 +253,6 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		2536AC162DED69A800EE336C /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "Desktop Video Screen Saver/DesktopVideoScreenSaver.entitlements";
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2R958J3YT6;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = Desktop_Video_Screen_SaverView;
-				INSTALL_PATH = "$(HOME)/Library/Screen Savers";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MACOSX_DEPLOYMENT_TARGET = 12.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Video-Screen-Saver";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 6.0;
-				WRAPPER_EXTENSION = saver;
-			};
-			name = Debug;
-		};
-		2536AC172DED69A800EE336C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "Desktop Video Screen Saver/DesktopVideoScreenSaver.entitlements";
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2R958J3YT6;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = Desktop_Video_Screen_SaverView;
-				INSTALL_PATH = "$(HOME)/Library/Screen Savers";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MACOSX_DEPLOYMENT_TARGET = 12.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Video-Screen-Saver";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
-				SWIFT_VERSION = 6.0;
-				WRAPPER_EXTENSION = saver;
-			};
-			name = Release;
-		};
 		253C8BC12DC957E300AD6BC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -519,7 +399,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 2.5.1;
+				MARKETING_VERSION = 2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = TzJ.desktopvideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -560,7 +440,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 2.5.1;
+				MARKETING_VERSION = 2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = TzJ.desktopvideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -666,15 +546,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2536AC152DED69A800EE336C /* Build configuration list for PBXNativeTarget "Desktop Video Screen Saver" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				2536AC162DED69A800EE336C /* Debug */,
-				2536AC172DED69A800EE336C /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		253C8B9C2DC957E200AD6BC8 /* Build configuration list for PBXProject "desktop video" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

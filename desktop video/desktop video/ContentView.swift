@@ -275,41 +275,6 @@ struct SingleScreenView: View {
                 } label: {
                     Text(L("CloseWallpaper"))
                 }
-                
-                Button(action: {
-                    // 1. Ensure Application Support /com.TzJ.DesktopVideo exists
-                    let fm = FileManager.default
-                    guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-                        print("❌ 无法定位到 Application Support")
-                        return
-                    }
-                    let sharedFolder = appSupport.appendingPathComponent("com.TzJ.DesktopVideo", isDirectory: true)
-                    do {
-                        if !fm.fileExists(atPath: sharedFolder.path) {
-                            try fm.createDirectory(at: sharedFolder, withIntermediateDirectories: true, attributes: nil)
-                        }
-                    } catch {
-                        print("❌ 无法创建共享目录: \(error)")
-                        return
-                    }
-
-                    // 2. Copy the selected media URL into the shared folder as "saver_media.ext"
-                    guard let mediaURL = AppState.shared.lastMediaURL else { return }
-                    let fileExt = mediaURL.pathExtension
-                    let destURL = sharedFolder.appendingPathComponent("saver_media.\(fileExt)")
-                    do {
-                        if fm.fileExists(atPath: destURL.path) {
-                            try fm.removeItem(at: destURL)
-                        }
-                        try fm.copyItem(at: mediaURL, to: destURL)
-                        print("✅ 成功复制到共享目录: \(destURL.path)")
-                    } catch {
-                        print("❌ 复制到共享目录失败: \(error)")
-                    }
-                }, label: {
-                    Text(L("SetScreenSaver"))
-                })
-                
             } else {
                 Button {
                     openFilePicker()
