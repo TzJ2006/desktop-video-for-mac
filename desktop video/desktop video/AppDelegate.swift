@@ -187,6 +187,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     action: #selector(openPreferences),
                     keyEquivalent: ""
                 )
+                menu.addItem(
+                     withTitle: L("QuitDesktopVideo"),
+                     action: #selector(NSApplication.terminate(_:)),
+                     keyEquivalent: ""
+                 )
                 statusItem?.menu = menu
             }
         }
