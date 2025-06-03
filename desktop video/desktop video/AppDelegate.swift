@@ -13,6 +13,12 @@ import AVKit
 import Combine
 import IOKit
 
+// 屏保窗口子类，允许成为 key/main window
+class ScreenSaverWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
@@ -39,6 +45,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let screensaverDelayMinutesKey = "screensaverDelayMinutes"
     
     private var cancellables = Set<AnyCancellable>()
+
+    // 防抖：上次屏保检查时间
+    private var lastScreensaverCheck: Date = .distantPast
 
     // lastAppearanceChangeTime 用于删除 bookmark, 24 小时后自动删除
     // appearanceChangeWorkItem 用于设置 bookmark
@@ -87,11 +96,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Screensaver Timer Methods
     
     func startScreensaverTimer() {
-        // If already in screensaver, do not start timer
+        let now = Date()
+        guard now.timeIntervalSince(lastScreensaverCheck) > 1 else {
+            return  // 防抖：避免短时间内重复触发
+        }
+        lastScreensaverCheck = now
+
         if isInScreensaver { return }
 
+        // Check if selected media is valid and a player exists and is ready to play
+        let isPlayable = AppState.shared.lastMediaURL != nil
+        
+        guard isPlayable else {
+            print("Screensaver not started: no valid media selected or playable.")
+            return
+        }
+        
         screensaverTimer?.invalidate()
 
+//        print("Is playable")
+        
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else {
             closeScreensaverWindows()
             return
@@ -99,10 +123,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
         let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
+        
+//        print(delaySeconds)
 
         screensaverTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             let idleTime = self.getSystemIdleTime()
+            print(idleTime, delaySeconds)
             if idleTime >= delaySeconds {
                 self.screensaverTimer?.invalidate()
                 self.runScreenSaver()
@@ -134,52 +161,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func runScreenSaver() {
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         if isInScreensaver { return }
-        isInScreensaver = true
         
-        // 使用主播放器而不是创建新播放器
-        for (_, player) in SharedWallpaperWindowManager.shared.players {
-            player.pause()
+        print("Starting screensaver mode")
+
+        // 1. 提升现有壁纸窗口为屏保窗口
+        for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
+            wallpaperWindow.level = .screenSaver
+            wallpaperWindow.ignoresMouseEvents = false
+            wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            wallpaperWindow.makeKeyAndOrderFront(nil)
+            
+            // 确保视频继续播放
+            if let player = SharedWallpaperWindowManager.shared.players[screen] {
+                player.play()
+            }
         }
         
-        screensaverWindows.removeAll()
+        // 2. 添加事件监听器
         eventMonitors.forEach { NSEvent.removeMonitor($0) }
         eventMonitors.removeAll()
         
-        for screen in NSScreen.screens {
-            let screenFrame = screen.frame
-            let saverWindow = NSWindow(
-                contentRect: screenFrame,
-                styleMask: [.borderless],
-                backing: .buffered,
-                defer: false,
-                screen: screen
-            )
-            saverWindow.level = .screenSaver
-            saverWindow.backgroundColor = .clear
-            saverWindow.isOpaque = false
-            saverWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            saverWindow.ignoresMouseEvents = false
-            saverWindow.makeKeyAndOrderFront(nil)
-            
-            // 直接使用现有的壁纸视图
-            if let wallpaperWindow = SharedWallpaperWindowManager.shared.windows[screen],
-               let wallpaperView = wallpaperWindow.contentView {
-                
-                // 创建视图快照并添加到屏保窗口
-                let snapshot = NSImageView(frame: wallpaperView.bounds)
-                snapshot.image = wallpaperView.bitmapImageRepForCachingDisplay(in: wallpaperView.bounds)?.representation(using: .png, properties: [:])
-                    .flatMap { NSImage(data: $0) }
-                snapshot.imageScaling = .scaleAxesIndependently
-                saverWindow.contentView?.addSubview(snapshot)
-                
-                // 恢复播放（但保持静音状态）
-                SharedWallpaperWindowManager.shared.players[screen]?.play()
-            }
-            
-            screensaverWindows.append(saverWindow)
-        }
-        
-        // 添加事件监听器 - 使用更可靠的方式
+        // 添加全局事件监听
         let eventTypes: [NSEvent.EventTypeMask] = [
             .leftMouseDown, .rightMouseDown, .otherMouseDown,
             .mouseMoved, .scrollWheel, .keyDown, .gesture
@@ -194,7 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
         
-        // 添加本地监听器以确保捕获所有事件
+        // 添加本地事件监听
         let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
             self?.closeScreensaverWindows()
             return event
@@ -202,26 +204,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let localMonitor = localMonitor {
             eventMonitors.append(localMonitor)
         }
+        
+        isInScreensaver = true
     }
     
     func closeScreensaverWindows() {
         if !isInScreensaver { return }
-        isInScreensaver = false
         
-        for window in screensaverWindows {
-            window.orderOut(nil)
+        print("Exiting screensaver mode")
+        
+        // 1. 恢复壁纸窗口到正常状态
+        for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
+            wallpaperWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+            wallpaperWindow.ignoresMouseEvents = true
+            wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+            wallpaperWindow.orderBack(nil)
+            
+            // 确保视频继续播放
+            if let player = SharedWallpaperWindowManager.shared.players[screen] {
+                player.play()
+            }
         }
-        screensaverWindows.removeAll()
         
+        // 2. 移除事件监听器
         eventMonitors.forEach { NSEvent.removeMonitor($0) }
         eventMonitors.removeAll()
         
-        // 恢复主壁纸播放器
-        for player in SharedWallpaperWindowManager.shared.players.values {
-            player.play()
-        }
+        isInScreensaver = false
         
-        // 重置屏保计时器
+        // 3. 重置屏保计时器
         startScreensaverTimer()
     }
     
@@ -366,12 +377,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 )
                 menu.addItem(NSMenuItem.separator())
                 menu.addItem(
-                    withTitle: NSLocalizedString("Open Main Window", comment: ""),
+                    withTitle: NSLocalizedString(L("OpenMainWindow"), comment: ""),
                     action: #selector(toggleMainWindow),
                     keyEquivalent: ""
                 )
                 menu.addItem(
-                    withTitle: NSLocalizedString("Preferences...", comment: ""),
+                    withTitle: NSLocalizedString(L("Preferences"), comment: ""),
                     action: #selector(openPreferences),
                     keyEquivalent: ""
                 )

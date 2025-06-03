@@ -67,6 +67,9 @@
       },
       "shouldTranslate" : false
     },
+    "5" : {
+      "shouldTranslate" : false
+    },
     "AboutDesktopVideo" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -656,7 +659,8 @@
         }
       }
     },
-    "Open Main Window" : {
+    "OpenMainWindow" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -690,24 +694,25 @@
         }
       }
     },
-    "Preferences..." : {
+    "Preferences" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Preference"
+            "value" : "Preferences…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir preferencias"
+            "value" : "Preferencias…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir les préférences"
+            "value" : "Préférences…"
           }
         },
         "zh-Hans" : {
@@ -719,7 +724,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "偏好設定"
+            "value" : "偏好設定..."
           }
         }
       }
