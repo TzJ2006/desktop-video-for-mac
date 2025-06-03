@@ -17,6 +17,7 @@ class AppState: ObservableObject {
     @Published var lastMediaURL: URL?
     @Published var lastVolume: Float = 1.0
     @Published var lastStretchToFill: Bool = true
+    @Published var currentMediaURL: String?
 }
 
 class ScreenObserver: ObservableObject {
@@ -190,6 +191,9 @@ struct SingleScreenView: View {
                 Text("\(L("NowPlaying")) \(filename)")
                     .font(.subheadline)
                     .foregroundColor(.gray)
+                    .onAppear {
+                        appState.currentMediaURL = filename
+                    }
 
                 Button {
                     openFilePicker()
@@ -272,6 +276,7 @@ struct SingleScreenView: View {
                 Button {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
                     AppState.shared.lastMediaURL = nil
+                    AppState.shared.currentMediaURL = nil
                 } label: {
                     Text(L("CloseWallpaper"))
                 }

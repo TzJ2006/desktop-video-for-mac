@@ -12,6 +12,7 @@ import CoreGraphics
 import AVKit
 import Combine
 import IOKit
+import IOKit.pwr_mgt
 
 // 屏保窗口子类，允许成为 key/main window
 class ScreenSaverWindow: NSWindow {
@@ -39,6 +40,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var screensaverWindows: [NSWindow] = []
     private var eventMonitors: [Any] = []
     private var isInScreensaver = false
+    // Clock overlays for screensaver
+    private var clockDateLabels: [NSTextField] = []
+    private var clockTimeLabels: [NSTextField] = []
+    private var clockTimer: Timer?
+    // Prevent display sleep assertion
+    private var displaySleepAssertionID: IOPMAssertionID = 0
     
     // UserDefaults keys
     private let screensaverEnabledKey = "screensaverEnabled"
@@ -105,7 +112,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if isInScreensaver { return }
 
         // Check if selected media is valid and a player exists and is ready to play
-        let isPlayable = AppState.shared.lastMediaURL != nil
+        let isPlayable = AppState.shared.currentMediaURL != nil
         
         guard isPlayable else {
             print("Screensaver not started: no valid media selected or playable.")
@@ -113,8 +120,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         
         screensaverTimer?.invalidate()
-
-//        print("Is playable")
         
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else {
             closeScreensaverWindows()
@@ -124,9 +129,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
         let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
         
-//        print(delaySeconds)
-
-        screensaverTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+//        let delaySeconds = 1.0
+        
+        screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             let idleTime = self.getSystemIdleTime()
             print(idleTime, delaySeconds)
@@ -164,74 +169,145 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         print("Starting screensaver mode")
 
-        // 1. 提升现有壁纸窗口为屏保窗口
+        // Prevent system screensaver/display sleep while our screensaver is active
+        let assertionReason = "DesktopVideo screensaver active" as CFString
+        IOPMAssertionCreateWithName(
+            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+            IOPMAssertionLevel(kIOPMAssertionLevelOn),
+            assertionReason,
+            &displaySleepAssertionID
+        )
+
+        // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
         for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
             wallpaperWindow.level = .screenSaver
             wallpaperWindow.ignoresMouseEvents = false
             wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            wallpaperWindow.alphaValue = 0 // 初始透明
             wallpaperWindow.makeKeyAndOrderFront(nil)
-            
+
+            // 使用动画淡入
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.5
+                wallpaperWindow.animator().alphaValue = 1
+            }, completionHandler: nil)
+
             // 确保视频继续播放
             if let player = SharedWallpaperWindowManager.shared.players[screen] {
                 player.play()
             }
+
+            // Add date overlay
+            let screenFrame = wallpaperWindow.frame
+            let dateLabel = NSTextField(labelWithString: "")
+            dateLabel.font = NSFont.systemFont(ofSize: 30, weight: .medium)
+            dateLabel.textColor = .white
+            dateLabel.backgroundColor = .clear
+            dateLabel.isBezeled = false
+            dateLabel.isEditable = false
+            dateLabel.sizeToFit()
+            // Position at top center
+            let dateX = screenFrame.midX - dateLabel.frame.width / 2
+            let dateY = screenFrame.maxY - dateLabel.frame.height - 50
+            dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+            wallpaperWindow.contentView?.addSubview(dateLabel)
+            clockDateLabels.append(dateLabel)
+
+            // Add time overlay
+            let timeLabel = NSTextField(labelWithString: "")
+            timeLabel.font = NSFont.systemFont(ofSize: 100, weight: .light)
+            timeLabel.textColor = .white
+            timeLabel.backgroundColor = .clear
+            timeLabel.isBezeled = false
+            timeLabel.isEditable = false
+            timeLabel.sizeToFit()
+            // Position below date at center
+            let timeX = screenFrame.midX - timeLabel.frame.width / 2
+            let timeY = screenFrame.midY - timeLabel.frame.height / 2
+            timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+            wallpaperWindow.contentView?.addSubview(timeLabel)
+            clockTimeLabels.append(timeLabel)
         }
-        
-        // 2. 添加事件监听器
+
+        // Start clock updater
+        updateClockLabels() // initial update
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.updateClockLabels()
+        }
+
+        // 2. 延迟 0.5 秒后再添加事件监听器并设置 isInScreensaver
         eventMonitors.forEach { NSEvent.removeMonitor($0) }
         eventMonitors.removeAll()
         
-        // 添加全局事件监听
-        let eventTypes: [NSEvent.EventTypeMask] = [
-            .leftMouseDown, .rightMouseDown, .otherMouseDown,
-            .mouseMoved, .scrollWheel, .keyDown, .gesture
-        ]
-        
-        for eventType in eventTypes {
-            let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType) { [weak self] _ in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let eventTypes: [NSEvent.EventTypeMask] = [.any]
+            for eventType in eventTypes {
+                let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType) { [weak self] _ in
+                    self?.closeScreensaverWindows()
+                }
+                if let monitor = monitor {
+                    self.eventMonitors.append(monitor)
+                }
+            }
+            let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
                 self?.closeScreensaverWindows()
+                return event
             }
-            if let monitor = monitor {
-                eventMonitors.append(monitor)
+            if let localMonitor = localMonitor {
+                self.eventMonitors.append(localMonitor)
             }
+            self.isInScreensaver = true
         }
-        
-        // 添加本地事件监听
-        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
-            self?.closeScreensaverWindows()
-            return event
-        }
-        if let localMonitor = localMonitor {
-            eventMonitors.append(localMonitor)
-        }
-        
-        isInScreensaver = true
     }
     
     func closeScreensaverWindows() {
         if !isInScreensaver { return }
-        
+
         print("Exiting screensaver mode")
-        
-        // 1. 恢复壁纸窗口到正常状态
-        for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
-            wallpaperWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
-            wallpaperWindow.ignoresMouseEvents = true
-            wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-            wallpaperWindow.orderBack(nil)
-            
-            // 确保视频继续播放
-            if let player = SharedWallpaperWindowManager.shared.players[screen] {
-                player.play()
-            }
+
+        // Release the display-sleep prevention assertion
+        if displaySleepAssertionID != 0 {
+            IOPMAssertionRelease(displaySleepAssertionID)
+            displaySleepAssertionID = 0
         }
-        
+
+        // Invalidate and clear clock timer/labels
+        clockTimer?.invalidate()
+        clockTimer = nil
+        for label in clockDateLabels {
+            label.removeFromSuperview()
+        }
+        clockDateLabels.removeAll()
+        for label in clockTimeLabels {
+            label.removeFromSuperview()
+        }
+        clockTimeLabels.removeAll()
+
+        // 1. 对每个窗口执行淡出动画后再恢复
+        for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.5
+                wallpaperWindow.animator().alphaValue = 0
+            }, completionHandler: {
+                wallpaperWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+                wallpaperWindow.ignoresMouseEvents = true
+                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+                wallpaperWindow.orderBack(nil)
+
+                // 确保视频继续播放
+                if let player = SharedWallpaperWindowManager.shared.players[screen] {
+                    player.play()
+                }
+                wallpaperWindow.alphaValue = 1 // 恢复透明度供下一次屏保使用
+            })
+        }
+
         // 2. 移除事件监听器
         eventMonitors.forEach { NSEvent.removeMonitor($0) }
         eventMonitors.removeAll()
-        
+
         isInScreensaver = false
-        
+
         // 3. 重置屏保计时器
         startScreensaverTimer()
     }
@@ -499,5 +575,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // Show About dialog from status bar
     @objc func showAboutFromStatus() {
         desktop_videoApp.shared?.showAboutDialog()
+    }
+    // Helper to update all clock labels with current time and center them
+    private func updateClockLabels() {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale.current
+        dateFormatter.dateFormat = "EEEE, dd-MM-yyyy" // e.g. "Tuesday, 03-06-2025"
+        let dateString = dateFormatter.string(from: Date())
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.locale = Locale.current
+        timeFormatter.dateFormat = "HH:mm:ss"
+        let timeString = timeFormatter.string(from: Date())
+
+        let screens = Array(SharedWallpaperWindowManager.shared.windows.keys)
+        for (index, dateLabel) in clockDateLabels.enumerated() {
+            dateLabel.stringValue = dateString
+            dateLabel.sizeToFit()
+            let screenFrame = screens[index].frame
+            let newX = screenFrame.midX - dateLabel.frame.width / 2
+            let newY = screenFrame.maxY - dateLabel.frame.height - 50
+            dateLabel.frame.origin = CGPoint(x: newX, y: newY)
+        }
+        for (index, timeLabel) in clockTimeLabels.enumerated() {
+            timeLabel.stringValue = timeString
+            timeLabel.sizeToFit()
+            let screenFrame = screens[index].frame
+            let newX = screenFrame.midX - timeLabel.frame.width / 2
+            let newY = screenFrame.midY - timeLabel.frame.height / 2
+            timeLabel.frame.origin = CGPoint(x: newX, y: newY)
+        }
     }
 }
