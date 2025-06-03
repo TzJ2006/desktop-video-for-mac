@@ -224,24 +224,33 @@ struct PreferencesView: View {
         desktop_videoApp.applyGlobalMute(globalMute)
     }
 
-    private func handleLaunchAtLoginChange() {
-        do {
-            if launchAtLogin {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-            launchAtLoginStorage = launchAtLogin
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = NSLocalizedString("LaunchAtLoginFailed", comment: "")
-            alert.informativeText = error.localizedDescription
-            alert.alertStyle = .warning
-            alert.runModal()
-            // Reset to stored value on failure
-            launchAtLogin = launchAtLoginStorage
-        }
+private func handleLaunchAtLoginChange() {
+    guard #available(macOS 13.0, *) else {
+        let alert = NSAlert()
+        alert.messageText = L("UnsupportedVersion")
+        alert.informativeText = L("Launch at login requires macOS 13.0 or later.")
+        alert.alertStyle = .warning
+        alert.runModal()
+        launchAtLogin = launchAtLoginStorage
+        return
     }
+
+    do {
+        if launchAtLogin {
+            try SMAppService.mainApp.register()
+        } else {
+            try SMAppService.mainApp.unregister()
+        }
+        launchAtLoginStorage = launchAtLogin
+    } catch {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("LaunchAtLoginFailed", comment: "")
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.runModal()
+        launchAtLogin = launchAtLoginStorage
+    }
+}
 
     private func restartApplication() {
         let url = URL(fileURLWithPath: Bundle.main.resourcePath!)

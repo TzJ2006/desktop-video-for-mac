@@ -1247,6 +1247,40 @@
         }
       }
     },
+    "UnsupportedLaunchAtLogin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launch at login requires macOS 13.0 or later."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请升级至 MacOS 13 来使用该功能"
+          }
+        }
+      }
+    },
+    "UnsupportedVersion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsupported MacOS Version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不支持的 MacOS 系统"
+          }
+        }
+      }
+    },
     "Volume" : {
       "extractionState" : "manual",
       "localizations" : {
