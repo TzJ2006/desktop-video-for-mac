@@ -46,6 +46,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var clockTimer: Timer?
     // Prevent display sleep assertion
     private var displaySleepAssertionID: IOPMAssertionID = 0
+    // Track external suppression of screensaver
+    private var otherAppSuppressScreensaver: Bool = false
     
     // UserDefaults keys
     private let screensaverEnabledKey = "screensaverEnabled"
@@ -97,12 +99,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActiveNotification), name: NSApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidResignActiveNotification), name: NSApplication.didResignActiveNotification, object: nil)
 
+        // Register for distributed notifications for external screensaver suppression
+        let distCenter = DistributedNotificationCenter.default()
+        distCenter.addObserver(self,
+                               selector: #selector(handleExternalScreensaverActive(_:)),
+                               name: Notification.Name("OtherAppScreensaverActive"),
+                               object: nil)
+        distCenter.addObserver(self,
+                               selector: #selector(handleExternalScreensaverInactive(_:)),
+                               name: Notification.Name("OtherAppScreensaverInactive"),
+                               object: nil)
+
         startScreensaverTimer()
     }
 
     // MARK: - Screensaver Timer Methods
     
     func startScreensaverTimer() {
+        // Check for external suppression first
+        guard !otherAppSuppressScreensaver else {
+            print("Screensaver not started: external suppression active.")
+            return
+        }
         let now = Date()
         guard now.timeIntervalSince(lastScreensaverCheck) > 1 else {
             return  // 防抖：避免短时间内重复触发
@@ -328,7 +346,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 打开主控制器界面
     @objc func toggleMainWindow() {
-        NSRunningApplication.current.activate(options: [.activateAllWindows])
+        NSApp.activate(ignoringOtherApps: true)
         // 如果已经有窗口了就不新建窗口
         if let win = self.window {
             win.makeKeyAndOrderFront(nil)
@@ -605,5 +623,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let newY = screenFrame.midY - timeLabel.frame.height / 2
             timeLabel.frame.origin = CGPoint(x: newX, y: newY)
         }
+    }
+    // MARK: - External Screensaver Suppression
+    @objc private func handleExternalScreensaverActive(_ notification: Notification) {
+        otherAppSuppressScreensaver = true
+        // If a timer is running, invalidate it
+        screensaverTimer?.invalidate()
+        screensaverTimer = nil
+    }
+
+    @objc private func handleExternalScreensaverInactive(_ notification: Notification) {
+        otherAppSuppressScreensaver = false
+        // Restart timer if appropriate
+        startScreensaverTimer()
     }
 }
