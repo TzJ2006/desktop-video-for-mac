@@ -24,10 +24,23 @@ class SharedWallpaperWindowManager {
     private var debounceWorkItem: DispatchWorkItem?
     
     init() {
-        NSWorkspace.shared.notificationCenter.addObserver(
+        let wsnc = NSWorkspace.shared.notificationCenter
+        wsnc.addObserver(
             self,
             selector: #selector(handleWake),
             name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
+        wsnc.addObserver(
+            self,
+            selector: #selector(handleScreensDidWake),
+            name: NSWorkspace.screensDidWakeNotification,
+            object: nil
+        )
+        wsnc.addObserver(
+            self,
+            selector: #selector(handleScreensDidSleep),
+            name: NSWorkspace.screensDidSleepNotification,
             object: nil
         )
         NotificationCenter.default.addObserver(
@@ -54,6 +67,17 @@ class SharedWallpaperWindowManager {
                     }
                 }
             }
+        }
+    }
+
+    @objc private func handleScreensDidWake() {
+        handleWake()
+        handleScreenChange()
+    }
+
+    @objc private func handleScreensDidSleep() {
+        for (_, player) in players {
+            player.pause()
         }
     }
     
