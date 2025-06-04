@@ -48,6 +48,7 @@ struct desktop_videoApp: App {
     
     /// 切换静音的统一处理（菜单命令也会调用）
     static func applyGlobalMute(_ enabled: Bool) {
+        dlog("applyGlobalMute \(enabled)")
         guard let shared = shared else { return }
         shared.globalMute = enabled
         if enabled {
@@ -62,6 +63,7 @@ struct desktop_videoApp: App {
     }
 
     func showAboutDialog() {
+        dlog("showAboutDialog")
         let alert = NSAlert()
         alert.messageText = ""
         // Safer icon loading
@@ -196,6 +198,7 @@ struct PreferencesView: View {
     }
 
     private func loadStoredValues() {
+        dlog("loadStoredValues")
         autoSyncNewScreens = originalAutoSyncNewScreens
         launchAtLogin = originalLaunchAtLogin
         globalMute = originalGlobalMute
@@ -207,6 +210,7 @@ struct PreferencesView: View {
     }
 
     private func confirmChanges() {
+        dlog("confirmChanges")
         // 只保存设置到 AppStorage，但不立即应用
         autoSyncNewScreensStorage = autoSyncNewScreens
         launchAtLoginStorage = launchAtLogin
@@ -225,6 +229,7 @@ struct PreferencesView: View {
     }
 
 private func handleLaunchAtLoginChange() {
+    dlog("handleLaunchAtLoginChange")
     guard #available(macOS 13.0, *) else {
         let alert = NSAlert()
         alert.messageText = L("UnsupportedVersion")
@@ -253,6 +258,7 @@ private func handleLaunchAtLoginChange() {
 }
 
     private func restartApplication() {
+        dlog("restartApplication")
         let url = URL(fileURLWithPath: Bundle.main.resourcePath!)
         let path = url.deletingLastPathComponent().deletingLastPathComponent().absoluteString
         let task = Process()
@@ -263,6 +269,7 @@ private func handleLaunchAtLoginChange() {
     }
     
     private func showRestartAlert() {
+        dlog("showRestartAlert")
         let alert = NSAlert()
         alert.messageText = L("RestartRequiredTitle")
         alert.informativeText = L("RestartRequiredMessage")

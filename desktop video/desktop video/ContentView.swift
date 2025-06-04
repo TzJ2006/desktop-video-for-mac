@@ -36,6 +36,7 @@ class ScreenObserver: ObservableObject {
                 guard let self = self else { return }
                 let current = NSScreen.screens
                 let added = current.filter { !self.previousScreens.contains($0) }
+                dlog("screen change detected added=\(added.map{ $0.dv_localizedName })")
                 self.screens = current
                 self.previousScreens = current
 
@@ -125,11 +126,13 @@ struct ContentView: View {
         .padding(.bottom)
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            dlog("onDrop count=\(providers.count)")
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, error in
                 guard let url = url else { return }
 
                 let type = UTType(filenameExtension: url.pathExtension)
+                dlog("drop URL=\(url.lastPathComponent) type=\(String(describing: type))")
 
                 DispatchQueue.main.async {
                     guard let selected = selectedTabScreen ?? NSScreen.screens.first else { return }
@@ -193,6 +196,7 @@ struct SingleScreenView: View {
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .onAppear {
+                        dlog("filename appeared \(filename)")
                         appState.currentMediaURL = filename
                         AppDelegate.shared.startScreensaverTimer()
                     }
@@ -321,6 +325,7 @@ struct SingleScreenView: View {
             }
         }
         .onAppear {
+            dlog("SingleScreenView onAppear \(screen.dv_localizedName)")
             if let id = screen.dv_displayID,
                let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
                 self.currentEntry = entry
@@ -331,6 +336,7 @@ struct SingleScreenView: View {
     }
 
     func openFilePicker() {
+        dlog("openFilePicker for screen \(screen.dv_localizedName)")
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.movie, .image]
         panel.allowsMultipleSelection = false
@@ -342,6 +348,7 @@ struct SingleScreenView: View {
 
             // Determine UTType from the file extension
             let fileType = UTType(filenameExtension: url.pathExtension)
+            dlog("picker selected \(url.lastPathComponent) type=\(String(describing: fileType))")
 
             DispatchQueue.main.async {
                 if fileType?.conforms(to: .movie) == true {
