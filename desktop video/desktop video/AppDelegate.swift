@@ -169,6 +169,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 获取系统级用户空闲时间（秒）
     private func getSystemIdleTime() -> TimeInterval {
+        return 0
         var iterator: io_iterator_t = 0
         let result = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOHIDSystem"), &iterator)
         if result != KERN_SUCCESS { return 0 }
@@ -189,6 +190,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     @objc func runScreenSaver() {
+        return
         print("[Debug] runScreenSaver() entry, isInScreensaver=\(isInScreensaver)")
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         if isInScreensaver { return }
@@ -200,13 +202,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         print("Starting screensaver mode")
 
         // Prevent system screensaver/display sleep while our screensaver is active
-        let assertionReason = "DesktopVideo screensaver active" as CFString
-        IOPMAssertionCreateWithName(
-            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
-            IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            assertionReason,
-            &displaySleepAssertionID
-        )
+//        let assertionReason = "DesktopVideo screensaver active" as CFString
+//        IOPMAssertionCreateWithName(
+//            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+//            IOPMAssertionLevel(kIOPMAssertionLevelOn),
+//            assertionReason,
+//            &displaySleepAssertionID
+//        )
 
         // 打印 keys
         let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
@@ -574,6 +576,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     /// 判断指定屏幕是否需要暂停视频
     private func shouldPauseVideo(on screen: NSScreen) -> Bool {
+        return false
         guard let id = screen.dv_displayID,
               SharedWallpaperWindowManager.shared.windows[id] != nil else {
             return false
