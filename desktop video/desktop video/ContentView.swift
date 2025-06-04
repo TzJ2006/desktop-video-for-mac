@@ -196,9 +196,14 @@ struct SingleScreenView: View {
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .onAppear {
-                        dlog("filename appeared \(filename)")
-                        appState.currentMediaURL = filename
-                        AppDelegate.shared.startScreensaverTimer()
+//                        dlog("filename appeared \(filename)")
+//                        appState.currentMediaURL = filename
+//                        AppDelegate.shared.startScreensaverTimer()
+                        if appState.currentMediaURL != filename {
+                            dlog("filename appeared \(filename)")
+                            appState.currentMediaURL = filename
+                            AppDelegate.shared.startScreensaverTimer()
+                        }
                     }
 
                 Button {

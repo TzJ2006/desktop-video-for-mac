@@ -147,7 +147,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
         let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
-//        let delaySeconds = 1.0 // Just for testing Screen Saver
+//        let delaySeconds = 1.0  // Just for testing Screen Saver
 
         screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
@@ -170,7 +170,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 获取系统级用户空闲时间（秒）
     private func getSystemIdleTime() -> TimeInterval {
-        return 0
+//        return 0
         var iterator: io_iterator_t = 0
         let result = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOHIDSystem"), &iterator)
         if result != KERN_SUCCESS { return 0 }
@@ -191,7 +191,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     @objc func runScreenSaver() {
-        return
+//        return
         dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         if isInScreensaver { return }
@@ -202,16 +202,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         dlog("Starting screensaver mode")
 
-        // Prevent system screensaver/display sleep while our screensaver is active
-//        let assertionReason = "DesktopVideo screensaver active" as CFString
-//        IOPMAssertionCreateWithName(
-//            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
-//            IOPMAssertionLevel(kIOPMAssertionLevelOn),
-//            assertionReason,
-//            &displaySleepAssertionID
-//        )
+//        Prevent system screensaver/display sleep while our screensaver is active
+        let assertionReason = "DesktopVideo screensaver active" as CFString
+        IOPMAssertionCreateWithName(
+            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+            IOPMAssertionLevel(kIOPMAssertionLevelOn),
+            assertionReason,
+            &displaySleepAssertionID
+        )
 
-        // 打印 keys
+        // Use the original simple collection of window keys
         let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
         dlog("windows.keys = \(keys)")
 
@@ -239,7 +239,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
 
                 // Add date overlay
-                let screenFrame = wallpaperWindow.frame
                 let dateLabel = NSTextField(labelWithString: "")
                 dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
                 dateLabel.textColor = .white
@@ -247,11 +246,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 dateLabel.isBezeled = false
                 dateLabel.isEditable = false
                 dateLabel.sizeToFit()
-                // Position at top center
-                let dateX = screenFrame.midX - dateLabel.frame.width / 2
-                let dateY = screenFrame.maxY - dateLabel.frame.height * 3 - 20
-                dlog("dateY=\(dateY)")
-                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+                // Position dateLabel relative to the window's content bounds
+                if let contentView = wallpaperWindow.contentView {
+                    let contentBounds = contentView.bounds
+                    let dateX = contentBounds.midX - dateLabel.frame.width / 2
+                    let dateY = contentBounds.maxY - dateLabel.frame.height * 3 - 20
+                    dlog("dateY=\(dateY)")
+                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+                }
                 wallpaperWindow.contentView?.addSubview(dateLabel)
                 clockDateLabels.append(dateLabel)
 
@@ -263,10 +265,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 timeLabel.isBezeled = false
                 timeLabel.isEditable = false
                 timeLabel.sizeToFit()
-                let timeX = screenFrame.midX - timeLabel.frame.width / 2
-                // 用 dateY 减去两个 dateLabel 高度和 timeLabel 本身高度，确保向下摆放
-                let timeY = dateY - dateLabel.frame.height * 2 - timeLabel.frame.height
-                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+                // Position timeLabel relative to dateLabel within the window's content bounds
+                if let contentView = wallpaperWindow.contentView {
+                    let contentBounds = contentView.bounds
+                    let timeX = contentBounds.midX - timeLabel.frame.width / 2
+                    // Using local dateLabel frame to compute y offset
+                    let localDateY = dateLabel.frame.origin.y
+                    let timeY = localDateY - dateLabel.frame.height * 2 - timeLabel.frame.height
+                    timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+                }
                 wallpaperWindow.contentView?.addSubview(timeLabel)
                 clockTimeLabels.append(timeLabel)
             } else {
@@ -557,6 +564,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Idle Timer Methods
     private func resetIdleTimer() {
         dlog("resetIdleTimer")
+        // If screensaver is enabled, skip idle pause
+        guard !UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
         guard !isInScreensaver else { return }
         idleTimer?.invalidate()
@@ -595,7 +604,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// 判断指定屏幕是否需要暂停视频
     private func shouldPauseVideo(on screen: NSScreen) -> Bool {
         dlog("shouldPauseVideo on \(screen.dv_localizedName)")
-        return false
+//        return false
         guard let id = screen.dv_displayID,
               SharedWallpaperWindowManager.shared.windows[id] != nil else {
             return false
@@ -663,6 +672,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         timeFormatter.dateFormat = "HH:mm:ss"
         let timeString = timeFormatter.string(from: Date())
 
+        // Use the original mapping from window keys to screens
         let screens = SharedWallpaperWindowManager.shared.windows.keys.compactMap { NSScreen.screen(forDisplayID: $0) }
         for (index, dateLabel) in clockDateLabels.enumerated() {
             dateLabel.stringValue = dateString
