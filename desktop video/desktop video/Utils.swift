@@ -32,6 +32,10 @@ extension NSScreen {
     var dv_displayID: CGDirectDisplayID? {
         deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
     }
+
+    static func screen(forDisplayID id: CGDirectDisplayID) -> NSScreen? {
+        NSScreen.screens.first { $0.dv_displayID == id }
+    }
 }
 
 // MARK: - Security‑Scoped Bookmark 持久化

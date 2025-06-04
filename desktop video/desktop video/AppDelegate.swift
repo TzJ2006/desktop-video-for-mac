@@ -197,7 +197,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
 
         // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
-        for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
+        for (id, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
             wallpaperWindow.level = .screenSaver
             wallpaperWindow.ignoresMouseEvents = false
             wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -211,7 +211,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }, completionHandler: nil)
 
             // 确保视频继续播放
-            if let player = SharedWallpaperWindowManager.shared.players[screen] {
+            if let player = SharedWallpaperWindowManager.shared.players[id] {
                 player.play()
             }
 
@@ -302,7 +302,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         clockTimeLabels.removeAll()
 
         // 1. 对每个窗口执行淡出动画后再恢复
-        for (screen, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
+        for (id, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.5
                 wallpaperWindow.animator().alphaValue = 0
@@ -313,7 +313,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 wallpaperWindow.orderBack(nil)
 
                 // 确保视频继续播放
-                if let player = SharedWallpaperWindowManager.shared.players[screen] {
+                if let player = SharedWallpaperWindowManager.shared.players[id] {
                     player.play()
                 }
                 wallpaperWindow.alphaValue = 1 // 恢复透明度供下一次屏保使用
@@ -516,8 +516,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let interval = TimeInterval(UserDefaults.standard.integer(forKey: "idlePauseSeconds"))
         idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            for (screen, player) in SharedWallpaperWindowManager.shared.players {
-                if self.shouldPauseVideo(on: screen) {
+            for (sid, player) in SharedWallpaperWindowManager.shared.players {
+                if let screen = NSScreen.screen(forDisplayID: sid), self.shouldPauseVideo(on: screen) {
                     player.pause()
                 } else {
                     player.play()
@@ -527,8 +527,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func pauseVideoForAllScreens() {
-        for (screen, player) in SharedWallpaperWindowManager.shared.players {
-            if shouldPauseVideo(on: screen) {
+        for (sid, player) in SharedWallpaperWindowManager.shared.players {
+            if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
                 player.pause()
             }
         }
@@ -545,7 +545,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     /// 判断指定屏幕是否需要暂停视频
     private func shouldPauseVideo(on screen: NSScreen) -> Bool {
-        guard SharedWallpaperWindowManager.shared.windows[screen] != nil else {
+        guard let id = screen.dv_displayID,
+              SharedWallpaperWindowManager.shared.windows[id] != nil else {
             return false
         }
         let screenFrame = screen.frame
@@ -580,8 +581,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func spaceDidChange(_ notification: Notification) {
         // 桌面切换时，根据窗口大小决定是暂停还是播放
-        for (screen, player) in SharedWallpaperWindowManager.shared.players {
-            if shouldPauseVideo(on: screen) {
+        for (sid, player) in SharedWallpaperWindowManager.shared.players {
+            if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
                 player.pause()
             } else {
                 player.play()
@@ -606,7 +607,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         timeFormatter.dateFormat = "HH:mm:ss"
         let timeString = timeFormatter.string(from: Date())
 
-        let screens = Array(SharedWallpaperWindowManager.shared.windows.keys)
+        let screens = SharedWallpaperWindowManager.shared.windows.keys.compactMap { NSScreen.screen(forDisplayID: $0) }
         for (index, dateLabel) in clockDateLabels.enumerated() {
             dateLabel.stringValue = dateString
             dateLabel.sizeToFit()

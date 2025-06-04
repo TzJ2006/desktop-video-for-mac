@@ -37,6 +37,10 @@ class SharedWallpaperWindowManager {
             object: nil
         )
     }
+
+    private func id(for screen: NSScreen) -> CGDirectDisplayID? {
+        screen.dv_displayID
+    }
     
     @objc private func handleWake() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -54,19 +58,21 @@ class SharedWallpaperWindowManager {
     }
     
     func syncWindow(to screen: NSScreen, from source: NSScreen) {
-        guard let entry = screenContent[source] else { return }
+        guard let destID = id(for: screen),
+              let srcID = id(for: source),
+              let entry = screenContent[srcID] else { return }
         
         // Get playback state info
-        let currentVolume = players[source]?.volume ?? 1.0
+        let currentVolume = players[srcID]?.volume ?? 1.0
         let isVideoStretch: Bool
-        if let gravity = (currentViews[source] as? AVPlayerView)?.videoGravity {
+        if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
             isVideoStretch = (gravity == .resizeAspectFill)
         } else {
             isVideoStretch = false
         }
-        let isImageStretch = (currentViews[source] as? NSImageView)?.imageScaling == .scaleAxesIndependently
-        let currentTime = players[source]?.currentItem?.currentTime()
-        let shouldPlay = players[source]?.rate != 0
+        let isImageStretch = (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
+        let currentTime = players[srcID]?.currentItem?.currentTime()
+        let shouldPlay = players[srcID]?.rate != 0
         
         // Clear existing content
         clear(for: screen)
@@ -77,10 +83,10 @@ class SharedWallpaperWindowManager {
         case .video:
             showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
                 if let time = currentTime {
-                    self.players[screen]?.pause()
-                    self.players[screen]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                    self.players[destID]?.pause()
+                    self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
                         if shouldPlay {
-                            self.players[screen]?.play()
+                            self.players[destID]?.play()
                         }
                     }
                 }
@@ -88,7 +94,7 @@ class SharedWallpaperWindowManager {
         }
         
         // Update AppState.shared.lastMediaURL to the source entry’s original URL if not image
-        if let sourceEntry = screenContent[source], sourceEntry.type != .image {
+        if let sourceEntry = screenContent[srcID], sourceEntry.type != .image {
             AppState.shared.lastMediaURL = sourceEntry.url
         }
     }
@@ -105,12 +111,12 @@ class SharedWallpaperWindowManager {
     }
     
     /// Remember each screen's volume before a global mute is applied
-    private var savedVolumes: [NSScreen: Float] = [:]
-    private var currentViews: [NSScreen: NSView] = [:]
-    private var loopers: [NSScreen: AVPlayerLooper] = [:]
-    var windows: [NSScreen: WallpaperWindow] = [:]
-    var players: [NSScreen: AVQueuePlayer] = [:]
-    var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
+    private var savedVolumes: [CGDirectDisplayID: Float] = [:]
+    private var currentViews: [CGDirectDisplayID: NSView] = [:]
+    private var loopers: [CGDirectDisplayID: AVPlayerLooper] = [:]
+    var windows: [CGDirectDisplayID: WallpaperWindow] = [:]
+    var players: [CGDirectDisplayID: AVQueuePlayer] = [:]
+    var screenContent: [CGDirectDisplayID: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
     
     enum ContentType {
         case image
@@ -118,8 +124,9 @@ class SharedWallpaperWindowManager {
     }
     
     private func ensureWindow(for screen: NSScreen) {
-        if windows[screen] != nil {
-            windows[screen]?.orderFrontRegardless()
+        guard let sid = id(for: screen) else { return }
+        if windows[sid] != nil {
+            windows[sid]?.orderFrontRegardless()
             return
         }
         
@@ -138,22 +145,23 @@ class SharedWallpaperWindowManager {
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
         
-        self.windows[screen] = win
+        self.windows[sid] = win
     }
     
     func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
+        guard let sid = id(for: screen) else { return }
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
-        
+
         guard let image = NSImage(contentsOf: url),
-              let contentView = windows[screen]?.contentView else { return }
+              let contentView = windows[sid]?.contentView else { return }
         
         let imageView = NSImageView(frame: contentView.bounds)
         imageView.image = image
         imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
         imageView.autoresizingMask = [.width, .height]
         
-        self.screenContent[screen] = (.image, url, stretch, nil)
+        self.screenContent[sid] = (.image, url, stretch, nil)
         saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
         
         switchContent(to: imageView, for: screen)
@@ -174,19 +182,23 @@ class SharedWallpaperWindowManager {
     /// This saves each screen's last non‑zero volume before muting.
     func muteAllScreens() {
         // Save each screen's last non‑zero volume, then mute.
-        for screen in screenContent.keys {
-            let currentVol = screenContent[screen]?.volume ?? 0
-            if currentVol > 0 { savedVolumes[screen] = currentVol }
-            setVolume(0, for: screen)
+        for sid in screenContent.keys {
+            let currentVol = screenContent[sid]?.volume ?? 0
+            if currentVol > 0 { savedVolumes[sid] = currentVol }
+            if let screen = NSScreen.screen(forDisplayID: sid) {
+                setVolume(0, for: screen)
+            }
         }
     }
 
     /// Restore every screen's volume to what it was before the last global mute.
     /// Screens that were already at 0 remain muted.
     func restoreAllScreens() {
-        for screen in screenContent.keys {
-            let newVol = savedVolumes[screen] ?? (screenContent[screen]?.volume ?? 0)
-            setVolume(newVol, for: screen)
+        for sid in screenContent.keys {
+            let newVol = savedVolumes[sid] ?? (screenContent[sid]?.volume ?? 0)
+            if let screen = NSScreen.screen(forDisplayID: sid) {
+                setVolume(newVol, for: screen)
+            }
         }
         savedVolumes.removeAll()
 
@@ -220,30 +232,32 @@ class SharedWallpaperWindowManager {
     // if update, the video is no longer showing from memory
     // actually, this is a weird problem that it will only occur when handeling large videos.
     func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
-        players[screen]?.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
-        print(players[screen]!.volume)
-        if let playerView = currentViews[screen] as? AVPlayerView {
+        guard let sid = id(for: screen) else { return }
+        players[sid]?.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
+        if let playerView = currentViews[sid] as? AVPlayerView {
             playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
         }
         updateBookmark(stretch: stretch, volume: volume, screen: screen)
     }
     
     func updateImageStretch(for screen: NSScreen, stretch: Bool) {
-        if let imageView = currentViews[screen] as? NSImageView {
+        guard let sid = id(for: screen) else { return }
+        if let imageView = currentViews[sid] as? NSImageView {
             imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
         }
     }
     
     func clear(for screen: NSScreen) {
+        guard let sid = id(for: screen) else { return }
         stopVideoIfNeeded(for: screen)
-        if let entry = screenContent[screen], entry.type == .video {
-            players[screen]?.replaceCurrentItem(with: nil)
+        if let entry = screenContent[sid], entry.type == .video {
+            players[sid]?.replaceCurrentItem(with: nil)
         }
-        currentViews[screen]?.removeFromSuperview()
-        currentViews.removeValue(forKey: screen)
-        windows[screen]?.orderOut(nil)
-        screenContent.removeValue(forKey: screen)
-        windows.removeValue(forKey: screen)
+        currentViews[sid]?.removeFromSuperview()
+        currentViews.removeValue(forKey: sid)
+        windows[sid]?.orderOut(nil)
+        screenContent.removeValue(forKey: sid)
+        windows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
         
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
@@ -256,7 +270,7 @@ class SharedWallpaperWindowManager {
     }
     
     func restoreContent(for screen: NSScreen) {
-        guard let entry = screenContent[screen] else { return }
+        guard let sid = id(for: screen), let entry = screenContent[sid] else { return }
         switch entry.type {
         case .image:
             showImage(for: screen, url: entry.url, stretch: entry.stretch)
@@ -266,17 +280,18 @@ class SharedWallpaperWindowManager {
     }
     
     private func stopVideoIfNeeded(for screen: NSScreen) {
-        players[screen]?.pause()
-        players[screen]?.replaceCurrentItem(with: nil)
-        players.removeValue(forKey: screen)
-        loopers.removeValue(forKey: screen)
+        guard let sid = id(for: screen) else { return }
+        players[sid]?.pause()
+        players[sid]?.replaceCurrentItem(with: nil)
+        players.removeValue(forKey: sid)
+        loopers.removeValue(forKey: sid)
     }
     
     private func switchContent(to newView: NSView, for screen: NSScreen) {
-        guard let contentView = windows[screen]?.contentView else { return }
-        currentViews[screen]?.removeFromSuperview()
+        guard let sid = id(for: screen), let contentView = windows[sid]?.contentView else { return }
+        currentViews[sid]?.removeFromSuperview()
         contentView.addSubview(newView)
-        currentViews[screen] = newView
+        currentViews[sid] = newView
     }
     
     func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen){
@@ -340,7 +355,8 @@ class SharedWallpaperWindowManager {
     }
     
     func setVolume(_ volume: Float, for screen: NSScreen) {
-        if let entry = screenContent[screen], entry.type == .video {
+        guard let sid = id(for: screen) else { return }
+        if let entry = screenContent[sid], entry.type == .video {
             // Any manual change to volume disables global mute
             if volume > 0 {
                 desktop_videoApp.shared!.globalMute = false
@@ -348,7 +364,7 @@ class SharedWallpaperWindowManager {
 
             // Apply to the player and persist
             updateVideoSettings(for: screen, stretch: entry.stretch, volume: volume)
-            screenContent[screen] = (.video, entry.url, entry.stretch, volume)
+            screenContent[sid] = (.video, entry.url, entry.stretch, volume)
         }
 
         // Notify all UI panels so their sliders/labels refresh immediately
@@ -359,39 +375,45 @@ class SharedWallpaperWindowManager {
     }
     
     private func cleanupDisconnectedScreens() {
-        let activeScreens = Set(NSScreen.screens)
-        for screen in Array(windows.keys) {
-            if !activeScreens.contains(screen) {
-                // Check if over 24 hours, then remove bookmark and related data
-                if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
-                    let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
-                    if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
-                        UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
-                        UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
-                        UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
-                        UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
-                    }
+        let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
+        for sid in Array(windows.keys) {
+            if !activeIDs.contains(sid) {
+                let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
+                if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+                    UserDefaults.standard.removeObject(forKey: "bookmark-\(sid)")
+                    UserDefaults.standard.removeObject(forKey: "stretch-\(sid)")
+                    UserDefaults.standard.removeObject(forKey: "volume-\(sid)")
+                    UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
                 }
-                clear(for: screen)
+                if let screen = NSScreen.screen(forDisplayID: sid) {
+                    clear(for: screen)
+                } else {
+                    // remove without screen object
+                    players.removeValue(forKey: sid)
+                    loopers.removeValue(forKey: sid)
+                    currentViews.removeValue(forKey: sid)
+                    windows.removeValue(forKey: sid)
+                    screenContent.removeValue(forKey: sid)
+                }
             }
         }
     }
     
     func syncAllWindows(sourceScreen: NSScreen) {
         cleanupDisconnectedScreens()
-        guard let currentEntry = screenContent[sourceScreen] else {
+        guard let srcID = id(for: sourceScreen), let currentEntry = screenContent[srcID] else {
             return
         }
-        
-        let currentVolume = players[sourceScreen]?.volume ?? 1.0
+
+        let currentVolume = players[srcID]?.volume ?? 1.0
         let isVideoStretch: Bool
-        if let gravity = (currentViews[sourceScreen] as? AVPlayerView)?.videoGravity {
+        if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
             isVideoStretch = (gravity == .resizeAspectFill)
         } else {
             isVideoStretch = false
         }
-        let isImageStretch = (currentViews[sourceScreen] as? NSImageView)?.imageScaling == .scaleAxesIndependently
-        let currentTime = players[sourceScreen]?.currentItem?.currentTime()
+        let isImageStretch = (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
+        let currentTime = players[srcID]?.currentItem?.currentTime()
         
         for screen in NSScreen.screens {
             if screen == sourceScreen { continue }
@@ -400,13 +422,13 @@ class SharedWallpaperWindowManager {
             self.clear(for: screen)
             
             if currentEntry.type == .video {
-                let shouldPlay = players[sourceScreen]?.rate != 0
+                let shouldPlay = players[srcID]?.rate != 0
                 showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
-                    if let time = currentTime {
-                        self.players[screen]?.pause()
-                        self.players[screen]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                    if let time = currentTime, let destID = self.id(for: screen) {
+                        self.players[destID]?.pause()
+                        self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
                             if shouldPlay {
-                                self.players[screen]?.play()
+                                self.players[destID]?.play()
                             }
                         }
                     }
@@ -442,24 +464,33 @@ class SharedWallpaperWindowManager {
     }
     
     private func reloadScreens() {
-        let activeScreens = Set(NSScreen.screens)
-        let knownScreens = Set(windows.keys)
-        
+        let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
+        let knownIDs = Set(windows.keys)
+
         // Remove windows for disconnected screens
-        for screen in knownScreens.subtracting(activeScreens) {
-            clear(for: screen)
+        for sid in knownIDs.subtracting(activeIDs) {
+            if let screen = NSScreen.screen(forDisplayID: sid) {
+                clear(for: screen)
+            } else {
+                players.removeValue(forKey: sid)
+                loopers.removeValue(forKey: sid)
+                currentViews.removeValue(forKey: sid)
+                windows.removeValue(forKey: sid)
+                screenContent.removeValue(forKey: sid)
+            }
         }
-        
+
         // Add windows for newly connected screens
-        for screen in activeScreens.subtracting(knownScreens) {
-            if let entry = screenContent[screen] {
+        for screen in NSScreen.screens {
+            guard let sid = screen.dv_displayID, !knownIDs.contains(sid) else { continue }
+            if let entry = screenContent[sid] {
                 switch entry.type {
                 case .image:
                     showImage(for: screen, url: entry.url, stretch: entry.stretch)
                 case .video:
                     showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        if let player = self.players[screen], player.timeControlStatus != .playing {
+                        if let player = self.players[sid], player.timeControlStatus != .playing {
                             player.play()
                         }
                     }
@@ -477,9 +508,10 @@ class SharedWallpaperWindowManager {
     ///   - originalURL: The original (user-chosen) video URL, to preserve user intent.
     ///   - onReady: Callback when ready.
     func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, onReady: (() -> Void)? = nil) {
+        guard let sid = id(for: screen) else { return }
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
-        guard let contentView = windows[screen]?.contentView else { return }
+        guard let contentView = windows[sid]?.contentView else { return }
         
         // Write data to a temporary file
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
@@ -503,10 +535,10 @@ class SharedWallpaperWindowManager {
         playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
         playerView.autoresizingMask = [.width, .height]
         
-        players[screen] = queuePlayer
-        loopers[screen] = looper
+        players[sid] = queuePlayer
+        loopers[sid] = looper
         // Track the original source URL, not the temp path, to preserve user intent.
-        screenContent[screen] = (.video, originalURL ?? tempURL, stretch, volume)
+        screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
         
         if let sourceURL = originalURL {
             saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
