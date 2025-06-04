@@ -226,7 +226,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             dateLabel.sizeToFit()
             // Position at top center
             let dateX = screenFrame.midX - dateLabel.frame.width / 2
-            let dateY = screenFrame.maxY - dateLabel.frame.height - 50
+            let dateY = screenFrame.maxY - dateLabel.frame.height * 3
             dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
             wallpaperWindow.contentView?.addSubview(dateLabel)
             clockDateLabels.append(dateLabel)
@@ -241,7 +241,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             timeLabel.sizeToFit()
             // Position below date at center
             let timeX = screenFrame.midX - timeLabel.frame.width / 2
-            let timeY = screenFrame.midY - timeLabel.frame.height / 2
+            let timeY = screenFrame.maxY - dateLabel.frame.height * 4 - timeLabel.frame.height / 2
             timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
             wallpaperWindow.contentView?.addSubview(timeLabel)
             clockTimeLabels.append(timeLabel)

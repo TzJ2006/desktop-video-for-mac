@@ -87,7 +87,8 @@ struct ContentView: View {
             if screenObserver.screens.count > 1 {
                 Button {
                     if let sourceScreen = selectedTabScreen,
-                       let entry = SharedWallpaperWindowManager.shared.screenContent[sourceScreen] {
+                       let id = sourceScreen.dv_displayID,
+                       let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
 
                         if let fileType = UTType(filenameExtension: entry.url.pathExtension) {
                             if fileType.conforms(to: .movie) || fileType.conforms(to: .image) {
