@@ -111,6 +111,11 @@ class SharedWallpaperWindowManager {
     var windows: [NSScreen: WallpaperWindow] = [:]
     var players: [NSScreen: AVQueuePlayer] = [:]
     var screenContent: [NSScreen: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
+
+    /// Temporary files created when playing videos from memory. These should be
+    /// removed when the content is cleared or replaced to avoid filling the
+    /// temporary directory.
+    private var tempVideoFiles: [NSScreen: URL] = [:]
     
     enum ContentType {
         case image
@@ -270,6 +275,12 @@ class SharedWallpaperWindowManager {
         players[screen]?.replaceCurrentItem(with: nil)
         players.removeValue(forKey: screen)
         loopers.removeValue(forKey: screen)
+
+        // Remove any temporary video file associated with this screen
+        if let tmp = tempVideoFiles[screen] {
+            try? FileManager.default.removeItem(at: tmp)
+            tempVideoFiles.removeValue(forKey: screen)
+        }
     }
     
     private func switchContent(to newView: NSView, for screen: NSScreen) {
@@ -480,7 +491,7 @@ class SharedWallpaperWindowManager {
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
         guard let contentView = windows[screen]?.contentView else { return }
-        
+
         // Write data to a temporary file
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
         do {
@@ -489,6 +500,9 @@ class SharedWallpaperWindowManager {
             dlog("Failed to write video data to temp file: \(error)")
             return
         }
+
+        // Record the temporary file so it can be cleaned up later
+        tempVideoFiles[screen] = tempURL
         
         let item = AVPlayerItem(url: tempURL)
         let queuePlayer = AVQueuePlayer()
