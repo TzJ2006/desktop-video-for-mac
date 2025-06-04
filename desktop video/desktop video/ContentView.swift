@@ -194,6 +194,7 @@ struct SingleScreenView: View {
                     .foregroundColor(.gray)
                     .onAppear {
                         appState.currentMediaURL = filename
+                        AppDelegate.shared.startScreensaverTimer()
                     }
 
                 Button {
@@ -333,30 +334,37 @@ struct SingleScreenView: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.movie, .image]
         panel.allowsMultipleSelection = false
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
 
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            // Determine UTType from the file extension
             let fileType = UTType(filenameExtension: url.pathExtension)
 
-            if fileType?.conforms(to: .movie) == true {
-                appState.lastMediaURL = url
-                SharedWallpaperWindowManager.shared.showVideo(
-                    for: screen,
-                    url: url,
-                    stretch: stretchToFill,
-                    volume: volume
-                )
-                if syncAllScreens {
-                    SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
-                }
-            } else if fileType?.conforms(to: .image) == true {
-                appState.lastMediaURL = url
-                SharedWallpaperWindowManager.shared.showImage(
-                    for: screen,
-                    url: url,
-                    stretch: stretchToFill
-                )
-                if syncAllScreens {
-                    SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+            DispatchQueue.main.async {
+                if fileType?.conforms(to: .movie) == true {
+                    appState.lastMediaURL = url
+                    SharedWallpaperWindowManager.shared.showVideo(
+                        for: screen,
+                        url: url,
+                        stretch: stretchToFill,
+                        volume: volume
+                    )
+                    if syncAllScreens {
+                        SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                    }
+                } else if fileType?.conforms(to: .image) == true {
+                    appState.lastMediaURL = url
+                    SharedWallpaperWindowManager.shared.showImage(
+                        for: screen,
+                        url: url,
+                        stretch: stretchToFill
+                    )
+                    if syncAllScreens {
+                        SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+                    }
                 }
             }
         }
