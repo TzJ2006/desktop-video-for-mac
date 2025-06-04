@@ -217,7 +217,12 @@ struct SingleScreenView: View {
                                 }
 
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    let playerVolume = SharedWallpaperWindowManager.shared.players[screen]?.volume ?? newVolume
+                                    let playerVolume: Float = {
+                                        if let id = screen.dv_displayID {
+                                            return SharedWallpaperWindowManager.shared.players[id]?.volume ?? newVolume
+                                        }
+                                        return newVolume
+                                    }()
                                     if abs(playerVolume - newVolume) > 0.01 {
 
                                         if newVolume > 0 && desktop_videoApp.shared!.globalMute {
@@ -293,7 +298,8 @@ struct SingleScreenView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
         .onReceive(NotificationCenter.default.publisher(for: .wallpaperContentDidChange)) { _ in
-            if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+            if let id = screen.dv_displayID,
+               let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
                 if currentEntry?.url != entry.url ||
                     currentEntry?.volume != entry.volume ||
                     currentEntry?.stretch != entry.stretch {
@@ -313,7 +319,8 @@ struct SingleScreenView: View {
             }
         }
         .onAppear {
-            if let entry = SharedWallpaperWindowManager.shared.screenContent[screen] {
+            if let id = screen.dv_displayID,
+               let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
                 self.currentEntry = entry
                 self.volume = entry.volume ?? 1.0
                 self.stretchToFill = entry.stretch
