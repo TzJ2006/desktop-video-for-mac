@@ -63,6 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        dlog("applicationDidFinishLaunching")
         AppDelegate.shared = self
         
         // 从书签中恢复窗口
@@ -116,10 +117,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Screensaver Timer Methods
     
     func startScreensaverTimer() {
-        print("[Debug] startScreensaverTimer called, isInScreensaver=\(isInScreensaver), otherAppSuppressScreensaver=\(otherAppSuppressScreensaver), url=\(AppState.shared.currentMediaURL ?? "None")")
+        dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")
         // Check for external suppression first
         guard !otherAppSuppressScreensaver else {
-            print("Screensaver not started: external suppression active.")
+            dlog("Screensaver not started: external suppression active.")
             return
         }
         let now = Date()
@@ -132,7 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // Check if selected media is valid and a player exists and is ready to play
         guard AppState.shared.currentMediaURL != nil else {
-            print("Screensaver not started: no valid media selected or playable.")
+            dlog("Screensaver not started: no valid media selected or playable.")
             return
         }
 
@@ -151,17 +152,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             guard AppState.shared.currentMediaURL != nil else {
-                print("Screensaver not started: no valid media selected or playable.")
+                dlog("Screensaver not started: no valid media selected or playable.")
                 self.screensaverTimer?.invalidate()
                 self.screensaverTimer = nil
                 return
             }
             let idleTime = self.getSystemIdleTime()
-            print(idleTime, delaySeconds)
+            dlog("idleTime=\(idleTime) delaySeconds=\(delaySeconds)")
             if idleTime >= delaySeconds {
                 self.screensaverTimer?.invalidate()
                 self.screensaverTimer = nil
-                print("[Debug] idleTime >= delaySeconds (\(idleTime) >= \(delaySeconds)), triggering runScreenSaver()")
+                dlog("idleTime >= delaySeconds (\(idleTime) >= \(delaySeconds)), triggering runScreenSaver()")
                 self.runScreenSaver()
             }
         }
@@ -191,7 +192,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     @objc func runScreenSaver() {
         return
-        print("[Debug] runScreenSaver() entry, isInScreensaver=\(isInScreensaver)")
+        dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         if isInScreensaver { return }
 
@@ -199,7 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         idleTimer?.invalidate()
         idleTimer = nil
 
-        print("Starting screensaver mode")
+        dlog("Starting screensaver mode")
 
         // Prevent system screensaver/display sleep while our screensaver is active
 //        let assertionReason = "DesktopVideo screensaver active" as CFString
@@ -212,13 +213,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // 打印 keys
         let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
-        print("[Debug] SharedWallpaperWindowManager.shared.windows.keys = \(keys)")
+        dlog("windows.keys = \(keys)")
 
         // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
         for id in keys {
-            print("[Debug] looping id = \(id)")
+            dlog("looping id = \(id)")
             if let screen = NSScreen.screen(forDisplayID: id) {
-                print("[Debug] found screen: \(screen)")
+                dlog("found screen: \(screen)")
                 guard let wallpaperWindow = SharedWallpaperWindowManager.shared.windows[id] else { continue }
                 wallpaperWindow.level = .screenSaver
                 wallpaperWindow.ignoresMouseEvents = false
@@ -249,7 +250,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 // Position at top center
                 let dateX = screenFrame.midX - dateLabel.frame.width / 2
                 let dateY = screenFrame.maxY - dateLabel.frame.height * 3 - 20
-                print(dateY)
+                dlog("dateY=\(dateY)")
                 dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
                 wallpaperWindow.contentView?.addSubview(dateLabel)
                 clockDateLabels.append(dateLabel)
@@ -269,7 +270,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 wallpaperWindow.contentView?.addSubview(timeLabel)
                 clockTimeLabels.append(timeLabel)
             } else {
-                print("[Debug] no NSScreen found forDisplayID \(id), skipping")
+                dlog("no NSScreen found forDisplayID \(id), skipping")
                 continue
             }
         }
@@ -306,9 +307,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func closeScreensaverWindows() {
+        dlog("closeScreensaverWindows")
         if !isInScreensaver { return }
 
-        print("Exiting screensaver mode")
+        dlog("Exiting screensaver mode")
 
         // Release the display-sleep prevention assertion
         if displaySleepAssertionID != 0 {
@@ -361,13 +363,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     @objc private func applicationDidBecomeActiveNotification() {
+        dlog("applicationDidBecomeActiveNotification")
         // Only close screensaver if currently in screensaver
         if isInScreensaver {
             closeScreensaverWindows()
         }
     }
-    
+
     @objc private func applicationDidResignActiveNotification() {
+        dlog("applicationDidResignActiveNotification")
         // Only restart timer if not currently in screensaver
         if !isInScreensaver {
             startScreensaverTimer()
@@ -376,6 +380,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 打开主控制器界面
     @objc func toggleMainWindow() {
+        dlog("toggleMainWindow")
         NSApp.activate(ignoringOtherApps: true)
         // 如果已经有窗口了就不新建窗口
         if let win = self.window {
@@ -386,6 +391,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     static func openPreferencesWindow() {
+        dlog("openPreferencesWindow")
         guard let delegate = shared else { return }
         
         if let win = delegate.preferencesWindow {
@@ -412,10 +418,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func openPreferences() {
+        dlog("openPreferences")
         AppDelegate.openPreferencesWindow() // 调用静态方法
     }
 
     func windowWillClose(_ notification: Notification) {
+        dlog("windowWillClose")
         if let win = notification.object as? NSWindow, win == self.window {
             self.window = nil
         }
@@ -427,6 +435,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 打开窗口
     func openMainWindow() {
+        dlog("openMainWindow")
         if let win = self.window {
             if win.isMiniaturized {
                 win.deminiaturize(nil)
@@ -458,6 +467,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 重新打开窗口
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        dlog("applicationShouldHandleReopen visible=\(flag)")
         if !flag || window == nil || !window!.isVisible {
             NSRunningApplication.current.activate(options: [.activateAllWindows])
             openMainWindow()
@@ -467,6 +477,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 设置定时删除 bookmark 避免被塞垃圾
     func applyAppAppearanceSetting(onlyShowInMenuBar: Bool) {
+        dlog("applyAppAppearanceSetting onlyShowInMenuBar=\(onlyShowInMenuBar)")
         appearanceChangeWorkItem?.cancel()
         
         let workItem = DispatchWorkItem { [weak self] in
@@ -488,6 +499,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 设置菜单栏
     func setupStatusBarIcon() {
+        dlog("setupStatusBarIcon")
         if statusItem == nil {
             statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
             if let button = statusItem?.button {
@@ -522,6 +534,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     // 删除菜单栏图标
     func removeStatusBarIcon() {
+        dlog("removeStatusBarIcon")
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
             statusItem = nil
@@ -530,17 +543,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 如果点击菜单栏按钮就打开主控制器界面
     @objc func statusBarIconClicked() {
+        dlog("statusBarIconClicked")
         toggleMainWindow()
     }
 
     // 是否显示 Docker 栏图标
     public func setDockIconVisible(_ visible: Bool) {
+        dlog("setDockIconVisible \(visible)")
         applyAppAppearanceSetting(onlyShowInMenuBar: !visible)
         UserDefaults.standard.set(!visible, forKey: "isMenuBarOnly")
     }
 
     // MARK: - Idle Timer Methods
     private func resetIdleTimer() {
+        dlog("resetIdleTimer")
         guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
         guard !isInScreensaver else { return }
         idleTimer?.invalidate()
@@ -558,6 +574,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func pauseVideoForAllScreens() {
+        dlog("pauseVideoForAllScreens")
         for (sid, player) in SharedWallpaperWindowManager.shared.players {
             if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
                 player.pause()
@@ -566,6 +583,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func resumeVideoIfPausedByIdle() {
+        dlog("resumeVideoIfPausedByIdle")
         if isPausedDueToIdle {
             for player in SharedWallpaperWindowManager.shared.players.values {
                 player.play()
@@ -576,6 +594,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     /// 判断指定屏幕是否需要暂停视频
     private func shouldPauseVideo(on screen: NSScreen) -> Bool {
+        dlog("shouldPauseVideo on \(screen.dv_localizedName)")
         return false
         guard let id = screen.dv_displayID,
               SharedWallpaperWindowManager.shared.windows[id] != nil else {
@@ -603,15 +622,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // MARK: - NSApplicationDelegate Idle Pause
     func applicationDidBecomeActive(_ notification: Notification) {
+        dlog("applicationDidBecomeActive")
         resumeVideoIfPausedByIdle()
         resetIdleTimer()
     }
 
     func applicationDidResignActive(_ notification: Notification) {
+        dlog("applicationDidResignActive")
         resetIdleTimer()
     }
 
     @objc private func spaceDidChange(_ notification: Notification) {
+        dlog("spaceDidChange")
         // 桌面切换时，根据窗口大小决定是暂停还是播放
         for (sid, player) in SharedWallpaperWindowManager.shared.players {
             if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
@@ -625,10 +647,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     // Show About dialog from status bar
     @objc func showAboutFromStatus() {
+        dlog("showAboutFromStatus")
         desktop_videoApp.shared?.showAboutDialog()
     }
     // Helper to update all clock labels with current time and updated positioning logic
     private func updateClockLabels() {
+        dlog("updateClockLabels")
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale.current
         dateFormatter.dateFormat = "EEEE, dd-MM-yyyy" // e.g. "Tuesday, 03-06-2025"
@@ -660,6 +684,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     // MARK: - External Screensaver Suppression
     @objc private func handleExternalScreensaverActive(_ notification: Notification) {
+        dlog("handleExternalScreensaverActive")
         otherAppSuppressScreensaver = true
         // If a timer is running, invalidate it
         screensaverTimer?.invalidate()
@@ -667,6 +692,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func handleExternalScreensaverInactive(_ notification: Notification) {
+        dlog("handleExternalScreensaverInactive")
         otherAppSuppressScreensaver = false
         // Restart timer if appropriate
         startScreensaverTimer()
