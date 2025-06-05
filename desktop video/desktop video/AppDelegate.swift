@@ -55,9 +55,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private var cancellables = Set<AnyCancellable>()
 
-    // 防抖：上次屏保检查时间
-    private var lastScreensaverCheck: Date = .distantPast
-
     // lastAppearanceChangeTime 用于删除 bookmark, 24 小时后自动删除
     // appearanceChangeWorkItem 用于设置 bookmark
 
@@ -111,26 +108,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                                name: Notification.Name("OtherAppScreensaverInactive"),
                                object: nil)
 
-        startScreensaverTimer()
+//        startScreensaverTimer()
     }
 
     // MARK: - Screensaver Timer Methods
 
     func startScreensaverTimer() {
+        // If the screensaver timer is already running, do nothing
+        if screensaverTimer != nil && screensaverTimer?.isValid == true {
+            dlog("startScreensaverTimer: timer already running, returning early")
+            return
+        }
         dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")
         // Check for external suppression first
         guard !otherAppSuppressScreensaver else {
             dlog("Screensaver not started: external suppression active.")
             return
         }
-        let now = Date()
-        guard now.timeIntervalSince(lastScreensaverCheck) > 1 else {
-            return  // 防抖：避免短时间内重复触发
+        guard !isInScreensaver else {
+            dlog("Screensaver not started: is alread in screensaver.")
+            return
         }
-        lastScreensaverCheck = now
-
-        if isInScreensaver { return }
-
         // Check if selected media is valid and a player exists and is ready to play
         guard AppState.shared.currentMediaURL != nil else {
             dlog("Screensaver not started: no valid media selected or playable.")
@@ -246,14 +244,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 dateLabel.isBezeled = false
                 dateLabel.isEditable = false
                 dateLabel.sizeToFit()
-                // Position dateLabel relative to the window's content bounds
-                if let contentView = wallpaperWindow.contentView {
-                    let contentBounds = contentView.bounds
-                    let dateX = contentBounds.midX - dateLabel.frame.width / 2
-                    let dateY = contentBounds.maxY - dateLabel.frame.height * 3 - 20
-                    dlog("dateY=\(dateY)")
-                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
-                }
+                // Position dateLabel using screen.frame (same as updateClockLabels)
+                let screenFrame = screen.frame
+                let dateX = screenFrame.midX - dateLabel.frame.width / 2
+                let dateY = screenFrame.maxY - dateLabel.frame.height * 2.5
+                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
                 wallpaperWindow.contentView?.addSubview(dateLabel)
                 clockDateLabels.append(dateLabel)
 
@@ -265,15 +260,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 timeLabel.isBezeled = false
                 timeLabel.isEditable = false
                 timeLabel.sizeToFit()
-                // Position timeLabel relative to dateLabel within the window's content bounds
-                if let contentView = wallpaperWindow.contentView {
-                    let contentBounds = contentView.bounds
-                    let timeX = contentBounds.midX - timeLabel.frame.width / 2
-                    // Using local dateLabel frame to compute y offset
-                    let localDateY = dateLabel.frame.origin.y
-                    let timeY = localDateY - dateLabel.frame.height * 2 - timeLabel.frame.height
-                    timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
-                }
+                // Position timeLabel using screen.frame (same as updateClockLabels)
+                let timeX = screenFrame.midX - timeLabel.frame.width / 2
+                let timeY = dateLabel.frame.origin.y - dateLabel.frame.height * 1.5 - timeLabel.frame.height / 2
+                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
                 wallpaperWindow.contentView?.addSubview(timeLabel)
                 clockTimeLabels.append(timeLabel)
             } else {
@@ -664,7 +654,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         dlog("updateClockLabels")
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale.current
-        dateFormatter.dateFormat = "EEEE, dd-MM-yyyy" // e.g. "Tuesday, 03-06-2025"
+        dateFormatter.dateFormat = "EEEE, dd-MM-yyyy"
         let dateString = dateFormatter.string(from: Date())
 
         let timeFormatter = DateFormatter()
@@ -672,24 +662,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         timeFormatter.dateFormat = "HH:mm:ss"
         let timeString = timeFormatter.string(from: Date())
 
-        // Use the original mapping from window keys to screens
-        let screens = SharedWallpaperWindowManager.shared.windows.keys.compactMap { NSScreen.screen(forDisplayID: $0) }
-        for (index, dateLabel) in clockDateLabels.enumerated() {
-            dateLabel.stringValue = dateString
-            dateLabel.sizeToFit()
-            let screenFrame = screens[index].frame
-            let newX = screenFrame.midX - dateLabel.frame.width / 2
-            let newY = screenFrame.maxY - dateLabel.frame.height * 2.5
-            dateLabel.frame.origin = CGPoint(x: newX, y: newY)
-        }
-        for (index, timeLabel) in clockTimeLabels.enumerated() {
-            timeLabel.stringValue = timeString
-            timeLabel.sizeToFit()
-            let dateLabel = clockDateLabels[index]
-            // Place timeLabel below dateLabel, 向下两个 dateLabel 高度，减去自身高度
-            let timeX = dateLabel.frame.midX - timeLabel.frame.width / 2
-            let timeY = dateLabel.frame.origin.y - dateLabel.frame.height * 1.5 - timeLabel.frame.height / 2
-            timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+        // Iterate in same order as runScreenSaver: keys from window manager
+        let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
+        for (index, id) in keys.enumerated() {
+            guard index < clockDateLabels.count else { continue }
+            if let screen = NSScreen.screen(forDisplayID: id) {
+                let screenFrame = screen.frame
+
+                // Update date label
+                let dateLabel = clockDateLabels[index]
+                dateLabel.stringValue = dateString
+                dateLabel.sizeToFit()
+                let dateX = screenFrame.midX - dateLabel.frame.width / 2
+                let dateY = screenFrame.maxY - dateLabel.frame.height * 2.5
+                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+
+                // Update time label
+                let timeLabel = clockTimeLabels[index]
+                timeLabel.stringValue = timeString
+                timeLabel.sizeToFit()
+                let timeX = screenFrame.midX - timeLabel.frame.width / 2
+                let timeY = dateLabel.frame.origin.y - dateLabel.frame.height * 1.5 - timeLabel.frame.height / 2
+                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+            }
         }
     }
     // MARK: - External Screensaver Suppression

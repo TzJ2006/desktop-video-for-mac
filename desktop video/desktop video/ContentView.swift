@@ -196,9 +196,6 @@ struct SingleScreenView: View {
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .onAppear {
-//                        dlog("filename appeared \(filename)")
-//                        appState.currentMediaURL = filename
-//                        AppDelegate.shared.startScreensaverTimer()
                         if appState.currentMediaURL != filename {
                             dlog("filename appeared \(filename)")
                             appState.currentMediaURL = filename
@@ -389,10 +386,10 @@ fileprivate extension NSScreen {
             return self.localizedName
         } else if let idx = NSScreen.screens.firstIndex(of: self) {
             // Localized fallback name for screen with index
-            return String(format: NSLocalizedString("Screen %d", comment: ""), idx + 1)
+            return String(format: NSLocalizedString(L("Screen %d"), comment: ""), idx + 1)
         } else {
             // Localized fallback for unknown screen
-            return NSLocalizedString("UnknownScreen", comment: "")
+            return NSLocalizedString(L("UnknownScreen"), comment: "")
         }
     }
 }
