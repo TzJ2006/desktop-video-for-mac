@@ -289,6 +289,12 @@
             "value" : "Discard Change"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar cambios"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -808,6 +814,12 @@
             "value" : "Restart Now"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reiniciar ahora"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1256,10 +1268,28 @@
             "value" : "Launch at login requires macOS 13.0 or later."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar al iniciar sesión requiere macOS 13.0 o posterior."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le lancement au démarrage nécessite macOS 13.0 ou ultérieur."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "请升级至 MacOS 13 来使用该功能"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請升級至 MacOS 13 以使用此功能"
           }
         }
       }
@@ -1273,10 +1303,28 @@
             "value" : "Unsupported MacOS Version"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión de macOS no compatible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version de macOS non prise en charge"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "不支持的 MacOS 系统"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不支援的 MacOS 系統"
           }
         }
       }

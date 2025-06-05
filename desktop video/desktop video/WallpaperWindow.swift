@@ -7,7 +7,7 @@
 
 
 import Cocoa
-import AVFoundation  // Add this import for AVPlayer
+import AVFoundation  // 引入 AVPlayer 所需框架
 
 class WallpaperWindow: NSWindow {
     override var canBecomeKey: Bool { false }
@@ -16,10 +16,10 @@ class WallpaperWindow: NSWindow {
     private var playerLayer: AVPlayerLayer?
 
     func setVideoPlayer(_ player: AVPlayer) {
-        // Remove existing player layer if any
+        // 如已有图层先移除
         playerLayer?.removeFromSuperlayer()
 
-        // Create and configure the new player layer
+        // 创建并配置新的播放图层
         let layer = AVPlayerLayer(player: player)
         layer.frame = contentView?.bounds ?? .zero
         layer.videoGravity = .resizeAspectFill
@@ -28,7 +28,7 @@ class WallpaperWindow: NSWindow {
 
         self.playerLayer = layer
 
-        // Observe frame changes to update layer size
+        // 监听窗口尺寸变化以调整图层大小
         NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification, object: self, queue: .main) { [weak self] _ in
             self?.playerLayer?.frame = self?.contentView?.bounds ?? .zero
         }
