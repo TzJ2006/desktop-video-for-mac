@@ -48,11 +48,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var displaySleepAssertionID: IOPMAssertionID = 0
     // Track external suppression of screensaver
     private var otherAppSuppressScreensaver: Bool = false
-    
+
     // UserDefaults keys
     private let screensaverEnabledKey = "screensaverEnabled"
     private let screensaverDelayMinutesKey = "screensaverDelayMinutes"
-    
+
     private var cancellables = Set<AnyCancellable>()
 
     // 防抖：上次屏保检查时间
@@ -65,10 +65,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         dlog("applicationDidFinishLaunching")
         AppDelegate.shared = self
-        
+
         // 从书签中恢复窗口
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
-        
+
         // Docker / 菜单栏切换
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
@@ -88,14 +88,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             name: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil
         )
-        
+
         // Observe screensaver settings changes and start screensaver timer
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .sink { [weak self] _ in
                 self?.startScreensaverTimer()
             }
             .store(in: &cancellables)
-        
+
         // Observe app active/inactive notifications to reset screensaver timer
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActiveNotification), name: NSApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidResignActiveNotification), name: NSApplication.didResignActiveNotification, object: nil)
@@ -115,7 +115,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     // MARK: - Screensaver Timer Methods
-    
+
     func startScreensaverTimer() {
         dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")
         // Check for external suppression first
@@ -189,7 +189,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         return TimeInterval(idleNS) / 1_000_000_000
     }
-    
+
     @objc func runScreenSaver() {
 //        return
         dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
@@ -291,7 +291,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 2. 延迟 0.5 秒后再添加事件监听器并设置 isInScreensaver
         eventMonitors.forEach { NSEvent.removeMonitor($0) }
         eventMonitors.removeAll()
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let eventTypes: [NSEvent.EventTypeMask] = [.any]
             for eventType in eventTypes {
@@ -312,7 +312,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self.isInScreensaver = true
         }
     }
-    
+
     func closeScreensaverWindows() {
         dlog("closeScreensaverWindows")
         if !isInScreensaver { return }
@@ -368,7 +368,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 3. 重置屏保计时器
         startScreensaverTimer()
     }
-    
+
     @objc private func applicationDidBecomeActiveNotification() {
         dlog("applicationDidBecomeActiveNotification")
         // Only close screensaver if currently in screensaver
@@ -400,7 +400,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static func openPreferencesWindow() {
         dlog("openPreferencesWindow")
         guard let delegate = shared else { return }
-        
+
         if let win = delegate.preferencesWindow {
             win.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -486,7 +486,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applyAppAppearanceSetting(onlyShowInMenuBar: Bool) {
         dlog("applyAppAppearanceSetting onlyShowInMenuBar=\(onlyShowInMenuBar)")
         appearanceChangeWorkItem?.cancel()
-        
+
         let workItem = DispatchWorkItem { [weak self] in
             guard let self = self else { return }
             self.lastAppearanceChangeTime = Date()
@@ -499,7 +499,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             self.statusBarIconClicked()
         }
-        
+
         appearanceChangeWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
@@ -538,7 +538,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
     }
-    
+
     // 删除菜单栏图标
     func removeStatusBarIcon() {
         dlog("removeStatusBarIcon")
@@ -600,7 +600,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             isPausedDueToIdle = false
         }
     }
-    
+
     /// 判断指定屏幕是否需要暂停视频
     private func shouldPauseVideo(on screen: NSScreen) -> Bool {
         dlog("shouldPauseVideo on \(screen.dv_localizedName)")
