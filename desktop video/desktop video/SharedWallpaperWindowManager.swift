@@ -1,14 +1,3 @@
-// Debug log helper. Messages appear in Xcode's console / stdout when built in DEBUG mode
-func dlog(_ message: String, function: String = #function) {
-#if DEBUG
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm:ss.SSS"
-    let timestamp = formatter.string(from: Date())
-    print("[\(timestamp)] \(function): \(message)")
-#endif
-}
-/// Synchronize the wallpaper content from a source screen to a target screen.
-
 //
 //  WallpaperWindow 2.swift
 //  desktop video
@@ -208,7 +197,7 @@ class SharedWallpaperWindowManager {
             let data = try Data(contentsOf: url)
             showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume, originalURL: url, onReady: onReady)
         } catch {
-            print("Cannot load from memory!")
+            errorLog("Cannot load from memory!")
         }
     }
     
@@ -350,7 +339,7 @@ class SharedWallpaperWindowManager {
         guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { return }
         do {
             guard url.startAccessingSecurityScopedResource() else {
-                dlog("Failed to access security scoped resource for saving bookmark: \(url)")
+                errorLog("Failed to access security scoped resource for saving bookmark: \(url)")
                 return
             }
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
@@ -361,7 +350,7 @@ class SharedWallpaperWindowManager {
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "savedAt-\(displayID)")
             url.stopAccessingSecurityScopedResource()
         } catch {
-            dlog("Failed to save bookmark for \(url): \(error)")
+            errorLog("Failed to save bookmark for \(url): \(error)")
         }
     }
     
@@ -398,7 +387,7 @@ class SharedWallpaperWindowManager {
                     showImage(for: screen, url: url, stretch: stretch)
                 }
             } catch {
-                dlog("Failed to restore bookmark for screen \(displayID): \(error)")
+                errorLog("Failed to restore bookmark for screen \(displayID): \(error)")
             }
         }
     }
@@ -575,7 +564,7 @@ class SharedWallpaperWindowManager {
         do {
             try data.write(to: tempURL)
         } catch {
-            dlog("Failed to write video data to temp file: \(error)")
+            errorLog("Failed to write video data to temp file: \(error)")
             return
         }
         

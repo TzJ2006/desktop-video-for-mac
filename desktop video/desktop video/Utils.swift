@@ -63,3 +63,45 @@ struct BookmarkStore {
         }
     }
 }
+
+// MARK: - Timestamp Helper
+/// Returns a formatted timestamp used in log entries
+func dvTimestamp() -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+    return formatter.string(from: Date())
+}
+
+// MARK: - Logging Helpers
+/// Debug log helper. Messages appear only in Debug builds
+func dlog(_ message: String, function: String = #function) {
+#if DEBUG
+    print("[\(dvTimestamp())] \(function): \(message)")
+#endif
+}
+
+/// Error log helper. Writes messages to ~/Library/Logs/desktop-video.log with a timestamp
+/// In Debug builds the message is also printed to the console
+func errorLog(_ message: String, function: String = #function) {
+    let entry = "[\(dvTimestamp())] \(function): \(message)\n"
+#if DEBUG
+    print(entry, terminator: "")
+#endif
+    if let logDir = FileManager.default
+        .urls(for: .libraryDirectory, in: .userDomainMask)
+        .first?
+        .appendingPathComponent("Logs", isDirectory: true) {
+        let logURL = logDir.appendingPathComponent("desktop-video.log")
+        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: logURL.path) {
+            FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        }
+        if let handle = try? FileHandle(forWritingTo: logURL) {
+            defer { try? handle.close() }
+            handle.seekToEndOfFile()
+            if let data = entry.data(using: .utf8) {
+                handle.write(data)
+            }
+        }
+    }
+}
