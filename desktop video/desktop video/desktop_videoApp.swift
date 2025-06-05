@@ -35,7 +35,7 @@ struct desktop_videoApp: App {
                     showAboutDialog()
                 }
             }
-            
+
             // Replace the default Settings menu to prevent conflicts
             CommandGroup(replacing: .appSettings) {
                 Button(L("Preferences…")) {
@@ -45,7 +45,7 @@ struct desktop_videoApp: App {
             }
         }
     }
-    
+
     /// 切换静音的统一处理（菜单命令也会调用）
     static func applyGlobalMute(_ enabled: Bool) {
         dlog("applyGlobalMute \(enabled)")
@@ -224,7 +224,7 @@ struct PreferencesView: View {
         if launchAtLogin != launchAtLoginStorage {
             handleLaunchAtLoginChange()
         }
-        
+
         desktop_videoApp.applyGlobalMute(globalMute)
     }
 
@@ -267,7 +267,7 @@ private func handleLaunchAtLoginChange() {
         task.launch()
         NSApp.terminate(nil)
     }
-    
+
     private func showRestartAlert() {
         dlog("showRestartAlert")
         let alert = NSAlert()
@@ -276,7 +276,7 @@ private func handleLaunchAtLoginChange() {
         alert.alertStyle = .informational
         alert.addButton(withTitle: L("RestartNow"))
         alert.addButton(withTitle: L("DiscardChange"))
-        
+
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             // 立即重启应用

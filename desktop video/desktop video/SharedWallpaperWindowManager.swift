@@ -1,14 +1,3 @@
-// Debug log helper. Messages appear in Xcode's console / stdout when built in DEBUG mode
-func dlog(_ message: String, function: String = #function) {
-#if DEBUG
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm:ss.SSS"
-    let timestamp = formatter.string(from: Date())
-    print("[\(timestamp)] \(function): \(message)")
-#endif
-}
-/// Synchronize the wallpaper content from a source screen to a target screen.
-
 //
 //  WallpaperWindow 2.swift
 //  desktop video
@@ -23,9 +12,9 @@ import UniformTypeIdentifiers
 
 class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
-    
+
     private var debounceWorkItem: DispatchWorkItem?
-    
+
     init() {
         let wsnc = NSWorkspace.shared.notificationCenter
         wsnc.addObserver(
@@ -86,13 +75,13 @@ class SharedWallpaperWindowManager {
             player.pause()
         }
     }
-    
+
     func syncWindow(to screen: NSScreen, from source: NSScreen) {
         dlog("syncing window from \(source.dv_localizedName) to \(screen.dv_localizedName)")
         guard let destID = id(for: screen),
               let srcID = id(for: source),
               let entry = screenContent[srcID] else { return }
-        
+
         // Get playback state info
         let currentVolume = players[srcID]?.volume ?? 1.0
         let isVideoStretch: Bool
@@ -104,10 +93,10 @@ class SharedWallpaperWindowManager {
         let isImageStretch = (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
         let currentTime = players[srcID]?.currentItem?.currentTime()
         let shouldPlay = players[srcID]?.rate != 0
-        
+
         // Clear existing content
         clear(for: screen)
-        
+
         switch entry.type {
         case .image:
             showImage(for: screen, url: entry.url, stretch: isImageStretch)
@@ -123,24 +112,24 @@ class SharedWallpaperWindowManager {
                 }
             }
         }
-        
+
         // Update AppState.shared.lastMediaURL to the source entry’s original URL if not image
         if let sourceEntry = screenContent[srcID], sourceEntry.type != .image {
             AppState.shared.lastMediaURL = sourceEntry.url
         }
     }
-    
+
     var selectedScreenIndex: Int {
         get { UserDefaults.standard.integer(forKey: "selectedScreenIndex") }
         set { UserDefaults.standard.set(newValue, forKey: "selectedScreenIndex") }
     }
-    
+
     var selectedScreen: NSScreen? {
         let screens = NSScreen.screens
         guard selectedScreenIndex < screens.count else { return NSScreen.main }
         return screens[selectedScreenIndex]
     }
-    
+
     /// Remember each screen's volume before a global mute is applied
     private var savedVolumes: [CGDirectDisplayID: Float] = [:]
     private var currentViews: [CGDirectDisplayID: NSView] = [:]
@@ -148,7 +137,7 @@ class SharedWallpaperWindowManager {
     var windows: [CGDirectDisplayID: WallpaperWindow] = [:]
     var players: [CGDirectDisplayID: AVQueuePlayer] = [:]
     var screenContent: [CGDirectDisplayID: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
-    
+
     enum ContentType {
         case image
         case video
@@ -161,7 +150,7 @@ class SharedWallpaperWindowManager {
             windows[sid]?.orderFrontRegardless()
             return
         }
-        
+
         let screenFrame = screen.frame
         let win = WallpaperWindow(
             contentRect: screenFrame,
@@ -176,7 +165,7 @@ class SharedWallpaperWindowManager {
         win.collectionBehavior = [.canJoinAllSpaces, .stationary]
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
-        
+
         self.windows[sid] = win
     }
 
@@ -188,19 +177,19 @@ class SharedWallpaperWindowManager {
 
         guard let image = NSImage(contentsOf: url),
               let contentView = windows[sid]?.contentView else { return }
-        
+
         let imageView = NSImageView(frame: contentView.bounds)
         imageView.image = image
         imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
         imageView.autoresizingMask = [.width, .height]
-        
+
         self.screenContent[sid] = (.image, url, stretch, nil)
         saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
-        
+
         switchContent(to: imageView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
-    
+
     /// Plays a video for the given screen, always using memory-cached video data.
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
         dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
@@ -208,10 +197,10 @@ class SharedWallpaperWindowManager {
             let data = try Data(contentsOf: url)
             showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume, originalURL: url, onReady: onReady)
         } catch {
-            print("Cannot load from memory!")
+            errorLog("Cannot load from memory!")
         }
     }
-    
+
     /// Mute every screen by re‑using the same logic as the per‑screen mute button.
     /// This saves each screen's last non‑zero volume before muting.
     func muteAllScreens() {
@@ -253,7 +242,7 @@ class SharedWallpaperWindowManager {
             restoreAllScreens()
         }
     }
-    
+
     func applyGlobalMuteIfNeeded() {
         dlog("apply global mute if needed: \(desktop_videoApp.shared!.globalMute)")
         if desktop_videoApp.shared!.globalMute {
@@ -266,7 +255,7 @@ class SharedWallpaperWindowManager {
             object: nil
         )
     }
-    
+
     // if update, the video is no longer showing from memory
     // actually, this is a weird problem that it will only occur when handeling large videos.
     func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
@@ -278,7 +267,7 @@ class SharedWallpaperWindowManager {
         }
         updateBookmark(stretch: stretch, volume: volume, screen: screen)
     }
-    
+
     func updateImageStretch(for screen: NSScreen, stretch: Bool) {
         dlog("update image stretch on \(screen.dv_localizedName) stretch=\(stretch)")
         guard let sid = id(for: screen) else { return }
@@ -286,7 +275,7 @@ class SharedWallpaperWindowManager {
             imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
         }
     }
-    
+
     func clear(for screen: NSScreen) {
         dlog("clear content for \(screen.dv_localizedName)")
         guard let sid = id(for: screen) else { return }
@@ -300,7 +289,7 @@ class SharedWallpaperWindowManager {
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-        
+
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
         if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
             UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
@@ -309,7 +298,7 @@ class SharedWallpaperWindowManager {
             UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
         }
     }
-    
+
     func restoreContent(for screen: NSScreen) {
         dlog("restore content for \(screen.dv_localizedName)")
         guard let sid = id(for: screen), let entry = screenContent[sid] else { return }
@@ -337,20 +326,20 @@ class SharedWallpaperWindowManager {
         contentView.addSubview(newView)
         currentViews[sid] = newView
     }
-    
+
     func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen){
         dlog("update bookmark for \(screen.dv_localizedName) stretch=\(stretch) volume=\(String(describing: volume))")
         guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { return }
         UserDefaults.standard.set(stretch, forKey: "stretch-\(displayID)")
         UserDefaults.standard.set(volume, forKey: "volume-\(displayID)")
     }
-    
+
     private func saveBookmark(for url: URL, stretch: Bool, volume: Float?, screen: NSScreen) {
         dlog("save bookmark for \(screen.dv_localizedName) url=\(url.lastPathComponent) stretch=\(stretch) volume=\(String(describing: volume))")
         guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { return }
         do {
             guard url.startAccessingSecurityScopedResource() else {
-                dlog("Failed to access security scoped resource for saving bookmark: \(url)")
+                errorLog("Failed to access security scoped resource for saving bookmark: \(url)")
                 return
             }
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
@@ -361,16 +350,16 @@ class SharedWallpaperWindowManager {
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "savedAt-\(displayID)")
             url.stopAccessingSecurityScopedResource()
         } catch {
-            dlog("Failed to save bookmark for \(url): \(error)")
+            errorLog("Failed to save bookmark for \(url): \(error)")
         }
     }
-    
+
     func restoreFromBookmark() {
         dlog("restore from bookmark")
         for screen in NSScreen.screens {
             guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
             guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(displayID)") else { continue }
-            
+
             // Check saved time
             let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
             if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
@@ -381,7 +370,7 @@ class SharedWallpaperWindowManager {
                 UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
                 continue
             }
-            
+
             var isStale = false
             do {
                 let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
@@ -389,7 +378,7 @@ class SharedWallpaperWindowManager {
                 let ext = url.pathExtension.lowercased()
                 let stretch = UserDefaults.standard.bool(forKey: "stretch-\(displayID)")
                 let volume = UserDefaults.standard.object(forKey: "volume-\(displayID)") as? Float ?? 1.0
-                
+
                 if ["mp4", "mov", "m4v"].contains(ext) {
                     dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
                     showVideo(for: screen, url: url, stretch: stretch, volume: volume)
@@ -398,11 +387,11 @@ class SharedWallpaperWindowManager {
                     showImage(for: screen, url: url, stretch: stretch)
                 }
             } catch {
-                dlog("Failed to restore bookmark for screen \(displayID): \(error)")
+                errorLog("Failed to restore bookmark for screen \(displayID): \(error)")
             }
         }
     }
-    
+
     func setVolume(_ volume: Float, for screen: NSScreen) {
         dlog("set volume for \(screen.dv_localizedName) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
@@ -423,7 +412,7 @@ class SharedWallpaperWindowManager {
             object: nil
         )
     }
-    
+
     private func cleanupDisconnectedScreens() {
         dlog("cleanup disconnected screens")
         let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
@@ -449,7 +438,7 @@ class SharedWallpaperWindowManager {
             }
         }
     }
-    
+
     func syncAllWindows(sourceScreen: NSScreen) {
         dlog("sync all windows from \(sourceScreen.dv_localizedName)")
         cleanupDisconnectedScreens()
@@ -466,13 +455,13 @@ class SharedWallpaperWindowManager {
         }
         let isImageStretch = (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
         let currentTime = players[srcID]?.currentItem?.currentTime()
-        
+
         for screen in NSScreen.screens {
             if screen == sourceScreen { continue }
-            
+
             // Always clear content for this screen before setting new content
             self.clear(for: screen)
-            
+
             if currentEntry.type == .video {
                 let shouldPlay = players[srcID]?.rate != 0
                 showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
@@ -490,7 +479,7 @@ class SharedWallpaperWindowManager {
             }
         }
     }
-    
+
     func selectAndImportVideo() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -554,7 +543,7 @@ class SharedWallpaperWindowManager {
             }
         }
     }
-    
+
     /// Plays a video from memory data by writing it to a temporary file and playing as usual.
     /// - Parameters:
     ///   - screen: The screen to display the video on.
@@ -569,41 +558,41 @@ class SharedWallpaperWindowManager {
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
         guard let contentView = windows[sid]?.contentView else { return }
-        
+
         // Write data to a temporary file
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
         do {
             try data.write(to: tempURL)
         } catch {
-            dlog("Failed to write video data to temp file: \(error)")
+            errorLog("Failed to write video data to temp file: \(error)")
             return
         }
-        
+
         let item = AVPlayerItem(url: tempURL)
         let queuePlayer = AVQueuePlayer()
         queuePlayer.automaticallyWaitsToMinimizeStalling = false
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
-        
+
         queuePlayer.volume = volume
-        
+
         let playerView = AVPlayerView(frame: contentView.bounds)
         playerView.player = queuePlayer
         playerView.controlsStyle = .none
         playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
         playerView.autoresizingMask = [.width, .height]
-        
+
         players[sid] = queuePlayer
         loopers[sid] = looper
         // Track the original source URL, not the temp path, to preserve user intent.
         screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
-        
+
         if let sourceURL = originalURL {
             saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
         }
-        
+
         switchContent(to: playerView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             queuePlayer.play()
             onReady?()
