@@ -35,21 +35,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var idleStartTime: Date?
     private var isPausedDueToIdle: Bool = false
 
-    // Screensaver related
+    // 屏保相关变量
     private var screensaverTimer: Timer?
     private var screensaverWindows: [NSWindow] = []
     private var eventMonitors: [Any] = []
     private var isInScreensaver = false
-    // Clock overlays for screensaver
+    // 屏保模式下的时钟标签
     private var clockDateLabels: [NSTextField] = []
     private var clockTimeLabels: [NSTextField] = []
     private var clockTimer: Timer?
-    // Prevent display sleep assertion
+    // 防止显示器休眠的断言 ID
     private var displaySleepAssertionID: IOPMAssertionID = 0
-    // Track external suppression of screensaver
+    // 外部应用禁止屏保的标记
     private var otherAppSuppressScreensaver: Bool = false
 
-    // UserDefaults keys
+    // UserDefaults 键名
     private let screensaverEnabledKey = "screensaverEnabled"
     private let screensaverDelayMinutesKey = "screensaverDelayMinutes"
 
@@ -66,7 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 从书签中恢复窗口
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
 
-        // Docker / 菜单栏切换
+        // 切换 Dock 图标或仅菜单栏模式
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
             self.setDockIconVisible(true)
@@ -86,18 +86,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
-        // Observe screensaver settings changes and start screensaver timer
+        // 监听屏保设置变化并启动计时器
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .sink { [weak self] _ in
                 self?.startScreensaverTimer()
             }
             .store(in: &cancellables)
 
-        // Observe app active/inactive notifications to reset screensaver timer
+        // 监听应用激活状态以重置屏保计时器
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActiveNotification), name: NSApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidResignActiveNotification), name: NSApplication.didResignActiveNotification, object: nil)
 
-        // Register for distributed notifications for external screensaver suppression
+        // 注册分布式通知，用于外部应用控制屏保
         let distCenter = DistributedNotificationCenter.default()
         distCenter.addObserver(self,
                                selector: #selector(handleExternalScreensaverActive(_:)),
@@ -114,13 +114,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Screensaver Timer Methods
 
     func startScreensaverTimer() {
-        // If the screensaver timer is already running, do nothing
+        // 若计时器已在运行则直接返回
         if screensaverTimer != nil && screensaverTimer?.isValid == true {
             dlog("startScreensaverTimer: timer already running, returning early")
             return
         }
         dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")
-        // Check for external suppression first
+        // 先检查是否被其他应用暂停
         guard !otherAppSuppressScreensaver else {
             dlog("Screensaver not started: external suppression active.")
             return
@@ -129,7 +129,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             dlog("Screensaver not started: is alread in screensaver.")
             return
         }
-        // Check if selected media is valid and a player exists and is ready to play
+        // 检查是否有可播放的媒体
         guard AppState.shared.currentMediaURL != nil else {
             dlog("Screensaver not started: no valid media selected or playable.")
             return
@@ -200,7 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         dlog("Starting screensaver mode")
 
-//        Prevent system screensaver/display sleep while our screensaver is active
+//        防止系统进入屏保或息屏
         let assertionReason = "DesktopVideo screensaver active" as CFString
         IOPMAssertionCreateWithName(
             kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
@@ -209,7 +209,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             &displaySleepAssertionID
         )
 
-        // Use the original simple collection of window keys
+        // 使用现有窗口列表的键值
         let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
         dlog("windows.keys = \(keys)")
 
@@ -236,7 +236,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     player.play()
                 }
 
-                // Add date overlay
+                // 添加日期文本
                 let dateLabel = NSTextField(labelWithString: "")
                 dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
                 dateLabel.textColor = .white
@@ -244,7 +244,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 dateLabel.isBezeled = false
                 dateLabel.isEditable = false
                 dateLabel.sizeToFit()
-                // Position dateLabel using screen.frame (same as updateClockLabels)
+                // 根据 screen.frame 计算日期标签位置（与 updateClockLabels 相同）
                 let screenFrame = screen.frame
                 let dateX = screenFrame.midX - dateLabel.frame.width / 2
                 let dateY = screenFrame.maxY - dateLabel.frame.height * 2.5
@@ -252,7 +252,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 wallpaperWindow.contentView?.addSubview(dateLabel)
                 clockDateLabels.append(dateLabel)
 
-                // Add time overlay, place below dateLabel (two dateLabel heights down)
+                // 添加时间文本，位于日期标签下方约两倍高度处
                 let timeLabel = NSTextField(labelWithString: "")
                 timeLabel.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
                 timeLabel.textColor = .white
@@ -260,7 +260,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 timeLabel.isBezeled = false
                 timeLabel.isEditable = false
                 timeLabel.sizeToFit()
-                // Position timeLabel using screen.frame (same as updateClockLabels)
+                // 根据 screen.frame 计算时间标签位置（与 updateClockLabels 相同）
                 let timeX = screenFrame.midX - timeLabel.frame.width / 2
                 let timeY = dateLabel.frame.origin.y - dateLabel.frame.height * 1.5 - timeLabel.frame.height / 2
                 timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
@@ -272,7 +272,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
 
-        // Start clock updater
+        // 开始更新时钟标签
         updateClockLabels() // initial update
         clockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.updateClockLabels()
@@ -309,13 +309,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         dlog("Exiting screensaver mode")
 
-        // Release the display-sleep prevention assertion
+        // 释放防休眠断言
         if displaySleepAssertionID != 0 {
             IOPMAssertionRelease(displaySleepAssertionID)
             displaySleepAssertionID = 0
         }
 
-        // Invalidate and clear clock timer/labels
+        // 清理时钟定时器和标签
         clockTimer?.invalidate()
         clockTimer = nil
         for label in clockDateLabels {
@@ -554,7 +554,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Idle Timer Methods
     private func resetIdleTimer() {
         dlog("resetIdleTimer")
-        // If screensaver is enabled, skip idle pause
+        // 开启屏保时跳过闲置暂停
         guard !UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
         guard !isInScreensaver else { return }
@@ -644,12 +644,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 重置空闲计时器
         resetIdleTimer()
     }
-    // Show About dialog from status bar
+    // 从菜单栏打开关于窗口
     @objc func showAboutFromStatus() {
         dlog("showAboutFromStatus")
         desktop_videoApp.shared?.showAboutDialog()
     }
-    // Helper to update all clock labels with current time and updated positioning logic
+    // 更新时钟标签位置和时间
     private func updateClockLabels() {
         dlog("updateClockLabels")
         let dateFormatter = DateFormatter()
@@ -662,14 +662,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         timeFormatter.dateFormat = "HH:mm:ss"
         let timeString = timeFormatter.string(from: Date())
 
-        // Iterate in same order as runScreenSaver: keys from window manager
+        // 与 runScreenSaver 中相同的顺序遍历窗口键值
         let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
         for (index, id) in keys.enumerated() {
             guard index < clockDateLabels.count else { continue }
             if let screen = NSScreen.screen(forDisplayID: id) {
                 let screenFrame = screen.frame
 
-                // Update date label
+                // 更新日期标签
                 let dateLabel = clockDateLabels[index]
                 dateLabel.stringValue = dateString
                 dateLabel.sizeToFit()
@@ -677,7 +677,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let dateY = screenFrame.maxY - dateLabel.frame.height * 2.5
                 dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
-                // Update time label
+                // 更新时间标签
                 let timeLabel = clockTimeLabels[index]
                 timeLabel.stringValue = timeString
                 timeLabel.sizeToFit()
@@ -691,7 +691,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func handleExternalScreensaverActive(_ notification: Notification) {
         dlog("handleExternalScreensaverActive")
         otherAppSuppressScreensaver = true
-        // If a timer is running, invalidate it
+        // 若计时器存在则取消
         screensaverTimer?.invalidate()
         screensaverTimer = nil
     }
@@ -699,7 +699,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func handleExternalScreensaverInactive(_ notification: Notification) {
         dlog("handleExternalScreensaverInactive")
         otherAppSuppressScreensaver = false
-        // Restart timer if appropriate
+        // 如有必要重新启动计时器
         startScreensaverTimer()
     }
 }

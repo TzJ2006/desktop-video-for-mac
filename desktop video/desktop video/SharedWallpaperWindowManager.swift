@@ -82,7 +82,7 @@ class SharedWallpaperWindowManager {
               let srcID = id(for: source),
               let entry = screenContent[srcID] else { return }
 
-        // Get playback state info
+        // 获取当前播放状态
         let currentVolume = players[srcID]?.volume ?? 1.0
         let isVideoStretch: Bool
         if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
@@ -94,7 +94,7 @@ class SharedWallpaperWindowManager {
         let currentTime = players[srcID]?.currentItem?.currentTime()
         let shouldPlay = players[srcID]?.rate != 0
 
-        // Clear existing content
+        // 先清理目标屏幕内容
         clear(for: screen)
 
         switch entry.type {
@@ -113,7 +113,7 @@ class SharedWallpaperWindowManager {
             }
         }
 
-        // Update AppState.shared.lastMediaURL to the source entry’s original URL if not image
+        // 若源条目是视频，则更新 AppState 中记录的地址
         if let sourceEntry = screenContent[srcID], sourceEntry.type != .image {
             AppState.shared.lastMediaURL = sourceEntry.url
         }
@@ -130,7 +130,7 @@ class SharedWallpaperWindowManager {
         return screens[selectedScreenIndex]
     }
 
-    /// Remember each screen's volume before a global mute is applied
+    /// 全局静音前记录各屏幕的音量
     private var savedVolumes: [CGDirectDisplayID: Float] = [:]
     private var currentViews: [CGDirectDisplayID: NSView] = [:]
     private var loopers: [CGDirectDisplayID: AVPlayerLooper] = [:]
@@ -190,7 +190,7 @@ class SharedWallpaperWindowManager {
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
-    /// Plays a video for the given screen, always using memory-cached video data.
+    /// 为指定屏幕播放视频，始终从内存缓存读取数据。
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
         dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         do {
@@ -201,11 +201,11 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    /// Mute every screen by re‑using the same logic as the per‑screen mute button.
-    /// This saves each screen's last non‑zero volume before muting.
+    /// 使用与单屏静音相同的逻辑静音所有屏幕，
+    /// 会在静音前保存各屏幕最后一次非零音量。
     func muteAllScreens() {
         dlog("mute all screens")
-        // Save each screen's last non‑zero volume, then mute.
+        // 先记录音量再静音
         for sid in screenContent.keys {
             let currentVol = screenContent[sid]?.volume ?? 0
             if currentVol > 0 { savedVolumes[sid] = currentVol }
@@ -215,8 +215,8 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    /// Restore every screen's volume to what it was before the last global mute.
-    /// Screens that were already at 0 remain muted.
+    /// 恢复所有屏幕在上次全局静音前的音量，
+    /// 已经为 0 的屏幕保持静音。
     func restoreAllScreens() {
         dlog("restore all screens")
         for sid in screenContent.keys {
@@ -227,7 +227,7 @@ class SharedWallpaperWindowManager {
         }
         savedVolumes.removeAll()
 
-        // Notify UI panels so sliders refresh
+        // 通知界面刷新音量滑块
         NotificationCenter.default.post(
             name: Notification.Name("WallpaperContentDidChange"),
             object: nil
@@ -256,8 +256,8 @@ class SharedWallpaperWindowManager {
         )
     }
 
-    // if update, the video is no longer showing from memory
-    // actually, this is a weird problem that it will only occur when handeling large videos.
+    // 更新设置后视频不再从内存播放，
+    // 处理超大文件时会遇到此问题。
     func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
         dlog("update video settings on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
@@ -346,7 +346,7 @@ class SharedWallpaperWindowManager {
             UserDefaults.standard.set(bookmarkData, forKey: "bookmark-\(displayID)")
             UserDefaults.standard.set(stretch, forKey: "stretch-\(displayID)")
             UserDefaults.standard.set(volume, forKey: "volume-\(displayID)")
-            // Save current timestamp
+            // 保存当前时间戳
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "savedAt-\(displayID)")
             url.stopAccessingSecurityScopedResource()
         } catch {
@@ -360,7 +360,7 @@ class SharedWallpaperWindowManager {
             guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
             guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(displayID)") else { continue }
 
-            // Check saved time
+            // 检查记录是否过期
             let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
             if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
                 // 超过 24 小时，删除记录
@@ -396,17 +396,17 @@ class SharedWallpaperWindowManager {
         dlog("set volume for \(screen.dv_localizedName) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
         if let entry = screenContent[sid], entry.type == .video {
-            // Any manual change to volume disables global mute
+            // 手动调整音量会取消全局静音
             if volume > 0 {
                 desktop_videoApp.shared!.globalMute = false
             }
 
-            // Apply to the player and persist
+            // 应用到播放器并持久化
             updateVideoSettings(for: screen, stretch: entry.stretch, volume: volume)
             screenContent[sid] = (.video, entry.url, entry.stretch, volume)
         }
 
-        // Notify all UI panels so their sliders/labels refresh immediately
+        // 通知所有界面立即刷新滑块和标签
         NotificationCenter.default.post(
             name: Notification.Name("WallpaperContentDidChange"),
             object: nil
@@ -428,7 +428,7 @@ class SharedWallpaperWindowManager {
                 if let screen = NSScreen.screen(forDisplayID: sid) {
                     clear(for: screen)
                 } else {
-                    // remove without screen object
+                    // 无对应屏幕对象时直接移除记录
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
@@ -459,7 +459,7 @@ class SharedWallpaperWindowManager {
         for screen in NSScreen.screens {
             if screen == sourceScreen { continue }
 
-            // Always clear content for this screen before setting new content
+            // 设置新内容前先清空该屏幕
             self.clear(for: screen)
 
             if currentEntry.type == .video {
@@ -510,7 +510,7 @@ class SharedWallpaperWindowManager {
         let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
         let knownIDs = Set(windows.keys)
 
-        // Remove windows for disconnected screens
+        // 移除已断开的屏幕窗口
         for sid in knownIDs.subtracting(activeIDs) {
             dlog("remove window for display \(sid)")
             if let screen = NSScreen.screen(forDisplayID: sid) {
@@ -524,7 +524,7 @@ class SharedWallpaperWindowManager {
             }
         }
 
-        // Add windows for newly connected screens
+        // 为新连接的屏幕创建窗口
         for screen in NSScreen.screens {
             guard let sid = screen.dv_displayID, !knownIDs.contains(sid) else { continue }
             dlog("add window for \(screen.dv_localizedName)")
@@ -544,14 +544,14 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    /// Plays a video from memory data by writing it to a temporary file and playing as usual.
+    /// 将内存中的视频数据写入临时文件后播放。
     /// - Parameters:
-    ///   - screen: The screen to display the video on.
-    ///   - data: The video data.
-    ///   - stretch: Whether to stretch the video.
-    ///   - volume: The playback volume.
-    ///   - originalURL: The original (user-chosen) video URL, to preserve user intent.
-    ///   - onReady: Callback when ready.
+    ///   - screen: 要显示视频的屏幕
+    ///   - data: 视频数据
+    ///   - stretch: 是否铺满
+    ///   - volume: 播放音量
+    ///   - originalURL: 用户选择的视频源地址
+    ///   - onReady: 准备完成回调
     func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, onReady: (() -> Void)? = nil) {
         dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
@@ -559,7 +559,7 @@ class SharedWallpaperWindowManager {
         stopVideoIfNeeded(for: screen)
         guard let contentView = windows[sid]?.contentView else { return }
 
-        // Write data to a temporary file
+        // 将数据写入临时文件
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
         do {
             try data.write(to: tempURL)
@@ -583,7 +583,7 @@ class SharedWallpaperWindowManager {
 
         players[sid] = queuePlayer
         loopers[sid] = looper
-        // Track the original source URL, not the temp path, to preserve user intent.
+        // 记录原始视频地址而非临时文件，用于保留用户选择
         screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
 
         if let sourceURL = originalURL {

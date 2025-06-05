@@ -64,24 +64,24 @@ struct BookmarkStore {
     }
 }
 
-// MARK: - Timestamp Helper
-/// Returns a formatted timestamp used in log entries
+// MARK: - 时间戳辅助
+/// 生成用于日志的时间戳字符串
 func dvTimestamp() -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
     return formatter.string(from: Date())
 }
 
-// MARK: - Logging Helpers
-/// Debug log helper. Messages appear only in Debug builds
+// MARK: - 日志辅助函数
+/// 调试日志，仅在 DEBUG 构建输出
 func dlog(_ message: String, function: String = #function) {
 #if DEBUG
     print("[\(dvTimestamp())] \(function): \(message)")
 #endif
 }
 
-/// Error log helper. Writes messages to ~/Library/Logs/desktop-video.log with a timestamp
-/// In Debug builds the message is also printed to the console
+/// 错误日志辅助，会写入 ~/Library/Logs/desktop-video.log
+/// 在 DEBUG 模式下同时输出到控制台
 func errorLog(_ message: String, function: String = #function) {
     let entry = "[\(dvTimestamp())] \(function): \(message)\n"
 #if DEBUG

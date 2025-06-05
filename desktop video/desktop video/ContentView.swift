@@ -5,7 +5,7 @@
 //  Created by 汤子嘉 on 3/20/25.
 //
 
-// ContentView.swift (使用 SharedWallpaperWindowManager)
+// 主页视图，使用 SharedWallpaperWindowManager 管理壁纸窗口
 
 import SwiftUI
 import AppKit
@@ -60,7 +60,8 @@ struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @AppStorage("isMenuBarOnly") var isMenuBarOnly: Bool = false
     @AppStorage("autoSyncNewScreens") var autoSyncNewScreens: Bool = true
-    @AppStorage("globalMute") private var globalMute: Bool = false   // <─ New line
+    // 全局静音设置
+    @AppStorage("globalMute") private var globalMute: Bool = false
     @State private var syncAllScreens: Bool = false
     @State private var selectedTabScreen: NSScreen? = NSScreen.screens.first
     @StateObject private var screenObserver = ScreenObserver()
@@ -176,7 +177,8 @@ struct SingleScreenView: View {
 
     var body: some View {
         return VStack(spacing: 12) {
-            Text("「\(screen.localizedNameIfAvailableOrFallback)」") // keep screen name literal
+            // 保持屏幕名称原样显示
+            Text("「\(screen.localizedNameIfAvailableOrFallback)」")
                 .font(.headline)
 
             if let entry = currentEntry {
@@ -216,10 +218,10 @@ struct SingleScreenView: View {
                         Slider(value: $volume, in: 0...1)
                             .frame(width: 100)
                             .onChange(of: volume) { newVolume in
-                                // Always remember the last non‑zero volume
+                                // 记住最后一次非零音量
                                 if newVolume > 0 { previousVolume = newVolume }
 
-                                // If the user drags the slider above 0, un‑mute
+                                // 当滑块调至非零值时自动取消静音
                                 if newVolume > 0, muted {
                                     muted = false
                                 }
@@ -251,11 +253,11 @@ struct SingleScreenView: View {
 
                         Button {
                             if muted {
-                                // restore previous volume
+                                // 恢复之前的音量
                                 volume = previousVolume
                                 muted = false
                             } else {
-                                // remember current volume and mute
+                                // 保存当前音量并静音
                                 previousVolume = volume
                                 volume = 0
                                 muted = true
@@ -348,7 +350,7 @@ struct SingleScreenView: View {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
 
-            // Determine UTType from the file extension
+            // 根据文件扩展名判断类型
             let fileType = UTType(filenameExtension: url.pathExtension)
             dlog("picker selected \(url.lastPathComponent) type=\(String(describing: fileType))")
 
@@ -385,10 +387,10 @@ fileprivate extension NSScreen {
         if #available(macOS 14.0, *) {
             return self.localizedName
         } else if let idx = NSScreen.screens.firstIndex(of: self) {
-            // Localized fallback name for screen with index
+            // 无本地化名称时的编号名称
             return String(format: NSLocalizedString(L("Screen %d"), comment: ""), idx + 1)
         } else {
-            // Localized fallback for unknown screen
+            // 未知屏幕的回退名称
             return NSLocalizedString(L("UnknownScreen"), comment: "")
         }
     }
