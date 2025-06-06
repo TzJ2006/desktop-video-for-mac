@@ -155,7 +155,7 @@ struct PreferencesView: View {
                 HStack {
                     Text(L("ScreenSaverDelay"))
                     TextField("5", value: $screensaverDelayMinutes, formatter: NumberFormatter())
-                        .frame(width: 40)
+                        .frame(width: 30)
                     Text(L("MinutetoSaver"))
                 }
                 .disabled(!screensaverEnabled)
@@ -166,7 +166,7 @@ struct PreferencesView: View {
                 HStack {
                     Text(L("IdlePauseSeconds"))
                     TextField("5", value: $idlePauseSeconds, formatter: NumberFormatter())
-                        .frame(width: 40)
+                        .frame(width: 30)
                     Text(L("Seconds"))
                 }
                 .disabled(!idlePauseEnabled)

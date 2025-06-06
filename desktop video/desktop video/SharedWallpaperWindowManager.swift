@@ -594,7 +594,15 @@ class SharedWallpaperWindowManager {
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            queuePlayer.play()
+            // 在开始播放之前检查是否应当暂停播放
+            if AppDelegate.shared.shouldPauseVideo(on: screen) {
+                // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
+//                self.startMouseMonitor()
+            } else {
+                // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
+//                self.attachLoopObserver(for: queuePlayer, screenID: sid)
+                queuePlayer.play()
+            }
             onReady?()
         }
     }

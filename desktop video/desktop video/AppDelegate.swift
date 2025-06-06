@@ -210,7 +210,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
 
         // 使用现有窗口列表的键值
-        let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
+        let keys = NSScreen.screens.compactMap { screen in
+            screen.dv_displayID.flatMap { id in
+                SharedWallpaperWindowManager.shared.windows.keys.contains(id) ? id : nil
+            }
+        }
         dlog("windows.keys = \(keys)")
 
         // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
@@ -244,11 +248,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 dateLabel.isBezeled = false
                 dateLabel.isEditable = false
                 dateLabel.sizeToFit()
-                // 根据 screen.frame 计算日期标签位置（与 updateClockLabels 相同）
-                let screenFrame = screen.frame
-                let dateX = screenFrame.midX - dateLabel.frame.width / 2
-                let dateY = screenFrame.maxY - dateLabel.frame.height * 2.5
-                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+                // 根据窗口内容视图计算标签位置
+                if let contentBounds = wallpaperWindow.contentView?.bounds {
+                    // 使用和 updateClockLabels 相同的逻辑：顶部中央，向下偏移20点
+                    let dateX = contentBounds.midX - dateLabel.frame.width / 2
+                    let dateY = contentBounds.maxY - dateLabel.frame.height - 20
+                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+                }
                 wallpaperWindow.contentView?.addSubview(dateLabel)
                 clockDateLabels.append(dateLabel)
 
@@ -260,10 +266,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 timeLabel.isBezeled = false
                 timeLabel.isEditable = false
                 timeLabel.sizeToFit()
-                // 根据 screen.frame 计算时间标签位置（与 updateClockLabels 相同）
-                let timeX = screenFrame.midX - timeLabel.frame.width / 2
-                let timeY = dateLabel.frame.origin.y - dateLabel.frame.height * 1.5 - timeLabel.frame.height / 2
-                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+                // 根据窗口内容视图计算标签位置
+                if let contentBounds = wallpaperWindow.contentView?.bounds {
+                    // 使用和 updateClockLabels 相同的逻辑：日期标签下方，间隔10点
+                    let dateY = dateLabel.frame.origin.y
+                    let dateHeight = dateLabel.frame.height
+                    let timeX = contentBounds.midX - timeLabel.frame.width / 2
+                    let timeY = dateY - dateHeight - timeLabel.frame.height - 10
+                    timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+                }
                 wallpaperWindow.contentView?.addSubview(timeLabel)
                 clockTimeLabels.append(timeLabel)
             } else {
@@ -554,19 +565,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Idle Timer Methods
     private func resetIdleTimer() {
         dlog("resetIdleTimer")
-        // 开启屏保时跳过闲置暂停
-        guard !UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
+        // 如果视频正在循环播放，则不进行轮询；仅当视频暂停时每隔5秒检查一次
         guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
         guard !isInScreensaver else { return }
         idleTimer?.invalidate()
-        let interval = TimeInterval(UserDefaults.standard.integer(forKey: "idlePauseSeconds"))
+        let interval = UserDefaults.standard.double(forKey: "idlePauseSeconds")
         idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             for (sid, player) in SharedWallpaperWindowManager.shared.players {
-                if let screen = NSScreen.screen(forDisplayID: sid), self.shouldPauseVideo(on: screen) {
-                    player.pause()
-                } else {
-                    player.play()
+                // 仅检查当前被暂停的播放器
+                if player.timeControlStatus != .playing {
+                    if let screen = NSScreen.screen(forDisplayID: sid) {
+                        if !self.shouldPauseVideo(on: screen) {
+                            player.play()
+                        }
+                    }
                 }
             }
         }
@@ -592,9 +605,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// 判断指定屏幕是否需要暂停视频
-    private func shouldPauseVideo(on screen: NSScreen) -> Bool {
+    func shouldPauseVideo(on screen: NSScreen) -> Bool {
         dlog("shouldPauseVideo on \(screen.dv_localizedName)")
-//        return false
         guard let id = screen.dv_displayID,
               SharedWallpaperWindowManager.shared.windows[id] != nil else {
             return false
@@ -605,18 +617,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // 查询全局窗口列表，包含其他应用的窗口
         let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
-        // 检查是否存在大窗口
-        return windowList.contains { info in
+
+        // 如果有任意一个窗口自身宽度或高度超过阈值，则直接返回 true
+        for info in windowList {
+            // 跳过当前进程自己的窗口（desktop video）
             if let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid == getpid() {
-                return false
+                continue
             }
             guard let boundsDict = info[kCGWindowBounds as String] as? [String: Any],
                   let width = boundsDict["Width"] as? CGFloat,
                   let height = boundsDict["Height"] as? CGFloat else {
-                return false
+                continue
             }
-            return width >= thresholdWidth && height >= thresholdHeight
+            if width >= thresholdWidth && height >= thresholdHeight {
+                return true
+            }
         }
+        return false
     }
 
     // MARK: - NSApplicationDelegate Idle Pause
@@ -654,7 +671,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         dlog("updateClockLabels")
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale.current
-        dateFormatter.dateFormat = "EEEE, dd-MM-yyyy"
+        dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
         let dateString = dateFormatter.string(from: Date())
 
         let timeFormatter = DateFormatter()
@@ -662,27 +679,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         timeFormatter.dateFormat = "HH:mm:ss"
         let timeString = timeFormatter.string(from: Date())
 
-        // 与 runScreenSaver 中相同的顺序遍历窗口键值
-        let keys = Array(SharedWallpaperWindowManager.shared.windows.keys)
-        for (index, id) in keys.enumerated() {
-            guard index < clockDateLabels.count else { continue }
-            if let screen = NSScreen.screen(forDisplayID: id) {
-                let screenFrame = screen.frame
+        // 使用每个标签对应的屏幕顺序遍历，更新所有屏幕的日期/时间标签
+        for (index, dateLabel) in clockDateLabels.enumerated() {
+            guard index < clockTimeLabels.count, index < NSScreen.screens.count else { continue }
+            let timeLabel = clockTimeLabels[index]
+            let screen = NSScreen.screens[index]
+            // 找到对应屏幕的 WallpaperWindow
+            if let sid = screen.dv_displayID,
+               let window = SharedWallpaperWindowManager.shared.windows[sid],
+               let contentBounds = window.contentView?.bounds {
 
                 // 更新日期标签
-                let dateLabel = clockDateLabels[index]
                 dateLabel.stringValue = dateString
                 dateLabel.sizeToFit()
-                let dateX = screenFrame.midX - dateLabel.frame.width / 2
-                let dateY = screenFrame.maxY - dateLabel.frame.height * 2.5
+                let dateX = contentBounds.midX - dateLabel.frame.width / 2
+                let dateY = contentBounds.maxY - dateLabel.frame.height - 20
                 dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
                 // 更新时间标签
-                let timeLabel = clockTimeLabels[index]
                 timeLabel.stringValue = timeString
                 timeLabel.sizeToFit()
-                let timeX = screenFrame.midX - timeLabel.frame.width / 2
-                let timeY = dateLabel.frame.origin.y - dateLabel.frame.height * 1.5 - timeLabel.frame.height / 2
+                let timeX = contentBounds.midX - timeLabel.frame.width / 2
+                let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height - 10
                 timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
             }
         }
