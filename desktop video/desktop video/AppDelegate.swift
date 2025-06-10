@@ -223,6 +223,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         dlog("windows.keys = \(keys)")
 
+        // 隐藏检测窗口，避免屏保模式下触发自动暂停
+        for overlays in SharedWallpaperWindowManager.shared.overlayWindows.values {
+            for overlay in overlays { overlay.orderOut(nil) }
+        }
+
         // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
         for id in keys {
             dlog("looping id = \(id)")
@@ -361,6 +366,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
                 wallpaperWindow.alphaValue = 1 // 恢复透明度供下一次屏保使用
             })
+        }
+
+        // 重新显示检测窗口
+        for overlays in SharedWallpaperWindowManager.shared.overlayWindows.values {
+            for overlay in overlays { overlay.orderFrontRegardless() }
         }
 
         // 2. 移除事件监听器
@@ -569,6 +579,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func pauseVideoForAllScreens() {
         dlog("pauseVideoForAllScreens")
+        if isInScreensaver { return }
+
         for (sid, player) in SharedWallpaperWindowManager.shared.players {
             if let screen = NSScreen.screen(forDisplayID: sid) {
                 let shouldPause = shouldPauseVideo(on: screen)
@@ -587,6 +599,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// 判断指定屏幕的检测窗口是否被遮挡
     func shouldPauseVideo(on screen: NSScreen) -> Bool {
         dlog("shouldPauseVideo on \(screen.dv_localizedName)")
+        if isInScreensaver { return false }
+
         guard let id = screen.dv_displayID,
               let windows = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
             return false
@@ -596,6 +610,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
+        if isInScreensaver { return }
         guard let sid = SharedWallpaperWindowManager.shared.overlayWindows.first(where: { $0.value.contains(window) })?.key,
               let player = SharedWallpaperWindowManager.shared.players[sid],
               let screen = NSScreen.screen(forDisplayID: sid) else { return }
