@@ -511,7 +511,6 @@ class SharedWallpaperWindowManager {
         }
     }
     @objc private func handleScreenChange() {
-        dlog("handle screen change")
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem { [weak self] in
             self?.reloadScreens()
