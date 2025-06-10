@@ -14,11 +14,6 @@ import Combine
 import IOKit
 import IOKit.pwr_mgt
 
-// 屏保窗口子类，允许成为 key/main window
-class ScreenSaverWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-}
 
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -31,13 +26,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var lastAppearanceChangeTime: Date = .distantPast
     private var appearanceChangeWorkItem: DispatchWorkItem?
 
-    private var idleTimer: Timer?
-    private var idleStartTime: Date?
-    private var isPausedDueToIdle: Bool = false
-
     // 屏保相关变量
     private var screensaverTimer: Timer?
-    private var screensaverWindows: [NSWindow] = []
     private var eventMonitors: [Any] = []
     private var isInScreensaver = false
     // 屏保模式下的时钟标签
@@ -66,14 +56,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 从书签中恢复窗口
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
         
-        // Observe occlusion changes on wallpaper windows to auto-pause/play
-        for window in SharedWallpaperWindowManager.shared.windows.values {
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
-                name: NSWindow.didChangeOcclusionStateNotification,
-                object: window
-            )
+        // Observe occlusion changes on overlay windows to auto-pause/play
+        for windows in SharedWallpaperWindowManager.shared.overlayWindows.values {
+            for window in windows {
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
+                    name: NSWindow.didChangeOcclusionStateNotification,
+                    object: window
+                )
+            }
         }
 
         // 切换 Dock 图标或仅菜单栏模式
@@ -87,14 +79,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self.openMainWindow()
             }
         }
-
-        // 监听桌面切换，恢复或重置空闲计时器
-//        NSWorkspace.shared.notificationCenter.addObserver(
-//            self,
-//            selector: #selector(spaceDidChange(_:)),
-//            name: NSWorkspace.activeSpaceDidChangeNotification,
-//            object: nil
-//        )
 
         // 监听屏保设置变化并启动计时器
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
@@ -124,7 +108,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.pauseVideoForAllScreens()
         }
-//        startScreensaverTimer()
     }
 
     // MARK: - Screensaver Timer Methods
@@ -161,8 +144,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
         let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
-        // Just for testing Screen Saver
-//        let delaySeconds = 1.0
 
         screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
@@ -185,7 +166,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 获取系统级用户空闲时间（秒）
     private func getSystemIdleTime() -> TimeInterval {
-//        return 0
         var iterator: io_iterator_t = 0
         let result = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOHIDSystem"), &iterator)
         if result != KERN_SUCCESS { return 0 }
@@ -206,14 +186,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func runScreenSaver() {
-//        return
         dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         if isInScreensaver { return }
-
-        // Stop idleTimer when entering screensaver
-        idleTimer?.invalidate()
-        idleTimer = nil
 
         dlog("Starting screensaver mode")
 
@@ -233,6 +208,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
         dlog("windows.keys = \(keys)")
+
+        // 隐藏检测窗口，避免屏保模式下触发自动暂停
+        for overlays in SharedWallpaperWindowManager.shared.overlayWindows.values {
+            for overlay in overlays { overlay.orderOut(nil) }
+        }
 
         // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
         for id in keys {
@@ -374,14 +354,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             })
         }
 
+        // 重新显示检测窗口
+        for overlays in SharedWallpaperWindowManager.shared.overlayWindows.values {
+            for overlay in overlays { overlay.orderFrontRegardless() }
+        }
+
         // 2. 移除事件监听器
         eventMonitors.forEach { NSEvent.removeMonitor($0) }
         eventMonitors.removeAll()
 
         isInScreensaver = false
-
-        // Restart idle timer after exiting screensaver
-//        resetIdleTimer()
 
         // 3. 重置屏保计时器
         startScreensaverTimer()
@@ -580,30 +562,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     // MARK: - Idle Timer Methods
-//    private func resetIdleTimer() {
-//        dlog("resetIdleTimer")
-//        // 如果视频正在循环播放，则不进行轮询；仅当视频暂停时每隔5秒检查一次
-//        guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
-//        guard !isInScreensaver else { return }
-//        idleTimer?.invalidate()
-//        let interval = UserDefaults.standard.double(forKey: "idlePauseSeconds")
-//        idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-//            guard let self = self else { return }
-//            for (sid, player) in SharedWallpaperWindowManager.shared.players {
-//                // 仅检查当前被暂停的播放器
-//                if player.timeControlStatus != .playing {
-//                    if let screen = NSScreen.screen(forDisplayID: sid) {
-//                        if !self.shouldPauseVideo(on: screen) {
-//                            player.play()
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
 
     private func pauseVideoForAllScreens() {
         dlog("pauseVideoForAllScreens")
+        if isInScreensaver { return }
+
         for (sid, player) in SharedWallpaperWindowManager.shared.players {
             if let screen = NSScreen.screen(forDisplayID: sid) {
                 let shouldPause = shouldPauseVideo(on: screen)
@@ -619,19 +582,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// 判断指定屏幕的壁纸窗口是否被遮挡
+    /// 判断指定屏幕的检测窗口是否被遮挡
     func shouldPauseVideo(on screen: NSScreen) -> Bool {
         dlog("shouldPauseVideo on \(screen.dv_localizedName)")
+        if isInScreensaver { return false }
+
         guard let id = screen.dv_displayID,
-              let window = SharedWallpaperWindowManager.shared.windows[id] else {
+              let windows = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
             return false
         }
-        return !window.occlusionState.contains(.visible)
+        return windows.allSatisfy { !$0.occlusionState.contains(.visible) }
     }
 
     @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
-        guard let sid = SharedWallpaperWindowManager.shared.windows.first(where: { $0.value == window })?.key,
+        if isInScreensaver { return }
+        guard let sid = SharedWallpaperWindowManager.shared.overlayWindows.first(where: { $0.value.contains(window) })?.key,
               let player = SharedWallpaperWindowManager.shared.players[sid],
               let screen = NSScreen.screen(forDisplayID: sid) else { return }
         if shouldPauseVideo(on: screen) {
@@ -645,27 +611,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidBecomeActive(_ notification: Notification) {
         dlog("applicationDidBecomeActive")
         pauseVideoForAllScreens()
-//        resetIdleTimer()
     }
-
-//    func applicationDidResignActive(_ notification: Notification) {
-//        dlog("applicationDidResignActive")
-//        resetIdleTimer()
-//    }
-
-//    @objc private func spaceDidChange(_ notification: Notification) {
-//        dlog("spaceDidChange")
-//        // 桌面切换时，根据遮挡状态决定是暂停还是播放
-//        for (sid, player) in SharedWallpaperWindowManager.shared.players {
-//            if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
-//                player.pause()
-//            } else {
-//                player.play()
-//            }
-//        }
-//        // 重置空闲计时器
-//        resetIdleTimer()
-//    }
     // 从菜单栏打开关于窗口
     @objc func showAboutFromStatus() {
         dlog("showAboutFromStatus")
