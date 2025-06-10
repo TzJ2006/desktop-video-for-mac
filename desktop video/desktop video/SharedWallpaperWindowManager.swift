@@ -135,6 +135,8 @@ class SharedWallpaperWindowManager {
     private var currentViews: [CGDirectDisplayID: NSView] = [:]
     private var loopers: [CGDirectDisplayID: AVPlayerLooper] = [:]
     var windows: [CGDirectDisplayID: WallpaperWindow] = [:]
+    /// 用于检测遮挡状态的小窗口（每个屏幕四个）
+    var overlayWindows: [CGDirectDisplayID: [NSWindow]] = [:]
     var players: [CGDirectDisplayID: AVQueuePlayer] = [:]
     var screenContent: [CGDirectDisplayID: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
@@ -166,16 +168,45 @@ class SharedWallpaperWindowManager {
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
-        if let delegate = AppDelegate.shared {
-            NotificationCenter.default.addObserver(
-                delegate,
-                selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
-                name: NSWindow.didChangeOcclusionStateNotification,
-                object: win
-            )
+        // 创建四个用于检测遮挡状态的透明窗口
+        var overlays: [NSWindow] = []
+        let overlaySize = CGSize(width: screenFrame.width * 0.05, height: screenFrame.height * 0.05)
+        let positions: [CGPoint] = [
+            CGPoint(x: screenFrame.minX + screenFrame.width * 0.2 - overlaySize.width / 2,
+                    y: screenFrame.midY - overlaySize.height / 2),
+            CGPoint(x: screenFrame.maxX - screenFrame.width * 0.2 - overlaySize.width / 2,
+                    y: screenFrame.midY - overlaySize.height / 2),
+            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
+                    y: screenFrame.minY + screenFrame.height * 0.2 - overlaySize.height / 2),
+            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
+                    y: screenFrame.maxY - screenFrame.height * 0.2 - overlaySize.height / 2)
+        ]
+
+        for origin in positions {
+            let overlay = NSWindow(contentRect: CGRect(origin: origin, size: overlaySize),
+                                   styleMask: .borderless,
+                                   backing: .buffered,
+                                   defer: false)
+            overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
+            overlay.isOpaque = false
+            overlay.backgroundColor = .clear
+            overlay.ignoresMouseEvents = true
+            overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
+            overlay.orderFrontRegardless()
+            overlays.append(overlay)
+
+            if let delegate = AppDelegate.shared {
+                NotificationCenter.default.addObserver(
+                    delegate,
+                    selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
+                    name: NSWindow.didChangeOcclusionStateNotification,
+                    object: overlay
+                )
+            }
         }
 
         self.windows[sid] = win
+        self.overlayWindows[sid] = overlays
     }
 
     func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
@@ -294,14 +325,20 @@ class SharedWallpaperWindowManager {
         }
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
+        if let overlays = overlayWindows[sid] {
+            for overlay in overlays {
+                NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                          name: NSWindow.didChangeOcclusionStateNotification,
+                                                          object: overlay)
+                overlay.orderOut(nil)
+            }
+        }
         if let win = windows[sid] {
-            NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
-                                                      name: NSWindow.didChangeOcclusionStateNotification,
-                                                      object: win)
             win.orderOut(nil)
         }
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
+        overlayWindows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
@@ -610,10 +647,8 @@ class SharedWallpaperWindowManager {
             // 在开始播放之前检查是否应当暂停播放
             if AppDelegate.shared.shouldPauseVideo(on: screen) {
                 // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
-//                self.startMouseMonitor()
             } else {
                 // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
-//                self.attachLoopObserver(for: queuePlayer, screenID: sid)
                 queuePlayer.play()
             }
             onReady?()

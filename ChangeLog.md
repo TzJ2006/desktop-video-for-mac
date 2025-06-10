@@ -11,6 +11,10 @@
 - Auto Pause to lower energe consumpsion
 - Special bonus hidden
 - /kill HIM
+- 改进自动暂停逻辑，使用检测窗口判断遮挡
+- Improve auto pause logic with overlay windows
+- 使用四个检测窗口进一步优化暂停触发判断
+- Further refine pause triggers using four overlay windows
 
 ### Version 2.4 (2025-05-28)
 - 新增了 Preference 页面
