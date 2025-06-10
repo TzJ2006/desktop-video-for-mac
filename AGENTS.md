@@ -3,6 +3,7 @@
 This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wallpaper app for macOS. It runs entirely offline, ensuring your privacy and local control.
 
 ## Tech Stack
+
 - Swift
 - SwiftUI
 - AVFoundation
@@ -32,22 +33,28 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 ## Development Guidelines
 
 ### Code Style
+
 - Use Xcode's default Swift formatting or swift-format.
 - Keep code clean and readable.
+- Reuse the methods that is already written.
+- Check whethere there are previous logic and methods that are no longer effective.
 - Add a log statement for each new function to aid debugging.
 - Provide Chinese comments when adding command-line scripts.
 
 ### Naming Conventions
+
 - Use PascalCase for class and struct names.
 - Use camelCase for function and variable names.
 - File names should match the main type they contain.
 
 ### Git Workflow
+
 - Create feature branches from `main` with a short descriptive name.
 - Commit messages should use the format `<type>: <summary>` (e.g., `feat: add HDR video support`).
 - Open a pull request referencing related issues and ensure the build passes before requesting review.
 
 ## Required Checks
+
 Run the following command to verify the project compiles:
 
 ```bash
@@ -63,6 +70,7 @@ Because this repository is compiled with Xcode, the command above should be atte
 ## Environment Setup
 
 ### Development Requirements
+
 - macOS with Xcode installed.
 - No additional Node.js dependencies.
 
@@ -98,9 +106,11 @@ echo "✅ 启动完成"
 ```
 
 ## Testing Strategy
+
 - Currently no automated tests are included.
 - Ensure the project builds with `xcodebuild clean build` before merging.
 - Update `ChangeLog.md` with a summary of your changes.
 
 ## Security Policy
+
 See `SECURITY.md` for supported versions and how to report vulnerabilities.

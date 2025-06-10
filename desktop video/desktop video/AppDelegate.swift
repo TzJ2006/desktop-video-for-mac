@@ -65,6 +65,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // 从书签中恢复窗口
         SharedWallpaperWindowManager.shared.restoreFromBookmark()
+        
+        // Observe occlusion changes on wallpaper windows to auto-pause/play
+        for window in SharedWallpaperWindowManager.shared.windows.values {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: window
+            )
+        }
 
         // 切换 Dock 图标或仅菜单栏模式
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -79,12 +89,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         // 监听桌面切换，恢复或重置空闲计时器
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(spaceDidChange(_:)),
-            name: NSWorkspace.activeSpaceDidChangeNotification,
-            object: nil
-        )
+//        NSWorkspace.shared.notificationCenter.addObserver(
+//            self,
+//            selector: #selector(spaceDidChange(_:)),
+//            name: NSWorkspace.activeSpaceDidChangeNotification,
+//            object: nil
+//        )
 
         // 监听屏保设置变化并启动计时器
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
@@ -108,6 +118,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                                name: Notification.Name("OtherAppScreensaverInactive"),
                                object: nil)
 
+        // Ensure shouldPauseVideo is evaluated once when the app launches
+        pauseVideoForAllScreens()
+        // Periodically re-evaluate occlusion to pause/play videos
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.pauseVideoForAllScreens()
+        }
 //        startScreensaverTimer()
     }
 
@@ -144,8 +160,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
-//        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
-        let delaySeconds = 1.0  // Just for testing Screen Saver
+        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
+        // Just for testing Screen Saver
+//        let delaySeconds = 1.0
 
         screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
@@ -364,7 +381,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         isInScreensaver = false
 
         // Restart idle timer after exiting screensaver
-        resetIdleTimer()
+//        resetIdleTimer()
 
         // 3. 重置屏保计时器
         startScreensaverTimer()
@@ -563,44 +580,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     // MARK: - Idle Timer Methods
-    private func resetIdleTimer() {
-        dlog("resetIdleTimer")
-        // 如果视频正在循环播放，则不进行轮询；仅当视频暂停时每隔5秒检查一次
-        guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
-        guard !isInScreensaver else { return }
-        idleTimer?.invalidate()
-        let interval = UserDefaults.standard.double(forKey: "idlePauseSeconds")
-        idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            for (sid, player) in SharedWallpaperWindowManager.shared.players {
-                // 仅检查当前被暂停的播放器
-                if player.timeControlStatus != .playing {
-                    if let screen = NSScreen.screen(forDisplayID: sid) {
-                        if !self.shouldPauseVideo(on: screen) {
-                            player.play()
-                        }
-                    }
-                }
-            }
-        }
-    }
+//    private func resetIdleTimer() {
+//        dlog("resetIdleTimer")
+//        // 如果视频正在循环播放，则不进行轮询；仅当视频暂停时每隔5秒检查一次
+//        guard UserDefaults.standard.bool(forKey: "idlePauseEnabled") else { return }
+//        guard !isInScreensaver else { return }
+//        idleTimer?.invalidate()
+//        let interval = UserDefaults.standard.double(forKey: "idlePauseSeconds")
+//        idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+//            guard let self = self else { return }
+//            for (sid, player) in SharedWallpaperWindowManager.shared.players {
+//                // 仅检查当前被暂停的播放器
+//                if player.timeControlStatus != .playing {
+//                    if let screen = NSScreen.screen(forDisplayID: sid) {
+//                        if !self.shouldPauseVideo(on: screen) {
+//                            player.play()
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     private func pauseVideoForAllScreens() {
         dlog("pauseVideoForAllScreens")
         for (sid, player) in SharedWallpaperWindowManager.shared.players {
-            if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
-                player.pause()
+            if let screen = NSScreen.screen(forDisplayID: sid) {
+                let shouldPause = shouldPauseVideo(on: screen)
+                dlog("pauseVideoForAllScreens: shouldPause=\(shouldPause) on \(screen.dv_localizedName)")
+                if shouldPause {
+                    dlog("Pausing video on screen \(screen.dv_localizedName)")
+                    player.pause()
+                } else {
+                    dlog("Playing video on screen \(screen.dv_localizedName)")
+                    player.play()
+                }
             }
-        }
-    }
-
-    private func resumeVideoIfPausedByIdle() {
-        dlog("resumeVideoIfPausedByIdle")
-        if isPausedDueToIdle {
-            for player in SharedWallpaperWindowManager.shared.players.values {
-                player.play()
-            }
-            isPausedDueToIdle = false
         }
     }
 
@@ -629,28 +644,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - NSApplicationDelegate Idle Pause
     func applicationDidBecomeActive(_ notification: Notification) {
         dlog("applicationDidBecomeActive")
-        resumeVideoIfPausedByIdle()
-        resetIdleTimer()
+        pauseVideoForAllScreens()
+//        resetIdleTimer()
     }
 
-    func applicationDidResignActive(_ notification: Notification) {
-        dlog("applicationDidResignActive")
-        resetIdleTimer()
-    }
+//    func applicationDidResignActive(_ notification: Notification) {
+//        dlog("applicationDidResignActive")
+//        resetIdleTimer()
+//    }
 
-    @objc private func spaceDidChange(_ notification: Notification) {
-        dlog("spaceDidChange")
-        // 桌面切换时，根据遮挡状态决定是暂停还是播放
-        for (sid, player) in SharedWallpaperWindowManager.shared.players {
-            if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
-                player.pause()
-            } else {
-                player.play()
-            }
-        }
-        // 重置空闲计时器
-        resetIdleTimer()
-    }
+//    @objc private func spaceDidChange(_ notification: Notification) {
+//        dlog("spaceDidChange")
+//        // 桌面切换时，根据遮挡状态决定是暂停还是播放
+//        for (sid, player) in SharedWallpaperWindowManager.shared.players {
+//            if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
+//                player.pause()
+//            } else {
+//                player.play()
+//            }
+//        }
+//        // 重置空闲计时器
+//        resetIdleTimer()
+//    }
     // 从菜单栏打开关于窗口
     @objc func showAboutFromStatus() {
         dlog("showAboutFromStatus")
