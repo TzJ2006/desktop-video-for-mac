@@ -166,6 +166,15 @@ class SharedWallpaperWindowManager {
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
+        if let delegate = AppDelegate.shared {
+            NotificationCenter.default.addObserver(
+                delegate,
+                selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: win
+            )
+        }
+
         self.windows[sid] = win
     }
 
@@ -285,7 +294,12 @@ class SharedWallpaperWindowManager {
         }
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
-        windows[sid]?.orderOut(nil)
+        if let win = windows[sid] {
+            NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                      name: NSWindow.didChangeOcclusionStateNotification,
+                                                      object: win)
+            win.orderOut(nil)
+        }
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)

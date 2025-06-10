@@ -604,36 +604,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// 判断指定屏幕是否需要暂停视频
+    /// 判断指定屏幕的壁纸窗口是否被遮挡
     func shouldPauseVideo(on screen: NSScreen) -> Bool {
         dlog("shouldPauseVideo on \(screen.dv_localizedName)")
         guard let id = screen.dv_displayID,
-              SharedWallpaperWindowManager.shared.windows[id] != nil else {
+              let window = SharedWallpaperWindowManager.shared.windows[id] else {
             return false
         }
-        let screenFrame = screen.frame
-        let thresholdWidth = screenFrame.width * 0.8
-        let thresholdHeight = screenFrame.height * 0.8
+        return !window.occlusionState.contains(.visible)
+    }
 
-        // 查询全局窗口列表，包含其他应用的窗口
-        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
-
-        // 如果有任意一个窗口自身宽度或高度超过阈值，则直接返回 true
-        for info in windowList {
-            // 跳过当前进程自己的窗口（desktop video）
-            if let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid == getpid() {
-                continue
-            }
-            guard let boundsDict = info[kCGWindowBounds as String] as? [String: Any],
-                  let width = boundsDict["Width"] as? CGFloat,
-                  let height = boundsDict["Height"] as? CGFloat else {
-                continue
-            }
-            if width >= thresholdWidth && height >= thresholdHeight {
-                return true
-            }
+    @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        guard let sid = SharedWallpaperWindowManager.shared.windows.first(where: { $0.value == window })?.key,
+              let player = SharedWallpaperWindowManager.shared.players[sid],
+              let screen = NSScreen.screen(forDisplayID: sid) else { return }
+        if shouldPauseVideo(on: screen) {
+            player.pause()
+        } else {
+            player.play()
         }
-        return false
     }
 
     // MARK: - NSApplicationDelegate Idle Pause
@@ -650,7 +640,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func spaceDidChange(_ notification: Notification) {
         dlog("spaceDidChange")
-        // 桌面切换时，根据窗口大小决定是暂停还是播放
+        // 桌面切换时，根据遮挡状态决定是暂停还是播放
         for (sid, player) in SharedWallpaperWindowManager.shared.players {
             if let screen = NSScreen.screen(forDisplayID: sid), shouldPauseVideo(on: screen) {
                 player.pause()
