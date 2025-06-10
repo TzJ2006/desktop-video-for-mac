@@ -14,11 +14,6 @@ import Combine
 import IOKit
 import IOKit.pwr_mgt
 
-// 屏保窗口子类，允许成为 key/main window
-class ScreenSaverWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-}
 
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -31,13 +26,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var lastAppearanceChangeTime: Date = .distantPast
     private var appearanceChangeWorkItem: DispatchWorkItem?
 
-    private var idleTimer: Timer?
-    private var idleStartTime: Date?
-    private var isPausedDueToIdle: Bool = false
-
     // 屏保相关变量
     private var screensaverTimer: Timer?
-    private var screensaverWindows: [NSWindow] = []
     private var eventMonitors: [Any] = []
     private var isInScreensaver = false
     // 屏保模式下的时钟标签
@@ -199,10 +189,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
         guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
         if isInScreensaver { return }
-
-        // Stop idleTimer when entering screensaver
-        idleTimer?.invalidate()
-        idleTimer = nil
 
         dlog("Starting screensaver mode")
 

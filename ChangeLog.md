@@ -16,6 +16,7 @@
 - 使用四个检测窗口进一步优化暂停触发判断
 - Further refine pause triggers using four overlay windows
 - 屏保模式下隐藏检测窗口，保持播放并降低资源占用
+- 清理未使用的函数和属性，精简代码
 
 ### Version 2.4 (2025-05-28)
 - 新增了 Preference 页面

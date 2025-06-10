@@ -119,17 +119,6 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    var selectedScreenIndex: Int {
-        get { UserDefaults.standard.integer(forKey: "selectedScreenIndex") }
-        set { UserDefaults.standard.set(newValue, forKey: "selectedScreenIndex") }
-    }
-
-    var selectedScreen: NSScreen? {
-        let screens = NSScreen.screens
-        guard selectedScreenIndex < screens.count else { return NSScreen.main }
-        return screens[selectedScreenIndex]
-    }
-
     /// 全局静音前记录各屏幕的音量
     private var savedVolumes: [CGDirectDisplayID: Float] = [:]
     private var currentViews: [CGDirectDisplayID: NSView] = [:]
@@ -274,27 +263,6 @@ class SharedWallpaperWindowManager {
         )
     }
 
-    func syncGlobalMuteToAllVolumes() {
-        dlog("sync global mute to volumes")
-        if desktop_videoApp.shared!.globalMute {
-            muteAllScreens()
-        } else {
-            restoreAllScreens()
-        }
-    }
-
-    func applyGlobalMuteIfNeeded() {
-        dlog("apply global mute if needed: \(desktop_videoApp.shared!.globalMute)")
-        if desktop_videoApp.shared!.globalMute {
-            muteAllScreens()
-        } else {
-            restoreAllScreens()
-        }
-        NotificationCenter.default.post(
-            name: Notification.Name("WallpaperContentDidChange"),
-            object: nil
-        )
-    }
 
     // 更新设置后视频不再从内存播放，
     // 处理超大文件时会遇到此问题。
@@ -531,22 +499,6 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    func selectAndImportVideo() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.movie]
-        panel.allowsMultipleSelection = false
-        panel.begin { result in
-            if result == .OK, let url = panel.url {
-                let stretch = UserDefaults.standard.bool(forKey: "lastUsedStretch")
-                let volume = UserDefaults.standard.object(forKey: "lastUsedVolume") as? Float ?? 1.0
-                if let screen = self.selectedScreen {
-                    self.showVideo(for: screen, url: url, stretch: stretch, volume: volume)
-                }
-            }
-        }
-    }
     @objc private func handleScreenChange() {
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem { [weak self] in
