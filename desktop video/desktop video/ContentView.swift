@@ -35,8 +35,10 @@ class ScreenObserver: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 guard let self = self else { return }
                 let current = NSScreen.screens
+                guard current != self.previousScreens else { return }
+
                 let added = current.filter { !self.previousScreens.contains($0) }
-                dlog("screen change detected added=\(added.map{ $0.dv_localizedName })")
+                dlog("screen change detected added=\(added.map { $0.dv_localizedName })")
                 self.screens = current
                 self.previousScreens = current
 
