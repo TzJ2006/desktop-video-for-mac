@@ -144,8 +144,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
-        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
-//        let delaySeconds = 1.0  // Just for testing Screen Saver
+//        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
+        let delaySeconds = 1.0  // Just for testing Screen Saver
 
         screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
