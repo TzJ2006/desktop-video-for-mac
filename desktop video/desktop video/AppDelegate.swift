@@ -34,12 +34,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            if showOnlyInMenuBar {
                self.setDockIconVisible(!showOnlyInMenuBar)
            }
-           if self.window == nil {
-               self.openMainWindow()
-           }
+           // 始终使用 toggleMainWindow() 保证在隐藏 Dock 图标后窗口重新置顶
+           self.toggleMainWindow()
        }
        ScreensaverManager.shared.startTimer()
        SharedWallpaperWindowManager.shared.pauseVideoForAllScreens()
+       self.toggleMainWindow()
    }
 
 

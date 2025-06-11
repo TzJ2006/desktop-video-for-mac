@@ -78,24 +78,21 @@ struct ContentView: View {
     var body: some View {
         VStack {
             Spacer()
-//            if screenObserver.screens.count > 1 {
-//                TabView(selection: $selectedTabScreen) {
-//                    ForEach(screenObserver.screens, id: \.self) { screen in
-//                        SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
-//                            .id(UUID())
-//                            .tabItem {
-//                                Text(screen.localizedNameIfAvailableOrFallback)
-//                            }
-//                            .tag(screen)
-//                    }
-//                }
-//            } else if let screen = screenObserver.screens.first {
-//                SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
-//                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-//            }
-//            let screen = screenObserver.screens.first
-//            SingleScreenView(screen: screen!, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
-//                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center) as! Bool
+            if screenObserver.screens.count > 1 {
+                TabView(selection: $selectedTabScreen) {
+                    ForEach(screenObserver.screens, id: \.self) { screen in
+                        SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
+                            .id(UUID())
+                            .tabItem {
+                                Text(screen.localizedNameIfAvailableOrFallback)
+                            }
+                            .tag(screen)
+                    }
+                }
+            } else if let screen = screenObserver.screens.first {
+                SingleScreenView(screen: screen, syncAllScreens: syncAllScreens, selectedTabScreen: $selectedTabScreen)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            }
 
             if screenObserver.screens.count > 1 {
                 Button {

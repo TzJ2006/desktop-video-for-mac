@@ -2,7 +2,7 @@
 //  AppAppearanceManager.swift
 //  desktop video
 //
-//  Created by ChatGPT on 2025-06-12.
+//  Created by ChatGPT on 2025-06-11.
 //
 
 import AppKit
@@ -35,7 +35,7 @@ class AppAppearanceManager {
                 NSApp.setActivationPolicy(.regular)
                 self.removeStatusBarIcon()
             }
-            self.statusBarIconClicked()
+//            self.statusBarIconClicked()
         }
 
         appearanceChangeWorkItem = workItem
@@ -51,11 +51,13 @@ class AppAppearanceManager {
                 button.image = NSImage(named: "MenuBarIcon")
                 button.image?.isTemplate = true
                 let menu = NSMenu()
-                menu.addItem(
-                    withTitle: L("AboutDesktopVideo"),
+                let aboutItem = NSMenuItem(
+                    title: L("AboutDesktopVideo"),
                     action: #selector(showAboutFromStatus),
                     keyEquivalent: ""
                 )
+                aboutItem.target = self
+                menu.addItem(aboutItem)
                 menu.addItem(NSMenuItem.separator())
                 menu.addItem(
                     withTitle: NSLocalizedString(L("OpenMainWindow"), comment: ""),

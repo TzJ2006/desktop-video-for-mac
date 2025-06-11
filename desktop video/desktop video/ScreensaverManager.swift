@@ -2,7 +2,7 @@
 //  ScreensaverManager.swift
 //  desktop video
 //
-//  Created by ChatGPT on 2025-06-12.
+//  Created by ChatGPT on 2025-06-11.
 //
 
 import AppKit
