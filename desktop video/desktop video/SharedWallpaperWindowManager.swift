@@ -15,6 +15,12 @@ class SharedWallpaperWindowManager {
 
     private var debounceWorkItem: DispatchWorkItem?
 
+    /// 视频缓存，避免重复读取磁盘
+    private var videoCache = [URL: Data]()
+
+    /// 自动暂停开关对应的键名
+    private let idlePauseEnabledKey = "idlePauseEnabled"
+
     init() {
         let wsnc = NSWorkspace.shared.notificationCenter
         wsnc.addObserver(
@@ -158,42 +164,30 @@ class SharedWallpaperWindowManager {
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
-        // 创建四个用于检测遮挡状态的透明窗口
+        // 创建用于检测遮挡状态的透明窗口
         var overlays: [NSWindow] = []
-        let overlaySize = CGSize(width: screenFrame.width * 0.05, height: screenFrame.height * 0.05)
-        let positions: [CGPoint] = [
-            CGPoint(x: screenFrame.minX + screenFrame.width * 0.2 - overlaySize.width / 2,
-                    y: screenFrame.midY - overlaySize.height / 2),
-            CGPoint(x: screenFrame.maxX - screenFrame.width * 0.2 - overlaySize.width / 2,
-                    y: screenFrame.midY - overlaySize.height / 2),
-            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
-                    y: screenFrame.minY + screenFrame.height * 0.2 - overlaySize.height / 2),
-            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
-                    y: screenFrame.maxY - screenFrame.height * 0.2 - overlaySize.height / 2)
-        ]
+        let percent = UserDefaults.standard.double(forKey: "overlayMarginPercent")
+        let clamped = max(0.0, min(100.0, percent)) / 100.0
+        let overlayFrame = screenFrame.insetBy(dx: screenFrame.width * clamped / 2,
+                                               dy: screenFrame.height * clamped / 2)
+        let overlay = NSWindow(contentRect: overlayFrame,
+                               styleMask: .borderless,
+                               backing: .buffered,
+                               defer: false)
+        overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
+        overlay.isOpaque = false
+        overlay.backgroundColor = .clear
+        overlay.ignoresMouseEvents = true
+        overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        overlay.orderFrontRegardless()
+        overlays.append(overlay)
 
-        for origin in positions {
-            let overlay = NSWindow(contentRect: CGRect(origin: origin, size: overlaySize),
-                                   styleMask: .borderless,
-                                   backing: .buffered,
-                                   defer: false)
-            overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
-            overlay.isOpaque = false
-            overlay.backgroundColor = .clear
-            overlay.ignoresMouseEvents = true
-            overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
-            overlay.orderFrontRegardless()
-            overlays.append(overlay)
-
-            if let delegate = AppDelegate.shared {
-                NotificationCenter.default.addObserver(
-                    delegate,
-                    selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
-                    name: NSWindow.didChangeOcclusionStateNotification,
-                    object: overlay
-                )
-            }
-        }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: overlay
+        )
 
         self.windows[sid] = win
         self.overlayWindows[sid] = overlays
@@ -225,11 +219,11 @@ class SharedWallpaperWindowManager {
         dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         do {
             let data: Data
-            if let cached = AppDelegate.shared.cachedVideoData(for: url) {
+            if let cached = cachedVideoData(for: url) {
                 data = cached
             } else {
                 let loaded = try Data(contentsOf: url)
-                AppDelegate.shared.cacheVideoData(loaded, for: url)
+                cacheVideoData(loaded, for: url)
                 data = loaded
             }
             showVideoFromMemory(for: screen,
@@ -308,14 +302,14 @@ class SharedWallpaperWindowManager {
         currentViews.removeValue(forKey: sid)
         if let overlays = overlayWindows[sid] {
             for overlay in overlays {
-                NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                NotificationCenter.default.removeObserver(self,
                                                           name: NSWindow.didChangeOcclusionStateNotification,
                                                           object: overlay)
-                overlay.orderOut(nil)
+                overlay.close()
             }
         }
         if let win = windows[sid] {
-            win.orderOut(nil)
+            win.close()
         }
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
@@ -541,10 +535,15 @@ class SharedWallpaperWindowManager {
 
         // 为新连接的屏幕创建窗口
         let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
-        let existingID = knownIDs.first
         var sourceScreen: NSScreen? = nil
-        if autoSync, let id = existingID {
-            sourceScreen = NSScreen.screen(forDisplayID: id)
+        if autoSync {
+            if let primaryID = AppState.shared.primaryScreenID,
+               knownIDs.contains(primaryID),
+               let screen = NSScreen.screen(forDisplayID: primaryID) {
+                sourceScreen = screen
+            } else if let id = knownIDs.first {
+                sourceScreen = NSScreen.screen(forDisplayID: id)
+            }
         }
 
         for screen in NSScreen.screens {
@@ -624,13 +623,100 @@ class SharedWallpaperWindowManager {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             // 在开始播放之前检查是否应当暂停播放
-            if AppDelegate.shared.shouldPauseVideo(on: screen) {
+            if self.shouldPauseVideo(on: screen) {
                 // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
             } else {
                 // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
                 queuePlayer.play()
             }
             onReady?()
+        }
+    }
+
+    // MARK: - Caching Helpers
+    func cachedVideoData(for url: URL) -> Data? {
+        videoCache[url]
+    }
+
+    func cacheVideoData(_ data: Data, for url: URL) {
+        videoCache[url] = data
+    }
+
+    // MARK: - Playback Control
+    func reloadAndPlayVideoFromMemory(displayID sid: CGDirectDisplayID) {
+        dlog("reloadAndPlayVideoFromMemory \(sid)")
+        guard let screen = NSScreen.screen(forDisplayID: sid),
+              let entry = screenContent[sid] else {
+            players[sid]?.play()
+            return
+        }
+
+        if let existingPlayer = players[sid], existingPlayer.currentItem != nil {
+            existingPlayer.play()
+            return
+        }
+
+        if entry.type == .video {
+            do {
+                let data: Data
+                if let cached = cachedVideoData(for: entry.url) {
+                    data = cached
+                } else {
+                    let loaded = try Data(contentsOf: entry.url)
+                    cacheVideoData(loaded, for: entry.url)
+                    data = loaded
+                }
+                showVideoFromMemory(for: screen,
+                                    data: data,
+                                    stretch: entry.stretch,
+                                    volume: entry.volume ?? 1.0)
+            } catch {
+                errorLog("Failed to read video data: \(error)")
+                players[sid]?.play()
+            }
+        } else {
+            players[sid]?.play()
+        }
+    }
+
+    func pauseVideoForAllScreens() {
+        dlog("pauseVideoForAllScreens")
+        if ScreensaverManager.shared.isInScreensaver { return }
+
+        for (sid, player) in players {
+            if let screen = NSScreen.screen(forDisplayID: sid) {
+                let shouldPause = shouldPauseVideo(on: screen)
+                dlog("pauseVideoForAllScreens: shouldPause=\(shouldPause) on \(screen.dv_localizedName)")
+                if shouldPause {
+                    player.pause()
+                } else {
+                    reloadAndPlayVideoFromMemory(displayID: sid)
+                }
+            }
+        }
+    }
+
+    func shouldPauseVideo(on screen: NSScreen) -> Bool {
+        if ScreensaverManager.shared.isInScreensaver { return false }
+        guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
+
+        guard let id = screen.dv_displayID,
+              let windows = overlayWindows[id] else {
+            return false
+        }
+        return windows.allSatisfy { !$0.occlusionState.contains(.visible) }
+    }
+
+    @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
+        guard let sid = overlayWindows.first(where: { $0.value.contains(notification.object as! NSWindow) })?.key,
+              let player = players[sid],
+              let screen = NSScreen.screen(forDisplayID: sid) else { return }
+        if ScreensaverManager.shared.isInScreensaver { return }
+        guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return }
+        if shouldPauseVideo(on: screen) {
+            player.pause()
+        } else {
+            reloadAndPlayVideoFromMemory(displayID: sid)
         }
     }
 }
