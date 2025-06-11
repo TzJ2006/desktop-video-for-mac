@@ -51,6 +51,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    
    // 把视频缓存在内存中
    private var videoCache = [URL: Data]()
+   private let idlePauseEnabledKey = "idlePauseEnabled"
 
    func cachedVideoData(for url: URL) -> Data? {
        videoCache[url]
@@ -93,11 +94,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
 
        // 监听屏保设置变化并启动计时器
-       NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-           .sink { [weak self] _ in
-               self?.startScreensaverTimer()
-           }
-           .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .sink { [weak self] _ in
+                self?.startScreensaverTimer()
+            }
+            .store(in: &cancellables)
 
        // 监听应用激活状态以重置屏保计时器
        NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActiveNotification), name: NSApplication.didBecomeActiveNotification, object: nil)
@@ -390,21 +391,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        startScreensaverTimer()
    }
 
-   @objc private func applicationDidBecomeActiveNotification() {
-       dlog("applicationDidBecomeActiveNotification")
-       // Only close screensaver if currently in screensaver
-       if isInScreensaver {
-           closeScreensaverWindows()
-       }
-   }
+    @objc private func applicationDidBecomeActiveNotification() {
+        dlog("applicationDidBecomeActiveNotification")
+        // Only close screensaver if currently in screensaver
+        if isInScreensaver {
+            closeScreensaverWindows()
+        }
+    }
 
    @objc private func applicationDidResignActiveNotification() {
        dlog("applicationDidResignActiveNotification")
        // Only restart timer if not currently in screensaver
-       if !isInScreensaver {
-           startScreensaverTimer()
-       }
-   }
+        if !isInScreensaver {
+            startScreensaverTimer()
+        }
+    }
 
    // 打开主控制器界面
    @objc func toggleMainWindow() {
@@ -626,6 +627,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            SharedWallpaperWindowManager.shared.players[sid]?.play()
        }
    }
+
    
    private func pauseVideoForAllScreens() {
        dlog("pauseVideoForAllScreens")
@@ -649,6 +651,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    /// 判断指定屏幕的检测窗口是否被遮挡
    func shouldPauseVideo(on screen: NSScreen) -> Bool {
        if isInScreensaver { return false }
+       guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
 
        guard let id = screen.dv_displayID,
              let windows = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
@@ -663,6 +666,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
              let player = SharedWallpaperWindowManager.shared.players[sid],
              let screen = NSScreen.screen(forDisplayID: sid) else { return }
        if isInScreensaver { return }
+       guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return }
        if shouldPauseVideo(on: screen) {
            player.pause()
        } else {

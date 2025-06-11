@@ -74,6 +74,7 @@ class SharedWallpaperWindowManager {
         for (_, player) in players {
             player.pause()
         }
+        cleanupDisconnectedScreens()
     }
 
     func syncWindow(to screen: NSScreen, from source: NSScreen) {
@@ -223,8 +224,20 @@ class SharedWallpaperWindowManager {
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
         dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         do {
-            let data = try Data(contentsOf: url)
-            showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume, originalURL: url, onReady: onReady)
+            let data: Data
+            if let cached = AppDelegate.shared.cachedVideoData(for: url) {
+                data = cached
+            } else {
+                let loaded = try Data(contentsOf: url)
+                AppDelegate.shared.cacheVideoData(loaded, for: url)
+                data = loaded
+            }
+            showVideoFromMemory(for: screen,
+                                data: data,
+                                stretch: stretch,
+                                volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
+                                originalURL: url,
+                                onReady: onReady)
         } catch {
             errorLog("Cannot load from memory!")
         }
@@ -527,10 +540,20 @@ class SharedWallpaperWindowManager {
         }
 
         // 为新连接的屏幕创建窗口
+        let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
+        let existingID = knownIDs.first
+        var sourceScreen: NSScreen? = nil
+        if autoSync, let id = existingID {
+            sourceScreen = NSScreen.screen(forDisplayID: id)
+        }
+
         for screen in NSScreen.screens {
             guard let sid = screen.dv_displayID, !knownIDs.contains(sid) else { continue }
             dlog("add window for \(screen.dv_localizedName)")
-            if let entry = screenContent[sid] {
+
+            if let src = sourceScreen {
+                syncWindow(to: screen, from: src)
+            } else if let entry = screenContent[sid] {
                 switch entry.type {
                 case .image:
                     showImage(for: screen, url: entry.url, stretch: entry.stretch)
