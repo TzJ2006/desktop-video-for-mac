@@ -231,16 +231,16 @@ class ScreensaverManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let eventTypes: [NSEvent.EventTypeMask] = [.any]
             for eventType in eventTypes {
-                if let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType) { [weak self] _ in
+                if let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType, handler: { [weak self] _ in
                     self?.closeScreensaverWindows()
-                } {
+                }) {
                     self.eventMonitors.append(monitor)
                 }
             }
-            if let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
+            if let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any, handler: { [weak self] event in
                 self?.closeScreensaverWindows()
                 return event
-            } {
+            }) {
                 self.eventMonitors.append(localMonitor)
             }
             self.isInScreensaver = true
