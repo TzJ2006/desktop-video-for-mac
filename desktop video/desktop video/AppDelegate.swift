@@ -269,7 +269,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                if let contentBounds = wallpaperWindow.contentView?.bounds {
                    // 使用和 updateClockLabels 相同的逻辑：顶部中央，向下偏移20点
                    let dateX = contentBounds.midX - dateLabel.frame.width / 2
-                   let dateY = contentBounds.maxY - dateLabel.frame.height - 20
+                   let dateY = contentBounds.maxY - dateLabel.frame.height - 50
                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
                }
                wallpaperWindow.contentView?.addSubview(dateLabel)
@@ -289,7 +289,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    let dateY = dateLabel.frame.origin.y
                    let dateHeight = dateLabel.frame.height
                    let timeX = contentBounds.midX - timeLabel.frame.width / 2
-                   let timeY = dateY - dateHeight - timeLabel.frame.height - 10
+                   let timeY = dateY - dateHeight - timeLabel.frame.height - 30
                    timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
                }
                wallpaperWindow.contentView?.addSubview(timeLabel)
@@ -707,14 +707,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                dateLabel.stringValue = dateString
                dateLabel.sizeToFit()
                let dateX = contentBounds.midX - dateLabel.frame.width / 2
-               let dateY = contentBounds.maxY - dateLabel.frame.height - 20
+               let dateY = contentBounds.maxY - dateLabel.frame.height - 50
                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
                // 更新时间标签
                timeLabel.stringValue = timeString
                timeLabel.sizeToFit()
                let timeX = contentBounds.midX - timeLabel.frame.width / 2
-               let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height - 10
+               let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height - 30
                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
            }
        }
