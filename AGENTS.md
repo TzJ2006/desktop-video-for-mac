@@ -40,6 +40,7 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 - Check whethere there are previous logic and methods that are no longer effective.
 - Add a log statement for each new function to aid debugging.
 - Provide Chinese comments when adding command-line scripts.
+- For Change log, please write it in both English and Chinese; note that please put the later version on the top, above all previous methods
 
 ### Naming Conventions
 

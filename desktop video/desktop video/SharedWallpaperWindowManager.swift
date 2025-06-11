@@ -609,7 +609,11 @@ class SharedWallpaperWindowManager {
         players[sid] = queuePlayer
         loopers[sid] = looper
         // 记录原始视频地址而非临时文件，用于保留用户选择
-        screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
+//        screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
+        let existingURL = screenContent[sid]?.url
+        let actualURL = originalURL ?? existingURL ?? tempURL
+//        screen.dv_displayID == 0 ? (activeVideoURLs[0] = actualURL) : (activeVideoURLs[1] = actualURL)
+        screenContent[sid] = (.video, actualURL, stretch, volume)
 
         if let sourceURL = originalURL {
             saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)

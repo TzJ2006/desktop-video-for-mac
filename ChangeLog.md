@@ -2,7 +2,23 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 3.0 Beta (2025-06-11)
+
+- 更新闲置暂停逻辑，更智能，更节能
+- 修复闲置暂停开关无法生效的问题
+- 改进显示器热插拔处理，移除黑屏窗口
+- 新连接显示器时同步当前视频并保持时间戳
+- 优化视频读取逻辑，优先从内存加载
+- 添加屏保功能
+- Update idle-pause; smarter and more energy-efficient
+- Fix the issue where the idle-pause toggle
+- Improve hot-plug handling for displays and eliminate black-screen windows
+- Sync the current video and preserve its timestamp when a new display is connected
+- Optimize video loading to prioritize in-memory playback
+- Add screen-saver
+
 ### Version 2.5 生日特辑 (2025-05-30)
+
 - 增加了更多语言支持
 - 支持了自动暂停以降低能耗
 - 增加了彩蛋
@@ -18,15 +34,8 @@
 - 屏保模式下隐藏检测窗口，保持播放并降低资源占用
 - 清理未使用的函数和属性，精简代码
 
-### Version 2.6 (2025-06-01)
-- 修复闲置暂停开关无法生效的问题
-- 移除闲置暂停间隔设置，直接由开关控制暂停
-- 改进显示器热插拔处理，移除黑屏窗口
-- 新连接显示器时同步当前视频并保持时间戳
-- 优化视频读取逻辑，优先从内存加载
-
-
 ### Version 2.4 (2025-05-28)
+
 - 新增了 Preference 页面
 - 支持了最新系统 Sequoia 15.5
 - Add Preference Page
