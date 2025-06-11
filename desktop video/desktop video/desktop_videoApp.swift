@@ -91,7 +91,6 @@ struct PreferencesView: View {
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
     @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
-    @AppStorage("idlePauseSeconds")  private var idlePauseSecondsStorage:  Int = 10
     @AppStorage("screensaverEnabled") private var screensaverEnabledStorage: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Int = 5
 
@@ -101,7 +100,6 @@ struct PreferencesView: View {
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
     @State private var idlePauseEnabled:  Bool = false
-    @State private var idlePauseSeconds:  Int = 10
     @State private var screensaverEnabled: Bool = false
     @State private var screensaverDelayMinutes: Int = 5
 
@@ -111,7 +109,6 @@ struct PreferencesView: View {
     @State private var originalGlobalMute:        Bool = false
     @State private var originalSelectedLanguage:  String = "system"
     @State private var originalIdlePauseEnabled:  Bool = false
-    @State private var originalIdlePauseSeconds:  Int = 10
     @State private var originalScreensaverEnabled: Bool = false
     @State private var originalScreensaverDelayMinutes: Int = 5
 
@@ -122,7 +119,6 @@ struct PreferencesView: View {
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
         || idlePauseEnabled != idlePauseEnabledStorage
-        || idlePauseSeconds != idlePauseSecondsStorage
         || screensaverEnabled != screensaverEnabledStorage
         || screensaverDelayMinutes != screensaverDelayMinutesStorage
     }
@@ -163,13 +159,6 @@ struct PreferencesView: View {
                 Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
                     .padding(.top, 10)
 
-                HStack {
-                    Text(L("IdlePauseSeconds"))
-                    TextField("5", value: $idlePauseSeconds, formatter: NumberFormatter())
-                        .frame(width: 30)
-                    Text(L("Seconds"))
-                }
-                .disabled(!idlePauseEnabled)
 
                 HStack {
                     Button(L("Confirm")) {
@@ -190,7 +179,6 @@ struct PreferencesView: View {
             originalGlobalMute = globalMuteStorage
             originalSelectedLanguage = languageStorage
             originalIdlePauseEnabled = idlePauseEnabledStorage
-            originalIdlePauseSeconds = idlePauseSecondsStorage
             originalScreensaverEnabled = screensaverEnabledStorage
             originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
             loadStoredValues()
@@ -204,7 +192,6 @@ struct PreferencesView: View {
         globalMute = originalGlobalMute
         selectedLanguage = originalSelectedLanguage
         idlePauseEnabled = originalIdlePauseEnabled
-        idlePauseSeconds = originalIdlePauseSeconds
         screensaverEnabled = originalScreensaverEnabled
         screensaverDelayMinutes = originalScreensaverDelayMinutes
     }
@@ -217,7 +204,6 @@ struct PreferencesView: View {
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
         idlePauseEnabledStorage = idlePauseEnabled
-        idlePauseSecondsStorage = idlePauseSeconds
         screensaverEnabledStorage = screensaverEnabled
         screensaverDelayMinutesStorage = screensaverDelayMinutes
 
