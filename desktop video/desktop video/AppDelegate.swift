@@ -51,7 +51,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    
    // 把视频缓存在内存中
    private var videoCache = [URL: Data]()
-   private let idlePauseEnabledKey = "idlePauseEnabled"
+   private let idleStopEnabledKey = "idleStopEnabled"
+   private let idleStopSensitivityKey = "idleStopSensitivity"
 
    func cachedVideoData(for url: URL) -> Data? {
        videoCache[url]
@@ -70,15 +71,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        SharedWallpaperWindowManager.shared.restoreFromBookmark()
        
        // Observe occlusion changes on overlay windows to auto-pause/play
-       for windows in SharedWallpaperWindowManager.shared.overlayWindows.values {
-           for window in windows {
-               NotificationCenter.default.addObserver(
-                   self,
-                   selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
-                   name: NSWindow.didChangeOcclusionStateNotification,
-                   object: window
-               )
-           }
+       for window in SharedWallpaperWindowManager.shared.overlayWindows.values {
+           NotificationCenter.default.addObserver(
+               self,
+               selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
+               name: NSWindow.didChangeOcclusionStateNotification,
+               object: window
+           )
        }
 
        // 切换 Dock 图标或仅菜单栏模式
@@ -219,8 +218,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        dlog("windows.keys = \(keys)")
 
        // 隐藏检测窗口，避免屏保模式下触发自动暂停
-       for overlays in SharedWallpaperWindowManager.shared.overlayWindows.values {
-           for overlay in overlays { overlay.orderOut(nil) }
+       for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
+           overlay.orderOut(nil)
        }
 
        // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
@@ -377,8 +376,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
 
        // 重新显示检测窗口
-       for overlays in SharedWallpaperWindowManager.shared.overlayWindows.values {
-           for overlay in overlays { overlay.orderFrontRegardless() }
+       for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
+           overlay.orderFrontRegardless()
        }
 
        // 2. 移除事件监听器
@@ -651,22 +650,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    /// 判断指定屏幕的检测窗口是否被遮挡
    func shouldPauseVideo(on screen: NSScreen) -> Bool {
        if isInScreensaver { return false }
-       guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
+       guard UserDefaults.standard.bool(forKey: idleStopEnabledKey) else { return false }
 
        guard let id = screen.dv_displayID,
-             let windows = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
+             let overlay = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
            return false
        }
        dlog("testshouldPauseVideo on \(screen.dv_localizedName)")
-       return windows.allSatisfy { !$0.occlusionState.contains(.visible) }
+       return !overlay.occlusionState.contains(.visible)
    }
 
    @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
-       guard let sid = SharedWallpaperWindowManager.shared.overlayWindows.first(where: { $0.value.contains(notification.object as! NSWindow) })?.key,
+       guard let sid = SharedWallpaperWindowManager.shared.overlayWindows.first(where: { $0.value == notification.object as? NSWindow })?.key,
              let player = SharedWallpaperWindowManager.shared.players[sid],
              let screen = NSScreen.screen(forDisplayID: sid) else { return }
        if isInScreensaver { return }
-       guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return }
+       guard UserDefaults.standard.bool(forKey: idleStopEnabledKey) else { return }
        if shouldPauseVideo(on: screen) {
            player.pause()
        } else {

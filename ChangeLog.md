@@ -2,6 +2,18 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version hot-fix-idx (2025-06-12)
+
+- 解决隐藏辅助窗口导致的内存问题，断开显示器时彻底关闭窗口
+- Fix memory issue by closing overlay windows for disconnected displays
+
+### Version hot-fix-idx (2025-06-12)
+
+- 改为单个检测窗口以控制播放并新增灵敏度设置，删除旧闲置设置
+- 修复在插拔显示器或关闭壁纸后出现黑屏的问题，改为隐藏辅助窗口
+- Switch to a single overlay window with sensitivity control and remove old idle options
+- Fix black screen when hot-plugging displays or closing wallpaper by hiding helper windows
+
 ### Version 3.8 (2025-06-19)
 
 - 注释所有与视频内存缓存相关的代码，回归 AVPlayer 播放实现

@@ -125,8 +125,8 @@ class SharedWallpaperWindowManager {
     private var currentViews: [CGDirectDisplayID: NSView] = [:]
     private var loopers: [CGDirectDisplayID: AVPlayerLooper] = [:]
     var windows: [CGDirectDisplayID: WallpaperWindow] = [:]
-    /// 用于检测遮挡状态的小窗口（每个屏幕四个）
-    var overlayWindows: [CGDirectDisplayID: [NSWindow]] = [:]
+    /// 用于检测遮挡状态的透明窗口（每个屏幕一个）
+    var overlayWindows: [CGDirectDisplayID: NSWindow] = [:]
     var players: [CGDirectDisplayID: AVQueuePlayer] = [:]
     var screenContent: [CGDirectDisplayID: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
@@ -158,45 +158,37 @@ class SharedWallpaperWindowManager {
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
-        // 创建四个用于检测遮挡状态的透明窗口
-        var overlays: [NSWindow] = []
-        let overlaySize = CGSize(width: screenFrame.width * 0.05, height: screenFrame.height * 0.05)
-        let positions: [CGPoint] = [
-            CGPoint(x: screenFrame.minX + screenFrame.width * 0.2 - overlaySize.width / 2,
-                    y: screenFrame.midY - overlaySize.height / 2),
-            CGPoint(x: screenFrame.maxX - screenFrame.width * 0.2 - overlaySize.width / 2,
-                    y: screenFrame.midY - overlaySize.height / 2),
-            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
-                    y: screenFrame.minY + screenFrame.height * 0.2 - overlaySize.height / 2),
-            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
-                    y: screenFrame.maxY - screenFrame.height * 0.2 - overlaySize.height / 2)
-        ]
+        // 创建用于检测遮挡状态的透明窗口
+        let sensitivity = UserDefaults.standard.double(forKey: "idleStopSensitivity")
+        let ratio = max(0, min(sensitivity, 100)) / 100.0
+        let overlayWidth = screenFrame.width * (1 - ratio)
+        let overlayHeight = screenFrame.height * (1 - ratio)
+        let overlayOrigin = CGPoint(x: screenFrame.midX - overlayWidth / 2,
+                                    y: screenFrame.midY - overlayHeight / 2)
+        let overlayRect = CGRect(origin: overlayOrigin, size: CGSize(width: overlayWidth, height: overlayHeight))
+        let overlay = NSWindow(contentRect: overlayRect,
+                               styleMask: .borderless,
+                               backing: .buffered,
+                               defer: false)
+        overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
+        overlay.isOpaque = false
+        overlay.backgroundColor = .clear
+        overlay.alphaValue = 0.0
+        overlay.ignoresMouseEvents = true
+        overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        overlay.orderFrontRegardless()
 
-        for origin in positions {
-            let overlay = NSWindow(contentRect: CGRect(origin: origin, size: overlaySize),
-                                   styleMask: .borderless,
-                                   backing: .buffered,
-                                   defer: false)
-            overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
-            overlay.isOpaque = false
-            overlay.backgroundColor = .clear
-            overlay.ignoresMouseEvents = true
-            overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
-            overlay.orderFrontRegardless()
-            overlays.append(overlay)
-
-            if let delegate = AppDelegate.shared {
-                NotificationCenter.default.addObserver(
-                    delegate,
-                    selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
-                    name: NSWindow.didChangeOcclusionStateNotification,
-                    object: overlay
-                )
-            }
+        if let delegate = AppDelegate.shared {
+            NotificationCenter.default.addObserver(
+                delegate,
+                selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: overlay
+            )
         }
 
         self.windows[sid] = win
-        self.overlayWindows[sid] = overlays
+        self.overlayWindows[sid] = overlay
     }
 
     func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
@@ -297,8 +289,8 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    func clear(for screen: NSScreen) {
-        dlog("clear content for \(screen.dv_localizedName)")
+    func clear(for screen: NSScreen, destroy: Bool = false) {
+        dlog("clear content for \(screen.dv_localizedName) destroy=\(destroy)")
         guard let sid = id(for: screen) else { return }
         stopVideoIfNeeded(for: screen)
         if let entry = screenContent[sid], entry.type == .video {
@@ -306,16 +298,22 @@ class SharedWallpaperWindowManager {
         }
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
-        if let overlays = overlayWindows[sid] {
-            for overlay in overlays {
-                NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
-                                                          name: NSWindow.didChangeOcclusionStateNotification,
-                                                          object: overlay)
+        if let overlay = overlayWindows[sid] {
+            NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                      name: NSWindow.didChangeOcclusionStateNotification,
+                                                      object: overlay)
+            if destroy {
+                overlay.close()
+            } else {
                 overlay.orderOut(nil)
             }
         }
         if let win = windows[sid] {
-            win.orderOut(nil)
+            if destroy {
+                win.close()
+            } else {
+                win.orderOut(nil)
+            }
         }
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
@@ -458,13 +456,20 @@ class SharedWallpaperWindowManager {
                     UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
                 }
                 if let screen = NSScreen.screen(forDisplayID: sid) {
-                    clear(for: screen)
+                    clear(for: screen, destroy: true)
                 } else {
                     // 无对应屏幕对象时直接移除记录
+                    if let overlay = overlayWindows[sid] {
+                        NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                                  name: NSWindow.didChangeOcclusionStateNotification,
+                                                                  object: overlay)
+                        overlay.close()
+                    }
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
                     windows.removeValue(forKey: sid)
+                    overlayWindows.removeValue(forKey: sid)
                     screenContent.removeValue(forKey: sid)
                 }
             }
@@ -529,12 +534,19 @@ class SharedWallpaperWindowManager {
         for sid in knownIDs.subtracting(activeIDs) {
             dlog("remove window for display \(sid)")
             if let screen = NSScreen.screen(forDisplayID: sid) {
-                clear(for: screen)
+                clear(for: screen, destroy: true)
             } else {
+                if let overlay = overlayWindows[sid] {
+                    NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                              name: NSWindow.didChangeOcclusionStateNotification,
+                                                              object: overlay)
+                    overlay.close()
+                }
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
                 currentViews.removeValue(forKey: sid)
                 windows.removeValue(forKey: sid)
+                overlayWindows.removeValue(forKey: sid)
                 screenContent.removeValue(forKey: sid)
             }
         }
