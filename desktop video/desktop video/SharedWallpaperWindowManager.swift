@@ -19,6 +19,12 @@ class SharedWallpaperWindowManager {
 
     /// 视频缓存，避免重复读取磁盘
     private var videoCache = [URL: Data]()
+    /// 保存每个显示器对应的临时视频文件路径，便于后续清理
+    private var tempVideoURLs: [CGDirectDisplayID: URL] = [:]
+    /// 跟踪每个临时文件被多少显示器使用，避免误删
+    private var tempVideoUsage: [URL: Int] = [:]
+    /// 跟踪缓存视频数据被多少屏幕使用，便于释放内存
+    private var videoCacheUsage: [URL: Int] = [:]
 
     /// 自动暂停开关对应的键名
     private let idlePauseEnabledKey = "idlePauseEnabled"
@@ -110,28 +116,15 @@ class SharedWallpaperWindowManager {
         case .image:
             showImage(for: screen, url: entry.url, stretch: isImageStretch)
         case .video:
-            // 使用内存加载并播放以保持同步状态
-            do {
-                let data: Data
-                if let cached = cachedVideoData(for: entry.url) {
-                    data = cached
-                } else {
-                    let loaded = try Data(contentsOf: entry.url)
-                    cacheVideoData(loaded, for: entry.url)
-                    data = loaded
-                }
-                showVideoFromMemory(for: screen, data: data, stretch: isVideoStretch, volume: currentVolume) {
-                    if let time = currentTime, let destID = self.id(for: screen) {
-                        self.players[destID]?.pause()
-                        self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-                            if shouldPlay {
-                                self.players[destID]?.play()
-                            }
+            playVideo(on: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
+                if let time = currentTime, let destID = self.id(for: screen) {
+                    self.players[destID]?.pause()
+                    self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                        if shouldPlay {
+                            self.players[destID]?.play()
                         }
                     }
                 }
-            } catch {
-                errorLog("syncWindow memory load failed: \(error)")
             }
         }
 
@@ -347,20 +340,7 @@ class SharedWallpaperWindowManager {
         case .image:
             showImage(for: screen, url: entry.url, stretch: entry.stretch)
         case .video:
-            // 从内存加载视频并恢复播放
-            do {
-                let data: Data
-                if let cached = cachedVideoData(for: entry.url) {
-                    data = cached
-                } else {
-                    let loaded = try Data(contentsOf: entry.url)
-                    cacheVideoData(loaded, for: entry.url)
-                    data = loaded
-                }
-                showVideoFromMemory(for: screen, data: data, stretch: entry.stretch, volume: entry.volume ?? 1.0)
-            } catch {
-                errorLog("restoreContent memory load failed: \(error)")
-            }
+            playVideo(on: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
         }
     }
 
@@ -371,6 +351,13 @@ class SharedWallpaperWindowManager {
         players[sid]?.replaceCurrentItem(with: nil)
         players.removeValue(forKey: sid)
         loopers.removeValue(forKey: sid)
+        if let entry = screenContent[sid], entry.type == .video {
+            releaseVideoCacheUsage(entry.url)
+        }
+        if let url = tempVideoURLs[sid] {
+            releaseTempVideo(url)
+            tempVideoURLs.removeValue(forKey: sid)
+        }
     }
 
     private func switchContent(to newView: NSView, for screen: NSScreen) {
@@ -435,20 +422,7 @@ class SharedWallpaperWindowManager {
 
                 if ["mp4", "mov", "m4v"].contains(ext) {
                     dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
-                    // 从内存加载并恢复播放
-                    do {
-                        let data: Data
-                        if let cached = cachedVideoData(for: url) {
-                            data = cached
-                        } else {
-                            let loaded = try Data(contentsOf: url)
-                            cacheVideoData(loaded, for: url)
-                            data = loaded
-                        }
-                        showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: volume)
-                    } catch {
-                        errorLog("restoreFromBookmark memory load failed: \(error)")
-                    }
+                    playVideo(on: screen, url: url, stretch: stretch, volume: volume)
                 } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
                     dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
                     showImage(for: screen, url: url, stretch: stretch)
@@ -498,6 +472,13 @@ class SharedWallpaperWindowManager {
                 }
                 windows[sid]?.close()
                 windows.removeValue(forKey: sid)
+                if let entry = screenContent[sid], entry.type == .video {
+                    releaseVideoCacheUsage(entry.url)
+                }
+                if let url = tempVideoURLs[sid] {
+                    releaseTempVideo(url)
+                    tempVideoURLs.removeValue(forKey: sid)
+                }
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
                 currentViews.removeValue(forKey: sid)
@@ -528,7 +509,13 @@ class SharedWallpaperWindowManager {
                         overlayWindows.removeValue(forKey: sid)
                     }
                     windows[sid]?.close()
-                    
+                    if let entry = screenContent[sid], entry.type == .video {
+                        releaseVideoCacheUsage(entry.url)
+                    }
+                    if let url = tempVideoURLs[sid] {
+                        releaseTempVideo(url)
+                        tempVideoURLs.removeValue(forKey: sid)
+                    }
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
@@ -565,27 +552,15 @@ class SharedWallpaperWindowManager {
             if currentEntry.type == .video {
                 let shouldPlay = players[srcID]?.rate != 0
                 // 使用内存加载并播放以保持同步
-                do {
-                    let data: Data
-                    if let cached = cachedVideoData(for: currentEntry.url) {
-                        data = cached
-                    } else {
-                        let loaded = try Data(contentsOf: currentEntry.url)
-                        cacheVideoData(loaded, for: currentEntry.url)
-                        data = loaded
-                    }
-                    showVideoFromMemory(for: screen, data: data, stretch: isVideoStretch, volume: currentVolume) {
-                        if let time = currentTime, let destID = self.id(for: screen) {
-                            self.players[destID]?.pause()
-                            self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-                                if shouldPlay {
-                                    self.players[destID]?.play()
-                                }
+                playVideo(on: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
+                    if let time = currentTime, let destID = self.id(for: screen) {
+                        self.players[destID]?.pause()
+                        self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                            if shouldPlay {
+                                self.players[destID]?.play()
                             }
                         }
                     }
-                } catch {
-                    errorLog("syncAllWindows memory load failed: \(error)")
                 }
             } else if currentEntry.type == .image {
                 showImage(for: screen, url: currentEntry.url, stretch: isImageStretch)
@@ -668,24 +643,12 @@ private func reloadScreens() {
                 case .image:
                     showImage(for: screen, url: entry.url, stretch: entry.stretch)
                 case .video:
-                    do {
-                        let data: Data
-                        if let cached = cachedVideoData(for: entry.url) {
-                            data = cached
-                        } else {
-                            let loaded = try Data(contentsOf: entry.url)
-                            cacheVideoData(loaded, for: entry.url)
-                            data = loaded
-                        }
-                        showVideoFromMemory(for: screen, data: data, stretch: entry.stretch, volume: entry.volume ?? 1.0) {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                if let player = self.players[sid], player.timeControlStatus != .playing {
-                                    player.play()
-                                }
+                    playVideo(on: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            if let player = self.players[sid], player.timeControlStatus != .playing {
+                                player.play()
                             }
                         }
-                    } catch {
-                        errorLog("Failed to load video data for syncing: \(error)")
                     }
                 }
             }
@@ -709,10 +672,15 @@ private func reloadScreens() {
         stopVideoIfNeeded(for: screen)
         guard let contentView = windows[sid]?.contentView else { return }
 
-        // 将数据写入临时文件
+        // 将数据写入临时文件，每次覆盖旧文件以免占用磁盘
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
+        if let oldURL = tempVideoURLs[sid] {
+            releaseTempVideo(oldURL)
+        }
         do {
             try data.write(to: tempURL)
+            tempVideoURLs[sid] = tempURL
+            markTempVideo(inUse: tempURL)
         } catch {
             errorLog("Failed to write video data to temp file: \(error)")
             return
@@ -739,6 +707,7 @@ private func reloadScreens() {
         let actualURL = originalURL ?? existingURL ?? tempURL
 //        screen.dv_displayID == 0 ? (activeVideoURLs[0] = actualURL) : (activeVideoURLs[1] = actualURL)
         screenContent[sid] = (.video, actualURL, stretch, volume)
+        markVideoCacheUsage(actualURL)
 
         if let sourceURL = originalURL {
             saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
@@ -770,6 +739,66 @@ private func reloadScreens() {
         videoCache[url] = data
     }
 
+    private func markVideoCacheUsage(_ url: URL) {
+        let count = (videoCacheUsage[url] ?? 0) + 1
+        videoCacheUsage[url] = count
+        dlog("markVideoCacheUsage \(url.lastPathComponent) count=\(count)")
+    }
+
+    private func releaseVideoCacheUsage(_ url: URL) {
+        guard let count = videoCacheUsage[url] else { return }
+        let newCount = count - 1
+        if newCount <= 0 {
+            videoCacheUsage.removeValue(forKey: url)
+            videoCache.removeValue(forKey: url)
+            dlog("removed cached data \(url.lastPathComponent)")
+        } else {
+            videoCacheUsage[url] = newCount
+            dlog("releaseVideoCacheUsage \(url.lastPathComponent) count=\(newCount)")
+        }
+    }
+
+    private func loadVideoData(from url: URL) throws -> Data {
+        if let cached = videoCache[url] {
+            dlog("loadVideoData cache hit \(url.lastPathComponent)")
+            return cached
+        }
+        let data = try Data(contentsOf: url)
+        videoCache[url] = data
+        dlog("loadVideoData disk load \(url.lastPathComponent)")
+        return data
+    }
+
+    func playVideo(on screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
+        dlog("playVideo \(url.lastPathComponent) on \(screen.dv_localizedName)")
+        do {
+            let data = try loadVideoData(from: url)
+            showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: volume, originalURL: url, onReady: onReady)
+        } catch {
+            errorLog("Failed to load video data: \(error)")
+        }
+    }
+
+    // MARK: - Temp File Usage Tracking
+    private func markTempVideo(inUse url: URL) {
+        let count = (tempVideoUsage[url] ?? 0) + 1
+        tempVideoUsage[url] = count
+        dlog("markTempVideo \(url.lastPathComponent) count=\(count)")
+    }
+
+    private func releaseTempVideo(_ url: URL) {
+        guard let count = tempVideoUsage[url] else { return }
+        let newCount = count - 1
+        if newCount <= 0 {
+            tempVideoUsage.removeValue(forKey: url)
+            try? FileManager.default.removeItem(at: url)
+            dlog("removed temp file \(url.lastPathComponent)")
+        } else {
+            tempVideoUsage[url] = newCount
+            dlog("releaseTempVideo \(url.lastPathComponent) count=\(newCount)")
+        }
+    }
+
     // MARK: - Playback Control
     func reloadAndPlayVideoFromMemory(displayID sid: CGDirectDisplayID) {
         dlog("reloadAndPlayVideoFromMemory \(sid)")
@@ -785,23 +814,7 @@ private func reloadScreens() {
         }
 
         if entry.type == .video {
-            do {
-                let data: Data
-                if let cached = cachedVideoData(for: entry.url) {
-                    data = cached
-                } else {
-                    let loaded = try Data(contentsOf: entry.url)
-                    cacheVideoData(loaded, for: entry.url)
-                    data = loaded
-                }
-                showVideoFromMemory(for: screen,
-                                    data: data,
-                                    stretch: entry.stretch,
-                                    volume: entry.volume ?? 1.0)
-            } catch {
-                errorLog("Failed to read video data: \(error)")
-                players[sid]?.play()
-            }
+            playVideo(on: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
         } else {
             players[sid]?.play()
         }
