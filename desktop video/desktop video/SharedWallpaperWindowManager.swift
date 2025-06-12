@@ -17,14 +17,11 @@ class SharedWallpaperWindowManager {
 
     private var debounceWorkItem: DispatchWorkItem?
 
-    /// 视频缓存，避免重复读取磁盘
-    private var videoCache = [URL: Data]()
-    /// 保存每个显示器对应的临时视频文件路径，便于后续清理
-    private var tempVideoURLs: [CGDirectDisplayID: URL] = [:]
-    /// 跟踪每个临时文件被多少显示器使用，避免误删
-    private var tempVideoUsage: [URL: Int] = [:]
-    /// 跟踪缓存视频数据被多少屏幕使用，便于释放内存
-    private var videoCacheUsage: [URL: Int] = [:]
+    // 以下与内存缓存相关的属性暂时停用
+    // private var videoCache = [URL: Data]()
+    // private var tempVideoURLs: [CGDirectDisplayID: URL] = [:]
+    // private var tempVideoUsage: [URL: Int] = [:]
+    // private var videoCacheUsage: [URL: Int] = [:]
 
     /// 自动暂停开关对应的键名
     private let idlePauseEnabledKey = "idlePauseEnabled"
@@ -337,13 +334,14 @@ class SharedWallpaperWindowManager {
         
         dlog("Finish releasing players")
         
-        if let entry = screenContent[sid], entry.type == .video {
-            releaseVideoCacheUsage(entry.url)
-        }
-        if let url = tempVideoURLs[sid] {
-            releaseTempVideo(url)
-            tempVideoURLs.removeValue(forKey: sid)
-        }
+        // 内存相关逻辑已停用
+        // if let entry = screenContent[sid], entry.type == .video {
+        //     releaseVideoCacheUsage(entry.url)
+        // }
+        // if let url = tempVideoURLs[sid] {
+        //     releaseTempVideo(url)
+        //     tempVideoURLs.removeValue(forKey: sid)
+        // }
         dlog("finishing release")
     }
 
@@ -462,13 +460,14 @@ class SharedWallpaperWindowManager {
                     self?.overlayWindows.removeValue(forKey: sid)
                     self?.windows.removeValue(forKey: sid)
                 }
-                if let entry = screenContent[sid], entry.type == .video {
-                    releaseVideoCacheUsage(entry.url)
-                }
-                if let url = tempVideoURLs[sid] {
-                    releaseTempVideo(url)
-                    tempVideoURLs.removeValue(forKey: sid)
-                }
+                // 内存缓存逻辑已禁用
+                // if let entry = screenContent[sid], entry.type == .video {
+                //     releaseVideoCacheUsage(entry.url)
+                // }
+                // if let url = tempVideoURLs[sid] {
+                //     releaseTempVideo(url)
+                //     tempVideoURLs.removeValue(forKey: sid)
+                // }
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
                 currentViews.removeValue(forKey: sid)
@@ -502,13 +501,13 @@ class SharedWallpaperWindowManager {
                         self?.overlayWindows.removeValue(forKey: sid)
                         self?.windows.removeValue(forKey: sid)
                     }
-                    if let entry = screenContent[sid], entry.type == .video {
-                        releaseVideoCacheUsage(entry.url)
-                    }
-                    if let url = tempVideoURLs[sid] {
-                        releaseTempVideo(url)
-                        tempVideoURLs.removeValue(forKey: sid)
-                    }
+                    // if let entry = screenContent[sid], entry.type == .video {
+                    //     releaseVideoCacheUsage(entry.url)
+                    // }
+                    // if let url = tempVideoURLs[sid] {
+                    //     releaseTempVideo(url)
+                    //     tempVideoURLs.removeValue(forKey: sid)
+                    // }
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
@@ -662,28 +661,15 @@ private func reloadScreens() {
     ///   - volume: 播放音量
     ///   - originalURL: 用户选择的视频源地址
     ///   - onReady: 准备完成回调
-    func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, onReady: (() -> Void)? = nil) {
-        dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
+    // 原先的内存播放逻辑已弃用，改为直接使用文件 URL
+    func showVideo(from url: URL, on screen: NSScreen, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
+        dlog("show video from file on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
         guard let contentView = windows[sid]?.contentView else { return }
 
-        // 将数据写入临时文件，每次覆盖旧文件以免占用磁盘
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
-        if let oldURL = tempVideoURLs[sid] {
-            releaseTempVideo(oldURL)
-        }
-        do {
-            try data.write(to: tempURL)
-            tempVideoURLs[sid] = tempURL
-            markTempVideo(inUse: tempURL)
-        } catch {
-            errorLog("Failed to write video data to temp file: \(error)")
-            return
-        }
-
-        let item = AVPlayerItem(url: tempURL)
+        let item = AVPlayerItem(url: url)
         let queuePlayer = AVQueuePlayer()
         queuePlayer.automaticallyWaitsToMinimizeStalling = false
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
@@ -698,23 +684,16 @@ private func reloadScreens() {
 
         players[sid] = queuePlayer
         loopers[sid] = looper
-        // 记录原始视频地址而非临时文件，用于保留用户选择
-        let existingURL = screenContent[sid]?.url
-        let actualURL = originalURL ?? existingURL ?? tempURL
-        screenContent[sid] = (.video, actualURL, stretch, volume)
-        markVideoCacheUsage(actualURL)
+        screenContent[sid] = (.video, url, stretch, volume)
+        saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
 
-        if let sourceURL = originalURL {
-            saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
-        }
-
-        dlog("SwitchContent Here")
-        
         switchContent(to: playerView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+        onReady?()
     }
 
-    // MARK: - Caching Helpers
+    /*
+    // MARK: - Caching Helpers (disabled)
     func cachedVideoData(for url: URL) -> Data? {
         videoCache[url]
     }
@@ -752,18 +731,15 @@ private func reloadScreens() {
         dlog("loadVideoData disk load \(url.lastPathComponent)")
         return data
     }
+    */
 
     func playVideo(on screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
         dlog("playVideo \(url.lastPathComponent) on \(screen.dv_localizedName)")
-        do {
-            let data = try loadVideoData(from: url)
-            showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: volume, originalURL: url, onReady: onReady)
-        } catch {
-            errorLog("Failed to load video data: \(error)")
-        }
+        showVideo(from: url, on: screen, stretch: stretch, volume: volume, onReady: onReady)
     }
 
-    // MARK: - Temp File Usage Tracking
+    /*
+    // MARK: - Temp File Usage Tracking (disabled)
     private func markTempVideo(inUse url: URL) {
         let count = (tempVideoUsage[url] ?? 0) + 1
         tempVideoUsage[url] = count
@@ -782,10 +758,11 @@ private func reloadScreens() {
             dlog("releaseTempVideo \(url.lastPathComponent) count=\(newCount)")
         }
     }
+    */
 
     // MARK: - Playback Control
-    func reloadAndPlayVideoFromMemory(displayID sid: CGDirectDisplayID) {
-        dlog("reloadAndPlayVideoFromMemory \(sid)")
+    func reloadAndPlayVideoFromFile(displayID sid: CGDirectDisplayID) {
+        dlog("reloadAndPlayVideoFromFile \(sid)")
         guard let screen = NSScreen.screen(forDisplayID: sid),
               let entry = screenContent[sid] else {
             players[sid]?.play()
@@ -815,7 +792,7 @@ private func reloadScreens() {
                 if shouldPause {
                     player.pause()
                 } else {
-                    reloadAndPlayVideoFromMemory(displayID: sid)
+                    reloadAndPlayVideoFromFile(displayID: sid)
                 }
             }
         }
@@ -841,7 +818,7 @@ private func reloadScreens() {
         if shouldPauseVideo(on: screen) {
             player.pause()
         } else {
-            reloadAndPlayVideoFromMemory(displayID: sid)
+            reloadAndPlayVideoFromFile(displayID: sid)
         }
     }
 }
