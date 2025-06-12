@@ -4,54 +4,14 @@
 
 ### Version hot-fix-idx (2025-06-12)
 
+- 解决隐藏辅助窗口导致的内存问题，断开显示器时彻底关闭窗口
+- Fix memory issue by closing overlay windows for disconnected display
 - 改为单个检测窗口以控制播放并新增灵敏度设置，删除旧闲置设置
+- 修复在插拔显示器或关闭壁纸后出现黑屏的问题，改为隐藏辅助窗口
+- Switch to a single overlay window with sensitivity control and remove old idle options
 - 修复显示器热插拔后黑屏的问题，彻底关闭辅助窗口
 - Switch to a single overlay window with sensitivity control and remove old idle options
 - Fix black screen on monitor hot-plug by closing helper windows
-
-### Version 3.8 (2025-06-19)
-
-- 注释所有与视频内存缓存相关的代码，回归 AVPlayer 播放实现
-- Comment out memory caching for videos and revert to AVPlayer playback
-
-### Version 3.7 (2025-06-18)
-
-- 修复清理窗口时崩溃的问题，确保异步事件完成后移除引用
-- Fix crash when clearing windows by removing references after async events
-
-### Version 3.6 (2025-06-17)
-
-- 修复视频内存缓存未释放导致的内存溢出，并统一视频播放逻辑
-- Fix memory leaks from cached video data and consolidate playback code
-
-### Version 3.5 (2025-06-16)
-
-- 处理多屏共享临时视频时的引用，避免在其他屏幕仍在使用时删除文件
-- Track usage of temp videos across displays to avoid deleting files still in use
-
-### Version 3.4 (2025-06-15)
-
-- 修复显示器插拔后临时视频文件未清理导致的内存错误
-- Fix memory errors caused by temporary video files not being removed after display hot-plug
-
-### Version 3.3 (2025-06-14)
-
-- 新增在监测到新显示器时同步主控制器屏幕内容
-- Auto-sync new displays with the primary controller screen
-
-### Version 3.2 (2025-06-13)
-
-- 将 Dock 与菜单栏图标管理逻辑移入 `AppAppearanceManager`
-- 修复关闭壁纸后黑屏的问题，关闭窗口时一并销毁辅助窗口
-- Moved dock/menu bar handling into `AppAppearanceManager`
-- Fixed black screen when closing wallpaper by fully closing helper windows
-
-### Version 3.1 (2025-06-12)
-
-- 重构应用结构，将屏保及自动暂停逻辑移入独立管理器
-- Refactor: move screensaver and idle pause code into separate managers
-- 简化闲置暂停检测窗口，只使用一个可调边距的透明窗口
-- Simplify idle-pause overlay to a single window with adjustable margin
 
 ### Version 3.0 Beta (2025-06-11)
 

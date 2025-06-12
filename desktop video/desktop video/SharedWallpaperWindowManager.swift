@@ -289,8 +289,8 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    func clear(for screen: NSScreen) {
-        dlog("clear content for \(screen.dv_localizedName)")
+    func clear(for screen: NSScreen, destroy: Bool = false) {
+        dlog("clear content for \(screen.dv_localizedName) destroy=\(destroy)")
         guard let sid = id(for: screen) else { return }
         stopVideoIfNeeded(for: screen)
         if let entry = screenContent[sid], entry.type == .video {
@@ -302,10 +302,18 @@ class SharedWallpaperWindowManager {
             NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
                                                       name: NSWindow.didChangeOcclusionStateNotification,
                                                       object: overlay)
-            overlay.close()
+            if destroy {
+                overlay.close()
+            } else {
+                overlay.orderOut(nil)
+            }
         }
         if let win = windows[sid] {
-            win.close()
+            if destroy {
+                win.close()
+            } else {
+                win.orderOut(nil)
+            }
         }
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
@@ -448,15 +456,20 @@ class SharedWallpaperWindowManager {
                     UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
                 }
                 if let screen = NSScreen.screen(forDisplayID: sid) {
-                    clear(for: screen)
+                    clear(for: screen, destroy: true)
                 } else {
-                    // 无对应屏幕对象时直接关闭窗口并移除记录
-                    overlayWindows[sid]?.close()
-                    windows[sid]?.close()
+                    // 无对应屏幕对象时直接移除记录
+                    if let overlay = overlayWindows[sid] {
+                        NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                                  name: NSWindow.didChangeOcclusionStateNotification,
+                                                                  object: overlay)
+                        overlay.close()
+                    }
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
                     windows.removeValue(forKey: sid)
+                    overlayWindows.removeValue(forKey: sid)
                     screenContent.removeValue(forKey: sid)
                     overlayWindows.removeValue(forKey: sid)
                 }
@@ -522,14 +535,19 @@ class SharedWallpaperWindowManager {
         for sid in knownIDs.subtracting(activeIDs) {
             dlog("remove window for display \(sid)")
             if let screen = NSScreen.screen(forDisplayID: sid) {
-                clear(for: screen)
+                clear(for: screen, destroy: true)
             } else {
-                overlayWindows[sid]?.close()
-                windows[sid]?.close()
+                if let overlay = overlayWindows[sid] {
+                    NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                              name: NSWindow.didChangeOcclusionStateNotification,
+                                                              object: overlay)
+                    overlay.close()
+                }
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
                 currentViews.removeValue(forKey: sid)
                 windows.removeValue(forKey: sid)
+                overlayWindows.removeValue(forKey: sid)
                 screenContent.removeValue(forKey: sid)
                 overlayWindows.removeValue(forKey: sid)
             }
