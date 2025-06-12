@@ -90,7 +90,8 @@ struct PreferencesView: View {
     @AppStorage("launchAtLogin")     private var launchAtLoginStorage:     Bool = true
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
-    @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
+    @AppStorage("idleStopEnabled")  private var idleStopEnabledStorage:  Bool = true
+    @AppStorage("idleStopSensitivity") private var idleStopSensitivityStorage: Int = 50
     @AppStorage("screensaverEnabled") private var screensaverEnabledStorage: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Int = 5
 
@@ -99,7 +100,8 @@ struct PreferencesView: View {
     @State private var launchAtLogin:     Bool = true
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
-    @State private var idlePauseEnabled:  Bool = false
+    @State private var idleStopEnabled:  Bool = true
+    @State private var idleStopSensitivity: Int = 50
     @State private var screensaverEnabled: Bool = false
     @State private var screensaverDelayMinutes: Int = 5
 
@@ -108,7 +110,8 @@ struct PreferencesView: View {
     @State private var originalLaunchAtLogin:     Bool = true
     @State private var originalGlobalMute:        Bool = false
     @State private var originalSelectedLanguage:  String = "system"
-    @State private var originalIdlePauseEnabled:  Bool = false
+    @State private var originalIdleStopEnabled:  Bool = true
+    @State private var originalIdleStopSensitivity: Int = 50
     @State private var originalScreensaverEnabled: Bool = false
     @State private var originalScreensaverDelayMinutes: Int = 5
 
@@ -118,7 +121,8 @@ struct PreferencesView: View {
         || launchAtLogin != launchAtLoginStorage
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
-        || idlePauseEnabled != idlePauseEnabledStorage
+        || idleStopEnabled != idleStopEnabledStorage
+        || idleStopSensitivity != idleStopSensitivityStorage
         || screensaverEnabled != screensaverEnabledStorage
         || screensaverDelayMinutes != screensaverDelayMinutesStorage
     }
@@ -156,8 +160,18 @@ struct PreferencesView: View {
                 }
                 .disabled(!screensaverEnabled)
 
-                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
+                Toggle(L("IdleStopEnabled"), isOn: $idleStopEnabled)
                     .padding(.top, 10)
+
+                HStack {
+                    Text(L("IdleStopSensitivity"))
+                    Slider(value: Binding(
+                        get: { Double(idleStopSensitivity) },
+                        set: { idleStopSensitivity = Int($0) }
+                    ), in: 0...100)
+                    Text("\(idleStopSensitivity)")
+                }
+                .disabled(!idleStopEnabled)
 
 
                 HStack {
@@ -178,7 +192,8 @@ struct PreferencesView: View {
             originalLaunchAtLogin = launchAtLoginStorage
             originalGlobalMute = globalMuteStorage
             originalSelectedLanguage = languageStorage
-            originalIdlePauseEnabled = idlePauseEnabledStorage
+            originalIdleStopEnabled = idleStopEnabledStorage
+            originalIdleStopSensitivity = idleStopSensitivityStorage
             originalScreensaverEnabled = screensaverEnabledStorage
             originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
             loadStoredValues()
@@ -191,7 +206,8 @@ struct PreferencesView: View {
         launchAtLogin = originalLaunchAtLogin
         globalMute = originalGlobalMute
         selectedLanguage = originalSelectedLanguage
-        idlePauseEnabled = originalIdlePauseEnabled
+        idleStopEnabled = originalIdleStopEnabled
+        idleStopSensitivity = originalIdleStopSensitivity
         screensaverEnabled = originalScreensaverEnabled
         screensaverDelayMinutes = originalScreensaverDelayMinutes
     }
@@ -203,7 +219,8 @@ struct PreferencesView: View {
         launchAtLoginStorage = launchAtLogin
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
-        idlePauseEnabledStorage = idlePauseEnabled
+        idleStopEnabledStorage = idleStopEnabled
+        idleStopSensitivityStorage = idleStopSensitivity
         screensaverEnabledStorage = screensaverEnabled
         screensaverDelayMinutesStorage = screensaverDelayMinutes
 
