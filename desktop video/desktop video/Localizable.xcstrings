@@ -420,39 +420,46 @@
         }
       }
     },
-    "IdlePauseEnabled" : {
+    "IdleStopEnabled" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Idle Enabled"
+            "value" : "Idle Stop"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausa automática activada"
+            "value" : "Pausa automática"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause automatique activée"
+            "value" : "Pause automatique"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动暂停播放"
+            "value" : "自动暂停"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动暂停播放"
+            "value" : "自动暂停"
           }
         }
+      }
+    },
+    "IdleStopSensitivity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sensitivity" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "灵敏度" } }
       }
     },
     "Language" : {
