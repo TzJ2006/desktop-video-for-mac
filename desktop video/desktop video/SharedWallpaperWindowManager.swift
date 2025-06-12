@@ -471,6 +471,7 @@ class SharedWallpaperWindowManager {
                     windows.removeValue(forKey: sid)
                     overlayWindows.removeValue(forKey: sid)
                     screenContent.removeValue(forKey: sid)
+                    overlayWindows.removeValue(forKey: sid)
                 }
             }
         }
@@ -548,6 +549,7 @@ class SharedWallpaperWindowManager {
                 windows.removeValue(forKey: sid)
                 overlayWindows.removeValue(forKey: sid)
                 screenContent.removeValue(forKey: sid)
+                overlayWindows.removeValue(forKey: sid)
             }
         }
 
