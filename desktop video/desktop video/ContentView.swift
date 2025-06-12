@@ -99,17 +99,17 @@ struct ContentView: View {
                                 SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: sourceScreen)
                             } else {
                                 for screen in screenObserver.screens {
-                                    SharedWallpaperWindowManager.shared.clear(for: screen)
+                                    SharedWallpaperWindowManager.shared.clear(for: screen, destroy: true)
                                 }
                             }
                         } else {
                             for screen in screenObserver.screens {
-                                SharedWallpaperWindowManager.shared.clear(for: screen)
+                                SharedWallpaperWindowManager.shared.clear(for: screen, destroy: true)
                             }
                         }
                     } else {
                         for screen in screenObserver.screens {
-                            SharedWallpaperWindowManager.shared.clear(for: screen)
+                            SharedWallpaperWindowManager.shared.clear(for: screen, destroy: true)
                         }
                     }
                 } label: {
@@ -291,7 +291,7 @@ struct SingleScreenView: View {
                     }
 
                 Button {
-                    SharedWallpaperWindowManager.shared.clear(for: screen)
+                    SharedWallpaperWindowManager.shared.clear(for: screen, destroy: true)
                     AppState.shared.lastMediaURL = nil
                     AppState.shared.currentMediaURL = nil
                 } label: {
