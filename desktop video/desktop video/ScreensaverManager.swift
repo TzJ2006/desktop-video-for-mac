@@ -171,17 +171,12 @@ class ScreensaverManager {
                 }, completionHandler: nil)
 
                 if let entry = SharedWallpaperWindowManager.shared.screenContent[id], entry.type == .video {
-                    do {
-                        let data = try Data(contentsOf: entry.url)
-                        SharedWallpaperWindowManager.shared.showVideoFromMemory(
-                            for: screen,
-                            data: data,
-                            stretch: entry.stretch,
-                            volume: entry.volume ?? 1.0
-                        )
-                    } catch {
-                        errorLog("Failed to reload video data from memory: \(error)")
-                    }
+                    SharedWallpaperWindowManager.shared.playVideo(
+                        on: screen,
+                        url: entry.url,
+                        stretch: entry.stretch,
+                        volume: entry.volume ?? 1.0
+                    )
                 } else {
                     SharedWallpaperWindowManager.shared.reloadAndPlayVideoFromMemory(displayID: id)
                 }

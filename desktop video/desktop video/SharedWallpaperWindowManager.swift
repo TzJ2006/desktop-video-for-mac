@@ -427,6 +427,7 @@ class SharedWallpaperWindowManager {
                     dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
                     showImage(for: screen, url: url, stretch: stretch)
                 }
+                url.stopAccessingSecurityScopedResource()
             } catch {
                 errorLog("Failed to restore bookmark for screen \(displayID): \(error)")
             }
