@@ -330,10 +330,11 @@ class SharedWallpaperWindowManager {
             win.close()
         }
         screenContent.removeValue(forKey: sid)
-// Error!! The memory error is caused by these two lines
-//        windows.removeValue(forKey: sid)
-//        overlayWindows.removeValue(forKey: sid)
-// Error!! The memory error is caused by these two lines
+        // 延迟移除字典中的引用，避免关闭窗口触发的异步事件访问已释放对象
+        DispatchQueue.main.async { [weak self] in
+            self?.windows.removeValue(forKey: sid)
+            self?.overlayWindows.removeValue(forKey: sid)
+        }
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
@@ -486,10 +487,12 @@ class SharedWallpaperWindowManager {
                           object: overlay)
                         overlay.close()
                     }
-//                    overlayWindows.removeValue(forKey: sid)
                 }
                 windows[sid]?.close()
-//                windows.removeValue(forKey: sid)
+                DispatchQueue.main.async { [weak self] in
+                    self?.overlayWindows.removeValue(forKey: sid)
+                    self?.windows.removeValue(forKey: sid)
+                }
                 if let entry = screenContent[sid], entry.type == .video {
                     releaseVideoCacheUsage(entry.url)
                 }
@@ -524,9 +527,12 @@ class SharedWallpaperWindowManager {
                               object: overlay)
                             overlay.close()
                         }
-//                        overlayWindows.removeValue(forKey: sid)
                     }
                     windows[sid]?.close()
+                    DispatchQueue.main.async { [weak self] in
+                        self?.overlayWindows.removeValue(forKey: sid)
+                        self?.windows.removeValue(forKey: sid)
+                    }
                     if let entry = screenContent[sid], entry.type == .video {
                         releaseVideoCacheUsage(entry.url)
                     }
@@ -537,7 +543,9 @@ class SharedWallpaperWindowManager {
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
-//                    windows.removeValue(forKey: sid)
+                    DispatchQueue.main.async { [weak self] in
+                        self?.windows.removeValue(forKey: sid)
+                    }
                     screenContent.removeValue(forKey: sid)
                 }
             }
@@ -628,10 +636,12 @@ private func reloadScreens() {
             currentViews.removeValue(forKey: sid)
             if let overlays = overlayWindows[sid] {
                 for overlay in overlays { overlay.close() }
-//                overlayWindows.removeValue(forKey: sid)
             }
             windows[sid]?.close()
-//            windows.removeValue(forKey: sid)
+            DispatchQueue.main.async { [weak self] in
+                self?.overlayWindows.removeValue(forKey: sid)
+                self?.windows.removeValue(forKey: sid)
+            }
             screenContent.removeValue(forKey: sid)
         }
     }
