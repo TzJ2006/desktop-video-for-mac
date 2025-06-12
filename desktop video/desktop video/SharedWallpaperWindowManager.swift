@@ -317,12 +317,12 @@ class SharedWallpaperWindowManager {
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
-        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
-            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
-            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
-            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
-            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
-        }
+//        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
+//            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+//            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+//            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+//            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
+//        }
     }
 
     func restoreContent(for screen: NSScreen) {
@@ -443,6 +443,27 @@ class SharedWallpaperWindowManager {
         dlog("cleanup disconnected screens")
         let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
         for sid in Array(windows.keys) {
+            
+            // If there’s no NSScreen for this ID, manually close everything and remove persisted defaults
+            guard NSScreen.screen(forDisplayID: sid) != nil else {
+                if let overlays = overlayWindows[sid] {
+                    for overlay in overlays {
+                        NotificationCenter.default.removeObserver(self,
+                          name: NSWindow.didChangeOcclusionStateNotification,
+                          object: overlay)
+                        overlay.close()
+                    }
+                    overlayWindows.removeValue(forKey: sid)
+                }
+                windows[sid]?.close()
+                windows.removeValue(forKey: sid)
+                players.removeValue(forKey: sid)
+                loopers.removeValue(forKey: sid)
+                currentViews.removeValue(forKey: sid)
+                screenContent.removeValue(forKey: sid)
+                continue
+            }
+            
             if !activeIDs.contains(sid) {
                 let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
                 if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
@@ -455,6 +476,18 @@ class SharedWallpaperWindowManager {
                     clear(for: screen)
                 } else {
                     // 无对应屏幕对象时直接移除记录
+                    
+                    if let overlays = overlayWindows[sid] {
+                        for overlay in overlays {
+                            NotificationCenter.default.removeObserver(self,
+                              name: NSWindow.didChangeOcclusionStateNotification,
+                              object: overlay)
+                            overlay.close()
+                        }
+                        overlayWindows.removeValue(forKey: sid)
+                    }
+                    windows[sid]?.close()
+                    
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
@@ -511,13 +544,18 @@ class SharedWallpaperWindowManager {
         debounceWorkItem = DispatchWorkItem { [weak self] in
             self?.reloadScreens()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: debounceWorkItem!)
+        dlog("Start debounce")
+        if let item = debounceWorkItem {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: item)
+        }
+        dlog("Finish debounce")
     }
 
     private func reloadScreens() {
         dlog("reload screens")
         let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
         let knownIDs = Set(windows.keys)
+        cleanupDisconnectedScreens()
 
         // 移除已断开的屏幕窗口
         for sid in knownIDs.subtracting(activeIDs) {
@@ -528,6 +566,11 @@ class SharedWallpaperWindowManager {
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
                 currentViews.removeValue(forKey: sid)
+                if let overlays = overlayWindows[sid] {
+                    for overlay in overlays { overlay.close() }
+                    overlayWindows.removeValue(forKey: sid)
+                }
+                windows[sid]?.close()
                 windows.removeValue(forKey: sid)
                 screenContent.removeValue(forKey: sid)
             }
@@ -546,6 +589,8 @@ class SharedWallpaperWindowManager {
             }
         }
 
+        dlog("Trying to sync new screens...")
+        
         for screen in NSScreen.screens {
             guard let sid = screen.dv_displayID, !knownIDs.contains(sid) else { continue }
             dlog("add window for \(screen.dv_localizedName)")
@@ -557,15 +602,31 @@ class SharedWallpaperWindowManager {
                 case .image:
                     showImage(for: screen, url: entry.url, stretch: entry.stretch)
                 case .video:
-                    showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        if let player = self.players[sid], player.timeControlStatus != .playing {
-                            player.play()
+                    do {
+                        let data: Data
+                        if let cached = cachedVideoData(for: entry.url) {
+                            data = cached
+                        } else {
+                            let loaded = try Data(contentsOf: entry.url)
+                            cacheVideoData(loaded, for: entry.url)
+                            data = loaded
                         }
+                        showVideoFromMemory(for: screen, data: data, stretch: entry.stretch, volume: entry.volume ?? 1.0) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                if let player = self.players[sid], player.timeControlStatus != .playing {
+                                    player.play()
+                                }
+                            }
+                        }
+                    } catch {
+                        errorLog("Failed to load video data for syncing: \(error)")
                     }
                 }
             }
         }
+        
+        dlog("Finish sync new screens...")
+        
     }
 
     /// 将内存中的视频数据写入临时文件后播放。
@@ -618,6 +679,8 @@ class SharedWallpaperWindowManager {
             saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
         }
 
+        dlog("SwitchContent Here")
+        
         switchContent(to: playerView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
