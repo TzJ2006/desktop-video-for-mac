@@ -70,7 +70,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // 从书签中恢复窗口
        SharedWallpaperWindowManager.shared.restoreFromBookmark()
        
-
+       // Observe occlusion changes on overlay windows to auto-pause/play
+//        for window in SharedWallpaperWindowManager.shared.overlayWindows.values {
+//            NotificationCenter.default.addObserver(
+//                self,
+//                selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
+//                name: NSWindow.didChangeOcclusionStateNotification,
+//                object: window
+//            )
+//        }
 
        // 切换 Dock 图标或仅菜单栏模式
        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
