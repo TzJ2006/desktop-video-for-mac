@@ -168,7 +168,7 @@ class SharedWallpaperWindowManager {
         win.isOpaque = false
         win.backgroundColor = .clear
         win.ignoresMouseEvents = true
-        win.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        win.collectionBehavior = [.canJoxinAllSpaces, .stationary]
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
@@ -221,29 +221,6 @@ class SharedWallpaperWindowManager {
         switchContent(to: imageView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
-
-    /// 为指定屏幕播放视频，始终从内存缓存读取数据。
-//    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
-//        dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
-//        do {
-//            let data: Data
-//            if let cached = cachedVideoData(for: url) {
-//                data = cached
-//            } else {
-//                let loaded = try Data(contentsOf: url)
-//                cacheVideoData(loaded, for: url)
-//                data = loaded
-//            }
-//            showVideoFromMemory(for: screen,
-//                                data: data,
-//                                stretch: stretch,
-//                                volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
-//                                originalURL: url,
-//                                onReady: onReady)
-//        } catch {
-//            errorLog("Cannot load from memory!")
-//        }
-//    }
 
     /// 使用与单屏静音相同的逻辑静音所有屏幕，
     /// 会在静音前保存各屏幕最后一次非零音量。
@@ -332,18 +309,10 @@ class SharedWallpaperWindowManager {
         screenContent.removeValue(forKey: sid)
         // 延迟移除字典中的引用，避免关闭窗口触发的异步事件访问已释放对象
         DispatchQueue.main.async { [weak self] in
-            self?.windows.removeValue(forKey: sid)
-            self?.overlayWindows.removeValue(forKey: sid)
+//            self?.windows.removeValue(forKey: sid)
+//            self?.overlayWindows.removeValue(forKey: sid)
         }
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-
-        // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
-//        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
-//            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
-//            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
-//            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
-//            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
-//        }
         dlog("finish clear")
     }
 
@@ -730,10 +699,8 @@ private func reloadScreens() {
         players[sid] = queuePlayer
         loopers[sid] = looper
         // 记录原始视频地址而非临时文件，用于保留用户选择
-//        screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
         let existingURL = screenContent[sid]?.url
         let actualURL = originalURL ?? existingURL ?? tempURL
-//        screen.dv_displayID == 0 ? (activeVideoURLs[0] = actualURL) : (activeVideoURLs[1] = actualURL)
         screenContent[sid] = (.video, actualURL, stretch, volume)
         markVideoCacheUsage(actualURL)
 
@@ -745,17 +712,6 @@ private func reloadScreens() {
         
         switchContent(to: playerView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-//            // 在开始播放之前检查是否应当暂停播放
-//            if self.shouldPauseVideo(on: screen) {
-//                // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
-//            } else {
-//                // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
-//                queuePlayer.play()
-//            }
-//            onReady?()
-//        }
     }
 
     // MARK: - Caching Helpers
