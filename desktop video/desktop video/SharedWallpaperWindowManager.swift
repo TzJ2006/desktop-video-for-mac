@@ -11,6 +11,8 @@ import Foundation
 import UniformTypeIdentifiers
 
 class SharedWallpaperWindowManager {
+    /// 上次检测到的屏幕 ID，用于比较新增/移除
+    private var lastScreenIDs: Set<CGDirectDisplayID> = Set(NSScreen.screens.compactMap { $0.dv_displayID })
     static let shared = SharedWallpaperWindowManager()
 
     private var debounceWorkItem: DispatchWorkItem?
@@ -108,15 +110,28 @@ class SharedWallpaperWindowManager {
         case .image:
             showImage(for: screen, url: entry.url, stretch: isImageStretch)
         case .video:
-            showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
-                if let time = currentTime {
-                    self.players[destID]?.pause()
-                    self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-                        if shouldPlay {
-                            self.players[destID]?.play()
+            // 使用内存加载并播放以保持同步状态
+            do {
+                let data: Data
+                if let cached = cachedVideoData(for: entry.url) {
+                    data = cached
+                } else {
+                    let loaded = try Data(contentsOf: entry.url)
+                    cacheVideoData(loaded, for: entry.url)
+                    data = loaded
+                }
+                showVideoFromMemory(for: screen, data: data, stretch: isVideoStretch, volume: currentVolume) {
+                    if let time = currentTime, let destID = self.id(for: screen) {
+                        self.players[destID]?.pause()
+                        self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                            if shouldPlay {
+                                self.players[destID]?.play()
+                            }
                         }
                     }
                 }
+            } catch {
+                errorLog("syncWindow memory load failed: \(error)")
             }
         }
 
@@ -215,27 +230,27 @@ class SharedWallpaperWindowManager {
     }
 
     /// 为指定屏幕播放视频，始终从内存缓存读取数据。
-    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
-        dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
-        do {
-            let data: Data
-            if let cached = cachedVideoData(for: url) {
-                data = cached
-            } else {
-                let loaded = try Data(contentsOf: url)
-                cacheVideoData(loaded, for: url)
-                data = loaded
-            }
-            showVideoFromMemory(for: screen,
-                                data: data,
-                                stretch: stretch,
-                                volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
-                                originalURL: url,
-                                onReady: onReady)
-        } catch {
-            errorLog("Cannot load from memory!")
-        }
-    }
+//    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
+//        dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
+//        do {
+//            let data: Data
+//            if let cached = cachedVideoData(for: url) {
+//                data = cached
+//            } else {
+//                let loaded = try Data(contentsOf: url)
+//                cacheVideoData(loaded, for: url)
+//                data = loaded
+//            }
+//            showVideoFromMemory(for: screen,
+//                                data: data,
+//                                stretch: stretch,
+//                                volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
+//                                originalURL: url,
+//                                onReady: onReady)
+//        } catch {
+//            errorLog("Cannot load from memory!")
+//        }
+//    }
 
     /// 使用与单屏静音相同的逻辑静音所有屏幕，
     /// 会在静音前保存各屏幕最后一次非零音量。
@@ -332,7 +347,20 @@ class SharedWallpaperWindowManager {
         case .image:
             showImage(for: screen, url: entry.url, stretch: entry.stretch)
         case .video:
-            showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+            // 从内存加载视频并恢复播放
+            do {
+                let data: Data
+                if let cached = cachedVideoData(for: entry.url) {
+                    data = cached
+                } else {
+                    let loaded = try Data(contentsOf: entry.url)
+                    cacheVideoData(loaded, for: entry.url)
+                    data = loaded
+                }
+                showVideoFromMemory(for: screen, data: data, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+            } catch {
+                errorLog("restoreContent memory load failed: \(error)")
+            }
         }
     }
 
@@ -407,7 +435,20 @@ class SharedWallpaperWindowManager {
 
                 if ["mp4", "mov", "m4v"].contains(ext) {
                     dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
-                    showVideo(for: screen, url: url, stretch: stretch, volume: volume)
+                    // 从内存加载并恢复播放
+                    do {
+                        let data: Data
+                        if let cached = cachedVideoData(for: url) {
+                            data = cached
+                        } else {
+                            let loaded = try Data(contentsOf: url)
+                            cacheVideoData(loaded, for: url)
+                            data = loaded
+                        }
+                        showVideoFromMemory(for: screen, data: data, stretch: stretch, volume: volume)
+                    } catch {
+                        errorLog("restoreFromBookmark memory load failed: \(error)")
+                    }
                 } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
                     dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
                     showImage(for: screen, url: url, stretch: stretch)
@@ -523,15 +564,28 @@ class SharedWallpaperWindowManager {
 
             if currentEntry.type == .video {
                 let shouldPlay = players[srcID]?.rate != 0
-                showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
-                    if let time = currentTime, let destID = self.id(for: screen) {
-                        self.players[destID]?.pause()
-                        self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-                            if shouldPlay {
-                                self.players[destID]?.play()
+                // 使用内存加载并播放以保持同步
+                do {
+                    let data: Data
+                    if let cached = cachedVideoData(for: currentEntry.url) {
+                        data = cached
+                    } else {
+                        let loaded = try Data(contentsOf: currentEntry.url)
+                        cacheVideoData(loaded, for: currentEntry.url)
+                        data = loaded
+                    }
+                    showVideoFromMemory(for: screen, data: data, stretch: isVideoStretch, volume: currentVolume) {
+                        if let time = currentTime, let destID = self.id(for: screen) {
+                            self.players[destID]?.pause()
+                            self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                                if shouldPlay {
+                                    self.players[destID]?.play()
+                                }
                             }
                         }
                     }
+                } catch {
+                    errorLog("syncAllWindows memory load failed: \(error)")
                 }
             } else if currentEntry.type == .image {
                 showImage(for: screen, url: currentEntry.url, stretch: isImageStretch)
@@ -540,9 +594,12 @@ class SharedWallpaperWindowManager {
     }
 
     @objc private func handleScreenChange() {
+        dlog("handle screen change")
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem { [weak self] in
+            dlog("Start Reload screens")
             self?.reloadScreens()
+            dlog("end Reload screens")
         }
         dlog("Start debounce")
         if let item = debounceWorkItem {
@@ -551,50 +608,59 @@ class SharedWallpaperWindowManager {
         dlog("Finish debounce")
     }
 
-    private func reloadScreens() {
-        dlog("reload screens")
-        let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
-        let knownIDs = Set(windows.keys)
-        cleanupDisconnectedScreens()
+private func reloadScreens() {
+    dlog("reload screens")
+    cleanupDisconnectedScreens()
+    // 获取当前屏幕 ID
+    let currentIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
+    // 计算移除和新增
+    let removedIDs = lastScreenIDs.subtracting(currentIDs)
+    let addedIDs = currentIDs.subtracting(lastScreenIDs)
+    // 更新缓存的屏幕 ID
+    lastScreenIDs = currentIDs
 
-        // 移除已断开的屏幕窗口
-        for sid in knownIDs.subtracting(activeIDs) {
-            dlog("remove window for display \(sid)")
-            if let screen = NSScreen.screen(forDisplayID: sid) {
-                clear(for: screen)
-            } else {
-                players.removeValue(forKey: sid)
-                loopers.removeValue(forKey: sid)
-                currentViews.removeValue(forKey: sid)
-                if let overlays = overlayWindows[sid] {
-                    for overlay in overlays { overlay.close() }
-                    overlayWindows.removeValue(forKey: sid)
-                }
-                windows[sid]?.close()
-                windows.removeValue(forKey: sid)
-                screenContent.removeValue(forKey: sid)
+    print(currentIDs)
+    print(removedIDs)
+    print(addedIDs)
+
+    // 移除已断开的屏幕窗口
+    for sid in removedIDs {
+        dlog("remove window for display \(sid)")
+        if let screen = NSScreen.screen(forDisplayID: sid) {
+            clear(for: screen)
+        } else {
+            // 手动清理不存在的屏幕状态
+            players.removeValue(forKey: sid)
+            loopers.removeValue(forKey: sid)
+            currentViews.removeValue(forKey: sid)
+            if let overlays = overlayWindows[sid] {
+                for overlay in overlays { overlay.close() }
+                overlayWindows.removeValue(forKey: sid)
             }
+            windows[sid]?.close()
+            windows.removeValue(forKey: sid)
+            screenContent.removeValue(forKey: sid)
         }
+    }
 
-        // 为新连接的屏幕创建窗口
-        let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
-        var sourceScreen: NSScreen? = nil
-        if autoSync {
-            if let primaryID = AppState.shared.primaryScreenID,
-               knownIDs.contains(primaryID),
-               let screen = NSScreen.screen(forDisplayID: primaryID) {
-                sourceScreen = screen
-            } else if let id = knownIDs.first {
-                sourceScreen = NSScreen.screen(forDisplayID: id)
-            }
+    // 为新连接的屏幕创建窗口（仅在有新增屏幕时）
+    let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
+    var sourceScreen: NSScreen? = nil
+    if autoSync {
+        if let primaryID = AppState.shared.primaryScreenID,
+           let screen = NSScreen.screen(forDisplayID: primaryID),
+           lastScreenIDs.contains(primaryID) {
+            sourceScreen = screen
+        } else if let id = lastScreenIDs.first {
+            sourceScreen = NSScreen.screen(forDisplayID: id)
         }
+    }
 
-        dlog("Trying to sync new screens...")
-        
+    if !addedIDs.isEmpty {
+        dlog("Trying to sync new screens: \(addedIDs)")
         for screen in NSScreen.screens {
-            guard let sid = screen.dv_displayID, !knownIDs.contains(sid) else { continue }
+            guard let sid = screen.dv_displayID, addedIDs.contains(sid) else { continue }
             dlog("add window for \(screen.dv_localizedName)")
-
             if let src = sourceScreen {
                 syncWindow(to: screen, from: src)
             } else if let entry = screenContent[sid] {
@@ -624,10 +690,9 @@ class SharedWallpaperWindowManager {
                 }
             }
         }
-        
-        dlog("Finish sync new screens...")
-        
+        dlog("Finish sync new screens")
     }
+}
 
     /// 将内存中的视频数据写入临时文件后播放。
     /// - Parameters:
@@ -684,16 +749,16 @@ class SharedWallpaperWindowManager {
         switchContent(to: playerView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            // 在开始播放之前检查是否应当暂停播放
-            if self.shouldPauseVideo(on: screen) {
-                // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
-            } else {
-                // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
-                queuePlayer.play()
-            }
-            onReady?()
-        }
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+//            // 在开始播放之前检查是否应当暂停播放
+//            if self.shouldPauseVideo(on: screen) {
+//                // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
+//            } else {
+//                // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
+//                queuePlayer.play()
+//            }
+//            onReady?()
+//        }
     }
 
     // MARK: - Caching Helpers

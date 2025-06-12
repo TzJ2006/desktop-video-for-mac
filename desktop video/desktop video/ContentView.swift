@@ -148,12 +148,25 @@ struct ContentView: View {
 
                     if type?.conforms(to: .movie) == true {
                         AppState.shared.lastMediaURL = url
-                        SharedWallpaperWindowManager.shared.showVideo(
-                            for: selected,
-                            url: url,
-                            stretch: true,
-                            volume: 1.0
-                        )
+                        // 从内存加载并显示视频
+                        do {
+                            let data: Data
+                            if let cached = SharedWallpaperWindowManager.shared.cachedVideoData(for: url) {
+                                data = cached
+                            } else {
+                                let loaded = try Data(contentsOf: url)
+                                SharedWallpaperWindowManager.shared.cacheVideoData(loaded, for: url)
+                                data = loaded
+                            }
+                            SharedWallpaperWindowManager.shared.showVideoFromMemory(
+                                for: selected,
+                                data: data,
+                                stretch: true,
+                                volume: 1.0
+                            )
+                        } catch {
+                            print("Failed to load video data in drop handler: \(error)")
+                        }
                     } else if type?.conforms(to: .image) == true {
                         AppState.shared.lastMediaURL = url
                         SharedWallpaperWindowManager.shared.showImage(
@@ -374,12 +387,25 @@ struct SingleScreenView: View {
             DispatchQueue.main.async {
                 if fileType?.conforms(to: .movie) == true {
                     appState.lastMediaURL = url
-                    SharedWallpaperWindowManager.shared.showVideo(
-                        for: screen,
-                        url: url,
-                        stretch: stretchToFill,
-                        volume: volume
-                    )
+                    // 从内存加载并显示视频
+                    do {
+                        let data: Data
+                        if let cached = SharedWallpaperWindowManager.shared.cachedVideoData(for: url) {
+                            data = cached
+                        } else {
+                            let loaded = try Data(contentsOf: url)
+                            SharedWallpaperWindowManager.shared.cacheVideoData(loaded, for: url)
+                            data = loaded
+                        }
+                        SharedWallpaperWindowManager.shared.showVideoFromMemory(
+                            for: screen,
+                            data: data,
+                            stretch: stretchToFill,
+                            volume: volume
+                        )
+                    } catch {
+                        print("Failed to load video data in UI: \(error)")
+                    }
                     if syncAllScreens {
                         SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
                     }
