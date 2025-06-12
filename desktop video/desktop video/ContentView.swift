@@ -18,8 +18,6 @@ class AppState: ObservableObject {
     @Published var lastVolume: Float = 1.0
     @Published var lastStretchToFill: Bool = true
     @Published var currentMediaURL: String?
-    /// 当前主控制器对应的屏幕 ID
-    @Published var primaryScreenID: CGDirectDisplayID?
 }
 
 class ScreenObserver: ObservableObject {
@@ -44,13 +42,9 @@ class ScreenObserver: ObservableObject {
                 self.screens = current
                 self.previousScreens = current
 
-                if UserDefaults.standard.bool(forKey: "autoSyncNewScreens") {
-                    let srcID = AppState.shared.primaryScreenID
-                    let source = srcID.flatMap { NSScreen.screen(forDisplayID: $0) } ?? current.first
-                    if let src = source {
-                        for screen in added {
-                            SharedWallpaperWindowManager.shared.syncWindow(to: screen, from: src)
-                        }
+                if UserDefaults.standard.bool(forKey: "autoSyncNewScreens"), let source = current.first {
+                    for screen in added {
+                        SharedWallpaperWindowManager.shared.syncWindow(to: screen, from: source)
                     }
                 }
             }
@@ -128,7 +122,7 @@ struct ContentView: View {
                 get: { !isMenuBarOnly },
                 set: { newValue in
                     isMenuBarOnly = !newValue
-                    AppAppearanceManager.shared.setDockIconVisible(newValue)
+                    AppDelegate.shared?.setDockIconVisible(newValue)
                 }
             ))
         }
@@ -148,8 +142,8 @@ struct ContentView: View {
 
                     if type?.conforms(to: .movie) == true {
                         AppState.shared.lastMediaURL = url
-                        SharedWallpaperWindowManager.shared.playVideo(
-                            on: selected,
+                        SharedWallpaperWindowManager.shared.showVideo(
+                            for: selected,
                             url: url,
                             stretch: true,
                             volume: 1.0
@@ -168,14 +162,6 @@ struct ContentView: View {
         }
         .padding()
         .frame(maxHeight: .infinity)
-        .onAppear {
-            AppState.shared.primaryScreenID = selectedTabScreen?.dv_displayID
-            dlog("ContentView onAppear primary=\(String(describing: selectedTabScreen?.dv_localizedName))")
-        }
-        .onChange(of: selectedTabScreen) { newScreen in
-            dlog("selectedTabScreen changed \(newScreen?.dv_localizedName ?? "nil")")
-            AppState.shared.primaryScreenID = newScreen?.dv_displayID
-        }
     }
 }
 
@@ -217,7 +203,7 @@ struct SingleScreenView: View {
                         if appState.currentMediaURL != filename {
                             dlog("filename appeared \(filename)")
                             appState.currentMediaURL = filename
-                            ScreensaverManager.shared.startTimer()
+                            AppDelegate.shared.startScreensaverTimer()
                         }
                     }
 
@@ -306,11 +292,8 @@ struct SingleScreenView: View {
 
                 Button {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
-                    dlog("Finish set wallpaper")
                     AppState.shared.lastMediaURL = nil
                     AppState.shared.currentMediaURL = nil
-                    dlog("Finish set AppState")
-                    
                 } label: {
                     Text(L("CloseWallpaper"))
                 }
@@ -345,7 +328,6 @@ struct SingleScreenView: View {
 
             if !NSScreen.screens.contains(screen) {
                 selectedTabScreen = NSScreen.screens.first
-                AppState.shared.primaryScreenID = selectedTabScreen?.dv_displayID
             }
         }
         .onAppear {
@@ -377,8 +359,8 @@ struct SingleScreenView: View {
             DispatchQueue.main.async {
                 if fileType?.conforms(to: .movie) == true {
                     appState.lastMediaURL = url
-                    SharedWallpaperWindowManager.shared.playVideo(
-                        on: screen,
+                    SharedWallpaperWindowManager.shared.showVideo(
+                        for: screen,
                         url: url,
                         stretch: stretchToFill,
                         volume: volume

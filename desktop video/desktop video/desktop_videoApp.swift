@@ -19,11 +19,9 @@ struct desktop_videoApp: App {
     @AppStorage("autoSyncNewScreens") private var autoSyncNewScreens: Bool = true
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
     @AppStorage("globalMute")        var globalMute:        Bool = false
-    @AppStorage("overlayMarginPercent") var overlayMarginPercent: Double = 40.0
 
     init() {
         Self.shared = self
-        UserDefaults.standard.register(defaults: ["overlayMarginPercent": 40.0])
     }
 
     var body: some Scene {

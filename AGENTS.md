@@ -34,13 +34,15 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 
 ### Code Style
 
+- Read through the entire repo.
 - Use Xcode's default Swift formatting or swift-format.
 - Keep code clean and readable.
 - Reuse the methods that is already written.
 - Check whethere there are previous logic and methods that are no longer effective.
-- Add a log statement for each new function to aid debugging.
+- Add a clear, informative log statement for each new function to aid debugging.
 - Provide Chinese comments when adding command-line scripts.
 - For Change log, please write it in both English and Chinese; note that please put the later version on the top, above all previous methods
+- For the date of the Change log, do NOT infer, Check the current date through Internet or through your system; For the version, do NOT infer, use hot-fix-idx instead of add one to the previous one.
 
 ### Naming Conventions
 

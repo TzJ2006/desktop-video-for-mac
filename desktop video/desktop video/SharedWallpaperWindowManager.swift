@@ -11,20 +11,9 @@ import Foundation
 import UniformTypeIdentifiers
 
 class SharedWallpaperWindowManager {
-    /// 上次检测到的屏幕 ID，用于比较新增/移除
-    private var lastScreenIDs: Set<CGDirectDisplayID> = Set(NSScreen.screens.compactMap { $0.dv_displayID })
     static let shared = SharedWallpaperWindowManager()
 
     private var debounceWorkItem: DispatchWorkItem?
-
-    // 以下与内存缓存相关的属性暂时停用
-    // private var videoCache = [URL: Data]()
-    // private var tempVideoURLs: [CGDirectDisplayID: URL] = [:]
-    // private var tempVideoUsage: [URL: Int] = [:]
-    // private var videoCacheUsage: [URL: Int] = [:]
-
-    /// 自动暂停开关对应的键名
-    private let idlePauseEnabledKey = "idlePauseEnabled"
 
     init() {
         let wsnc = NSWorkspace.shared.notificationCenter
@@ -113,8 +102,8 @@ class SharedWallpaperWindowManager {
         case .image:
             showImage(for: screen, url: entry.url, stretch: isImageStretch)
         case .video:
-            playVideo(on: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
-                if let time = currentTime, let destID = self.id(for: screen) {
+            showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
+                if let time = currentTime {
                     self.players[destID]?.pause()
                     self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
                         if shouldPlay {
@@ -165,34 +154,46 @@ class SharedWallpaperWindowManager {
         win.isOpaque = false
         win.backgroundColor = .clear
         win.ignoresMouseEvents = true
-        win.collectionBehavior = [.canJoxinAllSpaces, .stationary]
+        win.collectionBehavior = [.canJoinAllSpaces, .stationary]
         win.contentView = NSView(frame: screenFrame)
         win.orderFrontRegardless()
 
-        // 创建用于检测遮挡状态的透明窗口
+        // 创建四个用于检测遮挡状态的透明窗口
         var overlays: [NSWindow] = []
-        let percent = UserDefaults.standard.double(forKey: "overlayMarginPercent")
-        let clamped = max(0.0, min(100.0, percent)) / 100.0
-        let overlayFrame = screenFrame.insetBy(dx: screenFrame.width * clamped / 2,
-                                               dy: screenFrame.height * clamped / 2)
-        let overlay = NSWindow(contentRect: overlayFrame,
-                               styleMask: .borderless,
-                               backing: .buffered,
-                               defer: false)
-        overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
-        overlay.isOpaque = false
-        overlay.backgroundColor = .clear
-        overlay.ignoresMouseEvents = true
-        overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        overlay.orderFrontRegardless()
-        overlays.append(overlay)
+        let overlaySize = CGSize(width: screenFrame.width * 0.05, height: screenFrame.height * 0.05)
+        let positions: [CGPoint] = [
+            CGPoint(x: screenFrame.minX + screenFrame.width * 0.2 - overlaySize.width / 2,
+                    y: screenFrame.midY - overlaySize.height / 2),
+            CGPoint(x: screenFrame.maxX - screenFrame.width * 0.2 - overlaySize.width / 2,
+                    y: screenFrame.midY - overlaySize.height / 2),
+            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
+                    y: screenFrame.minY + screenFrame.height * 0.2 - overlaySize.height / 2),
+            CGPoint(x: screenFrame.midX - overlaySize.width / 2,
+                    y: screenFrame.maxY - screenFrame.height * 0.2 - overlaySize.height / 2)
+        ]
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
-            name: NSWindow.didChangeOcclusionStateNotification,
-            object: overlay
-        )
+        for origin in positions {
+            let overlay = NSWindow(contentRect: CGRect(origin: origin, size: overlaySize),
+                                   styleMask: .borderless,
+                                   backing: .buffered,
+                                   defer: false)
+            overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
+            overlay.isOpaque = false
+            overlay.backgroundColor = .clear
+            overlay.ignoresMouseEvents = true
+            overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
+            overlay.orderFrontRegardless()
+            overlays.append(overlay)
+
+            if let delegate = AppDelegate.shared {
+                NotificationCenter.default.addObserver(
+                    delegate,
+                    selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
+                    name: NSWindow.didChangeOcclusionStateNotification,
+                    object: overlay
+                )
+            }
+        }
 
         self.windows[sid] = win
         self.overlayWindows[sid] = overlays
@@ -217,6 +218,29 @@ class SharedWallpaperWindowManager {
 
         switchContent(to: imageView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+    }
+
+    /// 为指定屏幕播放视频，始终从内存缓存读取数据。
+    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
+        dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
+        do {
+            let data: Data
+            if let cached = AppDelegate.shared.cachedVideoData(for: url) {
+                data = cached
+            } else {
+                let loaded = try Data(contentsOf: url)
+                AppDelegate.shared.cacheVideoData(loaded, for: url)
+                data = loaded
+            }
+            showVideoFromMemory(for: screen,
+                                data: data,
+                                stretch: stretch,
+                                volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
+                                originalURL: url,
+                                onReady: onReady)
+        } catch {
+            errorLog("Cannot load from memory!")
+        }
     }
 
     /// 使用与单屏静音相同的逻辑静音所有屏幕，
@@ -273,44 +297,38 @@ class SharedWallpaperWindowManager {
         }
     }
 
-// Error! Another error is caused by this function
     func clear(for screen: NSScreen) {
         dlog("clear content for \(screen.dv_localizedName)")
         guard let sid = id(for: screen) else { return }
         stopVideoIfNeeded(for: screen)
-        
-        dlog("Finish video stop")
-        
         if let entry = screenContent[sid], entry.type == .video {
             players[sid]?.replaceCurrentItem(with: nil)
         }
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
-        
-        dlog("start remove overlay")
-        
         if let overlays = overlayWindows[sid] {
             for overlay in overlays {
-                NotificationCenter.default.removeObserver(self,
-                  name: NSWindow.didChangeOcclusionStateNotification,
-                  object: overlay)
-                overlay.close()
+                NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                                                          name: NSWindow.didChangeOcclusionStateNotification,
+                                                          object: overlay)
+                overlay.orderOut(nil)
             }
         }
-        
-        dlog("close window")
-        
         if let win = windows[sid] {
-            win.close()
+            win.orderOut(nil)
         }
         screenContent.removeValue(forKey: sid)
-        // 延迟移除字典中的引用，避免关闭窗口触发的异步事件访问已释放对象
-        DispatchQueue.main.async { [weak self] in
-//            self?.windows.removeValue(forKey: sid)
-//            self?.overlayWindows.removeValue(forKey: sid)
-        }
+        windows.removeValue(forKey: sid)
+        overlayWindows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-        dlog("finish clear")
+
+        // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
+        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
+            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
+        }
     }
 
     func restoreContent(for screen: NSScreen) {
@@ -320,7 +338,7 @@ class SharedWallpaperWindowManager {
         case .image:
             showImage(for: screen, url: entry.url, stretch: entry.stretch)
         case .video:
-            playVideo(on: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+            showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
         }
     }
 
@@ -331,18 +349,6 @@ class SharedWallpaperWindowManager {
         players[sid]?.replaceCurrentItem(with: nil)
         players.removeValue(forKey: sid)
         loopers.removeValue(forKey: sid)
-        
-        dlog("Finish releasing players")
-        
-        // 内存相关逻辑已停用
-        // if let entry = screenContent[sid], entry.type == .video {
-        //     releaseVideoCacheUsage(entry.url)
-        // }
-        // if let url = tempVideoURLs[sid] {
-        //     releaseTempVideo(url)
-        //     tempVideoURLs.removeValue(forKey: sid)
-        // }
-        dlog("finishing release")
     }
 
     private func switchContent(to newView: NSView, for screen: NSScreen) {
@@ -407,12 +413,11 @@ class SharedWallpaperWindowManager {
 
                 if ["mp4", "mov", "m4v"].contains(ext) {
                     dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
-                    playVideo(on: screen, url: url, stretch: stretch, volume: volume)
+                    showVideo(for: screen, url: url, stretch: stretch, volume: volume)
                 } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
                     dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
                     showImage(for: screen, url: url, stretch: stretch)
                 }
-                url.stopAccessingSecurityScopedResource()
             } catch {
                 errorLog("Failed to restore bookmark for screen \(displayID): \(error)")
             }
@@ -444,37 +449,6 @@ class SharedWallpaperWindowManager {
         dlog("cleanup disconnected screens")
         let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
         for sid in Array(windows.keys) {
-            
-            // If there’s no NSScreen for this ID, manually close everything and remove persisted defaults
-            guard NSScreen.screen(forDisplayID: sid) != nil else {
-                if let overlays = overlayWindows[sid] {
-                    for overlay in overlays {
-                        NotificationCenter.default.removeObserver(self,
-                          name: NSWindow.didChangeOcclusionStateNotification,
-                          object: overlay)
-                        overlay.close()
-                    }
-                }
-                windows[sid]?.close()
-                DispatchQueue.main.async { [weak self] in
-                    self?.overlayWindows.removeValue(forKey: sid)
-                    self?.windows.removeValue(forKey: sid)
-                }
-                // 内存缓存逻辑已禁用
-                // if let entry = screenContent[sid], entry.type == .video {
-                //     releaseVideoCacheUsage(entry.url)
-                // }
-                // if let url = tempVideoURLs[sid] {
-                //     releaseTempVideo(url)
-                //     tempVideoURLs.removeValue(forKey: sid)
-                // }
-                players.removeValue(forKey: sid)
-                loopers.removeValue(forKey: sid)
-                currentViews.removeValue(forKey: sid)
-                screenContent.removeValue(forKey: sid)
-                continue
-            }
-            
             if !activeIDs.contains(sid) {
                 let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
                 if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
@@ -487,33 +461,10 @@ class SharedWallpaperWindowManager {
                     clear(for: screen)
                 } else {
                     // 无对应屏幕对象时直接移除记录
-                    
-                    if let overlays = overlayWindows[sid] {
-                        for overlay in overlays {
-                            NotificationCenter.default.removeObserver(self,
-                              name: NSWindow.didChangeOcclusionStateNotification,
-                              object: overlay)
-                            overlay.close()
-                        }
-                    }
-                    windows[sid]?.close()
-                    DispatchQueue.main.async { [weak self] in
-                        self?.overlayWindows.removeValue(forKey: sid)
-                        self?.windows.removeValue(forKey: sid)
-                    }
-                    // if let entry = screenContent[sid], entry.type == .video {
-                    //     releaseVideoCacheUsage(entry.url)
-                    // }
-                    // if let url = tempVideoURLs[sid] {
-                    //     releaseTempVideo(url)
-                    //     tempVideoURLs.removeValue(forKey: sid)
-                    // }
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
-                    DispatchQueue.main.async { [weak self] in
-                        self?.windows.removeValue(forKey: sid)
-                    }
+                    windows.removeValue(forKey: sid)
                     screenContent.removeValue(forKey: sid)
                 }
             }
@@ -545,8 +496,7 @@ class SharedWallpaperWindowManager {
 
             if currentEntry.type == .video {
                 let shouldPlay = players[srcID]?.rate != 0
-                // 使用内存加载并播放以保持同步
-                playVideo(on: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
+                showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
                     if let time = currentTime, let destID = self.id(for: screen) {
                         self.players[destID]?.pause()
                         self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
@@ -563,75 +513,44 @@ class SharedWallpaperWindowManager {
     }
 
     @objc private func handleScreenChange() {
-        dlog("handle screen change")
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem { [weak self] in
-            dlog("Start Reload screens")
             self?.reloadScreens()
-            dlog("end Reload screens")
         }
-        dlog("Start debounce")
-        if let item = debounceWorkItem {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: item)
-        }
-        dlog("Finish debounce")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: debounceWorkItem!)
     }
 
-private func reloadScreens() {
-    dlog("reload screens")
-    cleanupDisconnectedScreens()
-    // 获取当前屏幕 ID
-    let currentIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
-    // 计算移除和新增
-    let removedIDs = lastScreenIDs.subtracting(currentIDs)
-    let addedIDs = currentIDs.subtracting(lastScreenIDs)
-    // 更新缓存的屏幕 ID
-    lastScreenIDs = currentIDs
+    private func reloadScreens() {
+        dlog("reload screens")
+        let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
+        let knownIDs = Set(windows.keys)
 
-    print(currentIDs)
-    print(removedIDs)
-    print(addedIDs)
-
-    // 移除已断开的屏幕窗口
-    for sid in removedIDs {
-        dlog("remove window for display \(sid)")
-        if let screen = NSScreen.screen(forDisplayID: sid) {
-            clear(for: screen)
-        } else {
-            // 手动清理不存在的屏幕状态
-            players.removeValue(forKey: sid)
-            loopers.removeValue(forKey: sid)
-            currentViews.removeValue(forKey: sid)
-            if let overlays = overlayWindows[sid] {
-                for overlay in overlays { overlay.close() }
+        // 移除已断开的屏幕窗口
+        for sid in knownIDs.subtracting(activeIDs) {
+            dlog("remove window for display \(sid)")
+            if let screen = NSScreen.screen(forDisplayID: sid) {
+                clear(for: screen)
+            } else {
+                players.removeValue(forKey: sid)
+                loopers.removeValue(forKey: sid)
+                currentViews.removeValue(forKey: sid)
+                windows.removeValue(forKey: sid)
+                screenContent.removeValue(forKey: sid)
             }
-            windows[sid]?.close()
-            DispatchQueue.main.async { [weak self] in
-                self?.overlayWindows.removeValue(forKey: sid)
-                self?.windows.removeValue(forKey: sid)
-            }
-            screenContent.removeValue(forKey: sid)
         }
-    }
 
-    // 为新连接的屏幕创建窗口（仅在有新增屏幕时）
-    let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
-    var sourceScreen: NSScreen? = nil
-    if autoSync {
-        if let primaryID = AppState.shared.primaryScreenID,
-           let screen = NSScreen.screen(forDisplayID: primaryID),
-           lastScreenIDs.contains(primaryID) {
-            sourceScreen = screen
-        } else if let id = lastScreenIDs.first {
+        // 为新连接的屏幕创建窗口
+        let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
+        let existingID = knownIDs.first
+        var sourceScreen: NSScreen? = nil
+        if autoSync, let id = existingID {
             sourceScreen = NSScreen.screen(forDisplayID: id)
         }
-    }
 
-    if !addedIDs.isEmpty {
-        dlog("Trying to sync new screens: \(addedIDs)")
         for screen in NSScreen.screens {
-            guard let sid = screen.dv_displayID, addedIDs.contains(sid) else { continue }
+            guard let sid = screen.dv_displayID, !knownIDs.contains(sid) else { continue }
             dlog("add window for \(screen.dv_localizedName)")
+
             if let src = sourceScreen {
                 syncWindow(to: screen, from: src)
             } else if let entry = screenContent[sid] {
@@ -639,19 +558,16 @@ private func reloadScreens() {
                 case .image:
                     showImage(for: screen, url: entry.url, stretch: entry.stretch)
                 case .video:
-                    playVideo(on: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0) {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            if let player = self.players[sid], player.timeControlStatus != .playing {
-                                player.play()
-                            }
+                    showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let player = self.players[sid], player.timeControlStatus != .playing {
+                            player.play()
                         }
                     }
                 }
             }
         }
-        dlog("Finish sync new screens")
     }
-}
 
     /// 将内存中的视频数据写入临时文件后播放。
     /// - Parameters:
@@ -661,15 +577,23 @@ private func reloadScreens() {
     ///   - volume: 播放音量
     ///   - originalURL: 用户选择的视频源地址
     ///   - onReady: 准备完成回调
-    // 原先的内存播放逻辑已弃用，改为直接使用文件 URL
-    func showVideo(from url: URL, on screen: NSScreen, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
-        dlog("show video from file on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
+    func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, onReady: (() -> Void)? = nil) {
+        dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
         guard let contentView = windows[sid]?.contentView else { return }
 
-        let item = AVPlayerItem(url: url)
+        // 将数据写入临时文件
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mov")
+        do {
+            try data.write(to: tempURL)
+        } catch {
+            errorLog("Failed to write video data to temp file: \(error)")
+            return
+        }
+
+        let item = AVPlayerItem(url: tempURL)
         let queuePlayer = AVQueuePlayer()
         queuePlayer.automaticallyWaitsToMinimizeStalling = false
         let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
@@ -684,141 +608,29 @@ private func reloadScreens() {
 
         players[sid] = queuePlayer
         loopers[sid] = looper
-        screenContent[sid] = (.video, url, stretch, volume)
-        saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
+        // 记录原始视频地址而非临时文件，用于保留用户选择
+//        screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
+        let existingURL = screenContent[sid]?.url
+        let actualURL = originalURL ?? existingURL ?? tempURL
+//        screen.dv_displayID == 0 ? (activeVideoURLs[0] = actualURL) : (activeVideoURLs[1] = actualURL)
+        screenContent[sid] = (.video, actualURL, stretch, volume)
+
+        if let sourceURL = originalURL {
+            saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
+        }
 
         switchContent(to: playerView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-        onReady?()
-    }
 
-    /*
-    // MARK: - Caching Helpers (disabled)
-    func cachedVideoData(for url: URL) -> Data? {
-        videoCache[url]
-    }
-
-    func cacheVideoData(_ data: Data, for url: URL) {
-        videoCache[url] = data
-    }
-
-    private func markVideoCacheUsage(_ url: URL) {
-        let count = (videoCacheUsage[url] ?? 0) + 1
-        videoCacheUsage[url] = count
-        dlog("markVideoCacheUsage \(url.lastPathComponent) count=\(count)")
-    }
-
-    private func releaseVideoCacheUsage(_ url: URL) {
-        guard let count = videoCacheUsage[url] else { return }
-        let newCount = count - 1
-        if newCount <= 0 {
-            videoCacheUsage.removeValue(forKey: url)
-            videoCache.removeValue(forKey: url)
-            dlog("removed cached data \(url.lastPathComponent)")
-        } else {
-            videoCacheUsage[url] = newCount
-            dlog("releaseVideoCacheUsage \(url.lastPathComponent) count=\(newCount)")
-        }
-    }
-
-    private func loadVideoData(from url: URL) throws -> Data {
-        if let cached = videoCache[url] {
-            dlog("loadVideoData cache hit \(url.lastPathComponent)")
-            return cached
-        }
-        let data = try Data(contentsOf: url)
-        videoCache[url] = data
-        dlog("loadVideoData disk load \(url.lastPathComponent)")
-        return data
-    }
-    */
-
-    func playVideo(on screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
-        dlog("playVideo \(url.lastPathComponent) on \(screen.dv_localizedName)")
-        showVideo(from: url, on: screen, stretch: stretch, volume: volume, onReady: onReady)
-    }
-
-    /*
-    // MARK: - Temp File Usage Tracking (disabled)
-    private func markTempVideo(inUse url: URL) {
-        let count = (tempVideoUsage[url] ?? 0) + 1
-        tempVideoUsage[url] = count
-        dlog("markTempVideo \(url.lastPathComponent) count=\(count)")
-    }
-
-    private func releaseTempVideo(_ url: URL) {
-        guard let count = tempVideoUsage[url] else { return }
-        let newCount = count - 1
-        if newCount <= 0 {
-            tempVideoUsage.removeValue(forKey: url)
-            try? FileManager.default.removeItem(at: url)
-            dlog("removed temp file \(url.lastPathComponent)")
-        } else {
-            tempVideoUsage[url] = newCount
-            dlog("releaseTempVideo \(url.lastPathComponent) count=\(newCount)")
-        }
-    }
-    */
-
-    // MARK: - Playback Control
-    func reloadAndPlayVideoFromFile(displayID sid: CGDirectDisplayID) {
-        dlog("reloadAndPlayVideoFromFile \(sid)")
-        guard let screen = NSScreen.screen(forDisplayID: sid),
-              let entry = screenContent[sid] else {
-            players[sid]?.play()
-            return
-        }
-
-        if let existingPlayer = players[sid], existingPlayer.currentItem != nil {
-            existingPlayer.play()
-            return
-        }
-
-        if entry.type == .video {
-            playVideo(on: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
-        } else {
-            players[sid]?.play()
-        }
-    }
-
-    func pauseVideoForAllScreens() {
-        dlog("pauseVideoForAllScreens")
-        if ScreensaverManager.shared.isInScreensaver { return }
-
-        for (sid, player) in players {
-            if let screen = NSScreen.screen(forDisplayID: sid) {
-                let shouldPause = shouldPauseVideo(on: screen)
-                dlog("pauseVideoForAllScreens: shouldPause=\(shouldPause) on \(screen.dv_localizedName)")
-                if shouldPause {
-                    player.pause()
-                } else {
-                    reloadAndPlayVideoFromFile(displayID: sid)
-                }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            // 在开始播放之前检查是否应当暂停播放
+            if AppDelegate.shared.shouldPauseVideo(on: screen) {
+                // 如果需要暂停，不调用 play，而是启动鼠标监听以便后续重新检测
+            } else {
+                // 在播放前附加循环检测，以便每次 loop 达到末尾时做一次新的 shouldPauseVideo 判断
+                queuePlayer.play()
             }
-        }
-    }
-
-    func shouldPauseVideo(on screen: NSScreen) -> Bool {
-        if ScreensaverManager.shared.isInScreensaver { return false }
-        guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
-
-        guard let id = screen.dv_displayID,
-              let windows = overlayWindows[id] else {
-            return false
-        }
-        return windows.allSatisfy { !$0.occlusionState.contains(.visible) }
-    }
-
-    @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
-        guard let sid = overlayWindows.first(where: { $0.value.contains(notification.object as! NSWindow) })?.key,
-              let player = players[sid],
-              let screen = NSScreen.screen(forDisplayID: sid) else { return }
-        if ScreensaverManager.shared.isInScreensaver { return }
-        guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return }
-        if shouldPauseVideo(on: screen) {
-            player.pause()
-        } else {
-            reloadAndPlayVideoFromFile(displayID: sid)
+            onReady?()
         }
     }
 }
