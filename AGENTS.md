@@ -42,7 +42,8 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 - Add a clear, informative log statement for each new function to aid debugging.
 - Provide Chinese comments when adding command-line scripts.
 - For Change log, please write it in both English and Chinese; note that please put the later version on the top, above all previous methods
-- For the date of the Change log, do NOT infer, Check the current date through Internet or through your system; For the version, do NOT infer, use hot-fix-idx instead of add one to the previous one.
+- For the date of the Change log, do NOT infer, Check the current date through Internet or through your system;
+- For the version, do NOT infer, use "Version `<Previous-Version-number> `hot-fix `<index>`".
 
 ### Naming Conventions
 

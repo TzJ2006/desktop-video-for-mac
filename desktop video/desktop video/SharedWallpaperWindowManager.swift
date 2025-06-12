@@ -174,7 +174,8 @@ class SharedWallpaperWindowManager {
         overlay.isOpaque = false
         overlay.backgroundColor = .clear
         // 设置为几乎完全透明以确保 occlusionState 正常更新
-        overlay.alphaValue = 0.0
+        overlay.alphaValue = 0.1
+//         overlay.alphaValue = 0.0
         overlay.ignoresMouseEvents = true
         overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
         overlay.orderFrontRegardless()
@@ -467,6 +468,33 @@ class SharedWallpaperWindowManager {
             if let screen = NSScreen.screen(forDisplayID: sid) {
                 self.clear(for: screen, destroy: true)
                 return
+//         for sid in Array(windows.keys) {
+//             if !activeIDs.contains(sid) {
+//                 let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
+//                 if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+//                     UserDefaults.standard.removeObject(forKey: "bookmark-\(sid)")
+//                     UserDefaults.standard.removeObject(forKey: "stretch-\(sid)")
+//                     UserDefaults.standard.removeObject(forKey: "volume-\(sid)")
+//                     UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
+//                 }
+//                 if let screen = NSScreen.screen(forDisplayID: sid) {
+//                     clear(for: screen, destroy: true)
+//                 } else {
+//                     // 无对应屏幕对象时直接移除记录
+//                     if let overlay = overlayWindows[sid] {
+//                         NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+//                                                                   name: NSWindow.didChangeOcclusionStateNotification,
+//                                                                   object: overlay)
+//                         overlay.close()
+//                     }
+//                     players.removeValue(forKey: sid)
+//                     loopers.removeValue(forKey: sid)
+//                     currentViews.removeValue(forKey: sid)
+//                     windows.removeValue(forKey: sid)
+//                     overlayWindows.removeValue(forKey: sid)
+//                     screenContent.removeValue(forKey: sid)
+//                     overlayWindows.removeValue(forKey: sid)
+//                 }
             }
 
             if let overlay = self.overlayWindows[sid] {
@@ -546,6 +574,23 @@ class SharedWallpaperWindowManager {
         for sid in knownIDs.subtracting(activeIDs) {
             dlog("remove window for display \(sid)")
             scheduleRemoval(for: sid)
+//             if let screen = NSScreen.screen(forDisplayID: sid) {
+//                 clear(for: screen, destroy: true)
+//             } else {
+//                 if let overlay = overlayWindows[sid] {
+//                     NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+//                                                               name: NSWindow.didChangeOcclusionStateNotification,
+//                                                               object: overlay)
+//                     overlay.close()
+//                 }
+//                 players.removeValue(forKey: sid)
+//                 loopers.removeValue(forKey: sid)
+//                 currentViews.removeValue(forKey: sid)
+//                 windows.removeValue(forKey: sid)
+//                 overlayWindows.removeValue(forKey: sid)
+//                 screenContent.removeValue(forKey: sid)
+//                 overlayWindows.removeValue(forKey: sid)
+//             }
         }
 
         // 为新连接的屏幕创建窗口
