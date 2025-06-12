@@ -306,8 +306,11 @@ struct SingleScreenView: View {
 
                 Button {
                     SharedWallpaperWindowManager.shared.clear(for: screen)
+                    dlog("Finish set wallpaper")
                     AppState.shared.lastMediaURL = nil
                     AppState.shared.currentMediaURL = nil
+                    dlog("Finish set AppState")
+                    
                 } label: {
                     Text(L("CloseWallpaper"))
                 }

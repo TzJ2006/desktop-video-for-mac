@@ -299,29 +299,41 @@ class SharedWallpaperWindowManager {
         }
     }
 
+// Error! Another error is caused by this function
     func clear(for screen: NSScreen) {
         dlog("clear content for \(screen.dv_localizedName)")
         guard let sid = id(for: screen) else { return }
         stopVideoIfNeeded(for: screen)
+        
+        dlog("Finish video stop")
+        
         if let entry = screenContent[sid], entry.type == .video {
             players[sid]?.replaceCurrentItem(with: nil)
         }
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
+        
+        dlog("start remove overlay")
+        
         if let overlays = overlayWindows[sid] {
             for overlay in overlays {
                 NotificationCenter.default.removeObserver(self,
-                                                          name: NSWindow.didChangeOcclusionStateNotification,
-                                                          object: overlay)
+                  name: NSWindow.didChangeOcclusionStateNotification,
+                  object: overlay)
                 overlay.close()
             }
         }
+        
+        dlog("close window")
+        
         if let win = windows[sid] {
             win.close()
         }
         screenContent.removeValue(forKey: sid)
-        windows.removeValue(forKey: sid)
-        overlayWindows.removeValue(forKey: sid)
+// Error!! The memory error is caused by these two lines
+//        windows.removeValue(forKey: sid)
+//        overlayWindows.removeValue(forKey: sid)
+// Error!! The memory error is caused by these two lines
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
@@ -331,6 +343,7 @@ class SharedWallpaperWindowManager {
 //            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
 //            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
 //        }
+        dlog("finish clear")
     }
 
     func restoreContent(for screen: NSScreen) {
@@ -351,6 +364,9 @@ class SharedWallpaperWindowManager {
         players[sid]?.replaceCurrentItem(with: nil)
         players.removeValue(forKey: sid)
         loopers.removeValue(forKey: sid)
+        
+        dlog("Finish releasing players")
+        
         if let entry = screenContent[sid], entry.type == .video {
             releaseVideoCacheUsage(entry.url)
         }
@@ -358,6 +374,7 @@ class SharedWallpaperWindowManager {
             releaseTempVideo(url)
             tempVideoURLs.removeValue(forKey: sid)
         }
+        dlog("finishing release")
     }
 
     private func switchContent(to newView: NSView, for screen: NSScreen) {
@@ -469,10 +486,10 @@ class SharedWallpaperWindowManager {
                           object: overlay)
                         overlay.close()
                     }
-                    overlayWindows.removeValue(forKey: sid)
+//                    overlayWindows.removeValue(forKey: sid)
                 }
                 windows[sid]?.close()
-                windows.removeValue(forKey: sid)
+//                windows.removeValue(forKey: sid)
                 if let entry = screenContent[sid], entry.type == .video {
                     releaseVideoCacheUsage(entry.url)
                 }
@@ -507,7 +524,7 @@ class SharedWallpaperWindowManager {
                               object: overlay)
                             overlay.close()
                         }
-                        overlayWindows.removeValue(forKey: sid)
+//                        overlayWindows.removeValue(forKey: sid)
                     }
                     windows[sid]?.close()
                     if let entry = screenContent[sid], entry.type == .video {
@@ -520,7 +537,7 @@ class SharedWallpaperWindowManager {
                     players.removeValue(forKey: sid)
                     loopers.removeValue(forKey: sid)
                     currentViews.removeValue(forKey: sid)
-                    windows.removeValue(forKey: sid)
+//                    windows.removeValue(forKey: sid)
                     screenContent.removeValue(forKey: sid)
                 }
             }
@@ -611,10 +628,10 @@ private func reloadScreens() {
             currentViews.removeValue(forKey: sid)
             if let overlays = overlayWindows[sid] {
                 for overlay in overlays { overlay.close() }
-                overlayWindows.removeValue(forKey: sid)
+//                overlayWindows.removeValue(forKey: sid)
             }
             windows[sid]?.close()
-            windows.removeValue(forKey: sid)
+//            windows.removeValue(forKey: sid)
             screenContent.removeValue(forKey: sid)
         }
     }
