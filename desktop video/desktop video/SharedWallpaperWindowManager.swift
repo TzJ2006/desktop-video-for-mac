@@ -637,6 +637,30 @@ class SharedWallpaperWindowManager {
         dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
 
+        // 1. 优先尝试重用已存在的相同视频播放器
+        for (existingSID, content) in screenContent {
+            if existingSID != sid,
+               content.type == .video,
+               content.url == originalURL,
+               let existingPlayer = players[existingSID],
+               let existingView = currentViews[existingSID] as? AVPlayerView {
+                dlog("reuse existing video player from screen \(existingSID)")
+                ensureWindow(for: screen)
+                stopVideoIfNeeded(for: screen)
+                let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
+                clonePlayerView.player = existingPlayer
+                clonePlayerView.controlsStyle = .none
+                clonePlayerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+                clonePlayerView.autoresizingMask = [.width, .height]
+                players[sid] = existingPlayer
+                loopers[sid] = loopers[existingSID]
+                screenContent[sid] = (.video, originalURL!, stretch, volume)
+                switchContent(to: clonePlayerView, for: screen)
+                NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+                return
+            }
+        }
+
         // Cleanup old cached files for this screen before writing the new one
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
         let cachedPrefix = "cached-\(sid)-"
@@ -646,9 +670,13 @@ class SharedWallpaperWindowManager {
             }
         }
 
-        // Remove previous cached video data for this URL to free memory
+        // Remove previous cached video data for this URL to free memory,
+        // 但如果其他屏幕还在使用该视频，则不移除
         if let previousURL = screenContent[sid]?.url {
-            AppDelegate.shared.removeCachedVideoData(for: previousURL)
+            let stillInUse = screenContent.contains { $0.key != sid && $0.value.url == previousURL }
+            if !stillInUse {
+                AppDelegate.shared.removeCachedVideoData(for: previousURL)
+            }
         }
 
         ensureWindow(for: screen)
@@ -690,10 +718,8 @@ class SharedWallpaperWindowManager {
         players[sid] = queuePlayer
         loopers[sid] = looper
         // 记录原始视频地址而非临时文件，用于保留用户选择
-//        screenContent[sid] = (.video, originalURL ?? tempURL, stretch, volume)
         let existingURL = screenContent[sid]?.url
         let actualURL = originalURL ?? existingURL ?? URL(fileURLWithPath: L("UnknownPath"))
-//        screen.dv_displayID == 0 ? (activeVideoURLs[0] = actualURL) : (activeVideoURLs[1] = actualURL)
         screenContent[sid] = (.video, actualURL, stretch, volume)
 
         if let sourceURL = originalURL {
