@@ -12,6 +12,8 @@ import ServiceManagement
 struct desktop_videoApp: App {
     static var shared: desktop_videoApp?
 
+    @AppStorage("maxVideoFileSizeInGB") var maxVideoFileSizeInGB: Double = 1.0
+
     // 关联 AppDelegate，所有"打开主窗口"或"打开偏好窗口"逻辑都在 AppDelegate 中处理
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
@@ -90,30 +92,33 @@ struct PreferencesView: View {
     @AppStorage("launchAtLogin")     private var launchAtLoginStorage:     Bool = true
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
-    @AppStorage("idleStopEnabled")  private var idleStopEnabledStorage:  Bool = true
-    @AppStorage("idleStopSensitivity") private var idleStopSensitivityStorage: Int = 50
+    @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
+    @AppStorage("idlePauseSensitivity")  private var idlePauseSensitivityStorage:  Double = 40.0
     @AppStorage("screensaverEnabled") private var screensaverEnabledStorage: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Int = 5
+    @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGBStorage: Double = 1.0
 
     // 本地 State，用于暂存用户在界面上的修改
     @State private var autoSyncNewScreens: Bool = true
     @State private var launchAtLogin:     Bool = true
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
-    @State private var idleStopEnabled:  Bool = true
-    @State private var idleStopSensitivity: Int = 50
+    @State private var idlePauseEnabled:  Bool = false
+    @State private var idlePauseSensitivity:  Double = 40.0
     @State private var screensaverEnabled: Bool = false
     @State private var screensaverDelayMinutes: Int = 5
+    @State private var maxVideoFileSizeInGB: Double = 1.0
 
     // 原始值缓存，用于恢复
     @State private var originalAutoSyncNewScreens: Bool = true
     @State private var originalLaunchAtLogin:     Bool = true
     @State private var originalGlobalMute:        Bool = false
     @State private var originalSelectedLanguage:  String = "system"
-    @State private var originalIdleStopEnabled:  Bool = true
-    @State private var originalIdleStopSensitivity: Int = 50
+    @State private var originalIdlePauseEnabled:  Bool = false
+    @State private var originalidlePauseSensitivity:  Double = 40.0
     @State private var originalScreensaverEnabled: Bool = false
     @State private var originalScreensaverDelayMinutes: Int = 5
+    @State private var originalMaxVideoFileSizeInGB: Double = 1.0
 
     /// 是否有未保存的更改
     private var hasChanges: Bool {
@@ -121,10 +126,11 @@ struct PreferencesView: View {
         || launchAtLogin != launchAtLoginStorage
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
-        || idleStopEnabled != idleStopEnabledStorage
-        || idleStopSensitivity != idleStopSensitivityStorage
+        || idlePauseEnabled != idlePauseEnabledStorage
+        || idlePauseSensitivity != idlePauseSensitivityStorage
         || screensaverEnabled != screensaverEnabledStorage
         || screensaverDelayMinutes != screensaverDelayMinutesStorage
+        || maxVideoFileSizeInGB != maxVideoFileSizeInGBStorage
     }
 
     // 注入 LanguageManager
@@ -160,20 +166,24 @@ struct PreferencesView: View {
                 }
                 .disabled(!screensaverEnabled)
 
-                Toggle(L("IdleStopEnabled"), isOn: $idleStopEnabled)
+                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
                     .padding(.top, 10)
 
                 HStack {
-                    Text(L("IdleStopSensitivity"))
-                    Slider(value: Binding(
-                        get: { Double(idleStopSensitivity) },
-                        set: { idleStopSensitivity = Int($0) }
-                    ), in: 0...100)
-                    Text("\(idleStopSensitivity)")
+                    Text(L("idlePauseSensitivity"))
+                    TextField("40", value: $idlePauseSensitivity, formatter: NumberFormatter())
+                        .frame(width: 30)
                 }
-                .disabled(!idleStopEnabled)
+                .disabled(!screensaverEnabled)
 
-
+                HStack {
+                    Text(L("MaxVideoFileSizeGB"))
+                    TextField("1.0", value: $maxVideoFileSizeInGB, formatter: NumberFormatter())
+                        .frame(width: 40)
+                    Text("GB")
+                }
+                .padding(.top, 10)
+                
                 HStack {
                     Button(L("Confirm")) {
                         showRestartAlert()
@@ -192,10 +202,13 @@ struct PreferencesView: View {
             originalLaunchAtLogin = launchAtLoginStorage
             originalGlobalMute = globalMuteStorage
             originalSelectedLanguage = languageStorage
-            originalIdleStopEnabled = idleStopEnabledStorage
-            originalIdleStopSensitivity = idleStopSensitivityStorage
+            originalIdlePauseEnabled = idlePauseEnabledStorage
+            originalidlePauseSensitivity = idlePauseSensitivityStorage
             originalScreensaverEnabled = screensaverEnabledStorage
             originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
+            originalMaxVideoFileSizeInGB = maxVideoFileSizeInGBStorage
+            idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 40.0 : originalidlePauseSensitivity
+            maxVideoFileSizeInGB = max(0.1, originalMaxVideoFileSizeInGB)
             loadStoredValues()
         }
     }
@@ -206,10 +219,11 @@ struct PreferencesView: View {
         launchAtLogin = originalLaunchAtLogin
         globalMute = originalGlobalMute
         selectedLanguage = originalSelectedLanguage
-        idleStopEnabled = originalIdleStopEnabled
-        idleStopSensitivity = originalIdleStopSensitivity
+        idlePauseEnabled = originalIdlePauseEnabled
+        idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 40.0 : originalidlePauseSensitivity
         screensaverEnabled = originalScreensaverEnabled
         screensaverDelayMinutes = originalScreensaverDelayMinutes
+        maxVideoFileSizeInGB = originalMaxVideoFileSizeInGB
     }
 
     private func confirmChanges() {
@@ -219,10 +233,10 @@ struct PreferencesView: View {
         launchAtLoginStorage = launchAtLogin
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
-        idleStopEnabledStorage = idleStopEnabled
-        idleStopSensitivityStorage = idleStopSensitivity
+        idlePauseEnabledStorage = idlePauseEnabled
         screensaverEnabledStorage = screensaverEnabled
         screensaverDelayMinutesStorage = screensaverDelayMinutes
+        maxVideoFileSizeInGBStorage = maxVideoFileSizeInGB
 
         if launchAtLogin != launchAtLoginStorage {
             handleLaunchAtLoginChange()

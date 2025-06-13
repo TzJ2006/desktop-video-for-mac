@@ -67,8 +67,14 @@
       },
       "shouldTranslate" : false
     },
+    "1.0" : {
+
+    },
     "5" : {
       "shouldTranslate" : false
+    },
+    "40" : {
+
     },
     "AboutDesktopVideo" : {
       "extractionState" : "manual",
@@ -385,6 +391,9 @@
         }
       }
     },
+    "GB" : {
+
+    },
     "GlobalMute" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -420,46 +429,39 @@
         }
       }
     },
-    "IdleStopEnabled" : {
+    "IdlePauseEnabled" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Idle Stop"
+            "value" : "Idle Enabled"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausa automática"
+            "value" : "Pausa automática activada"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause automatique"
+            "value" : "Pause automatique activée"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动暂停"
+            "value" : "自动暂停播放"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动暂停"
+            "value" : "自动暂停播放"
           }
         }
-      }
-    },
-    "IdleStopSensitivity" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sensitivity" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "灵敏度" } }
       }
     },
     "Language" : {

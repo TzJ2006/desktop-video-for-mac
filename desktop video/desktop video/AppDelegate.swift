@@ -51,8 +51,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    
    // 把视频缓存在内存中
    private var videoCache = [URL: Data]()
-   private let idleStopEnabledKey = "idleStopEnabled"
-   private let idleStopSensitivityKey = "idleStopSensitivity"
+   private let idlePauseEnabledKey = "idlePauseEnabled"
 
    func cachedVideoData(for url: URL) -> Data? {
        videoCache[url]
@@ -62,23 +61,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        videoCache[url] = data
    }
 
+   func removeCachedVideoData(for url: URL) {
+       videoCache.removeValue(forKey: url)
+   }
+
 
    func applicationDidFinishLaunching(_ notification: Notification) {
        dlog("applicationDidFinishLaunching")
        AppDelegate.shared = self
 
+       // Register default idle pause sensitivity
+       UserDefaults.standard.register(defaults: ["idlePauseSensitivity": 40.0])
+
        // 从书签中恢复窗口
        SharedWallpaperWindowManager.shared.restoreFromBookmark()
        
        // Observe occlusion changes on overlay windows to auto-pause/play
-//        for window in SharedWallpaperWindowManager.shared.overlayWindows.values {
-//            NotificationCenter.default.addObserver(
-//                self,
-//                selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
-//                name: NSWindow.didChangeOcclusionStateNotification,
-//                object: window
-//            )
-//        }
+       for window in SharedWallpaperWindowManager.shared.overlayWindows.values {
+           NotificationCenter.default.addObserver(
+               self,
+               selector: #selector(wallpaperWindowOcclusionDidChange(_:)),
+               name: NSWindow.didChangeOcclusionStateNotification,
+               object: window
+           )
+       }
 
        // 切换 Dock 图标或仅菜单栏模式
        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -601,27 +607,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // 仅限视频
        if entry.type == .video {
-           do {
-               // 先尝试缓存；若无缓存则只加载一次并缓存
-               let data: Data
-               if let cached = self.cachedVideoData(for: entry.url) {
-                   data = cached
-               } else {
+           guard let data = self.cachedVideoData(for: entry.url) else {
+               do {
                    let loaded = try Data(contentsOf: entry.url)
                    self.cacheVideoData(loaded, for: entry.url)
-                   data = loaded
+                   SharedWallpaperWindowManager.shared.showVideoFromMemory(
+                       for: screen,
+                       data: loaded,
+                       stretch: entry.stretch,
+                       volume: entry.volume ?? 1.0
+                   )
+               } catch {
+                   errorLog("Failed to read video data: \(error)")
+                   SharedWallpaperWindowManager.shared.players[sid]?.play()
                }
-
-               SharedWallpaperWindowManager.shared.showVideoFromMemory(
-                   for: screen,
-                   data: data,
-                   stretch: entry.stretch,
-                   volume: entry.volume ?? 1.0
-               )
-           } catch {
-               errorLog("Failed to read video data: \(error)")
-               SharedWallpaperWindowManager.shared.players[sid]?.play()
+               return
            }
+
+           SharedWallpaperWindowManager.shared.showVideoFromMemory(
+               for: screen,
+               data: data,
+               stretch: entry.stretch,
+               volume: entry.volume ?? 1.0
+           )
        } else {
            SharedWallpaperWindowManager.shared.players[sid]?.play()
        }
@@ -650,25 +658,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    /// 判断指定屏幕的检测窗口是否被遮挡
    func shouldPauseVideo(on screen: NSScreen) -> Bool {
        if isInScreensaver { return false }
-       guard UserDefaults.standard.bool(forKey: idleStopEnabledKey) else { return false }
+       guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
 
        guard let id = screen.dv_displayID,
-             let overlay = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
+             let windows = SharedWallpaperWindowManager.shared.overlayWindows[id] else {
            return false
        }
        dlog("testshouldPauseVideo on \(screen.dv_localizedName)")
-       return !overlay.occlusionState.contains(.visible)
+       return !windows.occlusionState.contains(.visible)
    }
 
    @objc func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
-       guard let sid = SharedWallpaperWindowManager.shared.overlayWindows.first(where: { $0.value == notification.object as? NSWindow })?.key,
+       dlog("Occulusion Did Change")
+       guard let sid = SharedWallpaperWindowManager.shared.overlayWindows.first(where: { $0.value == (notification.object as? NSWindow) })?.key,
              let player = SharedWallpaperWindowManager.shared.players[sid],
              let screen = NSScreen.screen(forDisplayID: sid) else { return }
        if isInScreensaver { return }
-       guard UserDefaults.standard.bool(forKey: idleStopEnabledKey) else { return }
+       guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return }
        if shouldPauseVideo(on: screen) {
+           dlog("Occlusion Did Change: Pausing video on screen \(screen.dv_localizedName)")
            player.pause()
        } else {
+           dlog("Occlusion Did Change: Resuming video on screen \(screen.dv_localizedName)")
            reloadAndPlayVideoFromMemory(displayID: sid)
        }
    }
