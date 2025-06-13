@@ -145,6 +145,15 @@ class SharedWallpaperWindowManager {
             return
         }
 
+        // Remove old overlay occlusion observer before creating new overlay
+        if let oldOverlay = overlayWindows[sid] {
+            NotificationCenter.default.removeObserver(
+                AppDelegate.shared as Any,
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: oldOverlay
+            )
+        }
+
         let screenFrame = screen.frame
         let win = WallpaperWindow(
             contentRect: screenFrame,
@@ -181,20 +190,26 @@ class SharedWallpaperWindowManager {
                                defer: false)
         overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
         overlay.isOpaque = false
-        overlay.backgroundColor = .clear
+//        overlay.backgroundColor = .clear
+        // debug feature
+        overlay.backgroundColor = .white
         overlay.ignoresMouseEvents = true
 //        overlay.alphaValue = 0.0
         overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
         overlay.orderFrontRegardless()
 
-        if let delegate = AppDelegate.shared {
-            NotificationCenter.default.addObserver(
-                delegate,
-                selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
-                name: NSWindow.didChangeOcclusionStateNotification,
-                object: overlay
-            )
-        }
+        // Ensure occlusion observer is not duplicated
+        NotificationCenter.default.removeObserver(
+            AppDelegate.shared as Any,
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: overlay
+        )
+        NotificationCenter.default.addObserver(
+            AppDelegate.shared as Any,
+            selector: #selector(AppDelegate.wallpaperWindowOcclusionDidChange(_:)),
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: overlay
+        )
         self.windows[sid] = win
         self.overlayWindows[sid] = overlay
     }
@@ -541,17 +556,42 @@ class SharedWallpaperWindowManager {
         let activeIDs = Set(NSScreen.screens.compactMap { $0.dv_displayID })
         let knownIDs = Set(windows.keys)
 
-        // 移除已断开的屏幕窗口
+        // 移除已断开的屏幕窗口，安全地清理 overlay 和窗口
         for sid in knownIDs.subtracting(activeIDs) {
-            dlog("remove window for display \(sid)")
-            if let screen = NSScreen.screen(forDisplayID: sid) {
-                clear(for: screen)
-            } else {
+            dlog("removing displayID \(sid)")
+
+            // Only remove overlay and window if the screen truly no longer exists
+            if !NSScreen.screens.contains(where: { $0.dv_displayID == sid }) {
+                if let overlay = overlayWindows[sid] {
+                    NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
+                        name: NSWindow.didChangeOcclusionStateNotification,
+                        object: overlay)
+                    overlay.orderOut(nil)
+                    overlayWindows.removeValue(forKey: sid)
+                }
+
+                if let win = windows[sid] {
+                    win.orderOut(nil)
+                    windows.removeValue(forKey: sid)
+                }
+
+                // Clean up content and player objects safely
+                currentViews[sid]?.removeFromSuperview()
+                currentViews.removeValue(forKey: sid)
+                players[sid]?.pause()
+                players[sid]?.replaceCurrentItem(with: nil)
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
-                currentViews.removeValue(forKey: sid)
-                windows.removeValue(forKey: sid)
                 screenContent.removeValue(forKey: sid)
+
+                // Clear bookmark and settings if expired
+                let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
+                if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+                    UserDefaults.standard.removeObject(forKey: "bookmark-\(sid)")
+                    UserDefaults.standard.removeObject(forKey: "stretch-\(sid)")
+                    UserDefaults.standard.removeObject(forKey: "volume-\(sid)")
+                    UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
+                }
             }
         }
 
