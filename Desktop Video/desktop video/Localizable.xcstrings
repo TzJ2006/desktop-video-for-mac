@@ -1,9 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-      "shouldTranslate" : false
-    },
     "「%@」" : {
       "localizations" : {
         "zh-Hans" : {
@@ -68,13 +65,13 @@
       "shouldTranslate" : false
     },
     "1.0" : {
-
+      "shouldTranslate" : false
     },
     "5" : {
       "shouldTranslate" : false
     },
     "40" : {
-
+      "shouldTranslate" : false
     },
     "AboutDesktopVideo" : {
       "extractionState" : "manual",
@@ -392,7 +389,7 @@
       }
     },
     "GB" : {
-
+      "shouldTranslate" : false
     },
     "GlobalMute" : {
       "extractionState" : "manual",
@@ -915,40 +912,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "螢幕"
-          }
-        }
-      }
-    },
-    "Screen %d" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Screen %d"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pantalla %d"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Écran %d"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "屏幕 %d"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "螢幕 %d"
           }
         }
       }

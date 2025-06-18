@@ -29,6 +29,7 @@ struct desktop_videoApp: App {
     var body: some Scene {
         // Add the Settings scene to provide native Settings menu item
         Settings {
+            PreferencesView()
         }
         .commands {
             // Replace the About menu item
@@ -194,7 +195,7 @@ struct PreferencesView: View {
                 .padding(.top, 10)
             }
         }
-        .frame(minWidth: 300, maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
+        .fixedSize(horizontal: true, vertical: true)
         .padding(20)
         .onAppear {
             // 首次出现时缓存原始值

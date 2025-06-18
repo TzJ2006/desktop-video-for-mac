@@ -236,6 +236,9 @@ class SharedWallpaperWindowManager {
         self.windows[sid] = win
         self.overlayWindows[sid] = overlay
         self.screensaverOverlayWindows[sid] = screensaverOverlay
+        
+        // 创建 / 恢复窗口后立即根据遮挡状态调整播放
+        updatePlayState(for: screen)
     }
 
     func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
@@ -420,8 +423,22 @@ class SharedWallpaperWindowManager {
         currentViews[sid]?.removeFromSuperview()
         contentView.addSubview(newView)
         currentViews[sid] = newView
+        // 内容切换完成后，根据遮挡状态重新评估播放/暂停
+        updatePlayState(for: screen)
     }
 
+    /// 根据 overlay 遮挡状态立即决定播放或暂停该屏幕的视频
+    /// - Important: 该方法**只**影响当前屏幕，不会重建 playerItem，
+    ///   避免 “恢复 B 导致 A 被唤醒” 的副作用。
+    private func updatePlayState(for screen: NSScreen) {
+        AppDelegate.shared.updatePlaybackStateForAllScreens()
+    }
+
+    /// 供外部在遮挡状态变更时调用，确保每屏独立刷新
+    func refreshPlayState(for screen: NSScreen) {
+        updatePlayState(for: screen)
+    }
+    
     func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen){
         dlog("update bookmark for \(screen.dv_localizedName) stretch=\(stretch) volume=\(String(describing: volume))")
         guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { return }
