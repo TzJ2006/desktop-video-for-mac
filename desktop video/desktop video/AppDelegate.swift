@@ -156,7 +156,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            return
        }
 
-       let delayMinutes = UserDefaults.standard.integer(forKey: screensaverDelayMinutesKey)
+       let delayMinutes = UserDefaults.standard.double(forKey: screensaverDelayMinutesKey)
        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
 
        screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
@@ -246,6 +246,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    wallpaperWindow.animator().alphaValue = 1
                }, completionHandler: nil)
 
+               // 检查播放器是否已暂停，若是则直接恢复播放
+               if let player = SharedWallpaperWindowManager.shared.players[id], player.rate == 0.0 {
+                   dlog("Resuming paused video player for screen \(screen.dv_localizedName)")
+                   player.play()
+                   continue
+               }
+
                // Reload and play video from memory to avoid disk I/O
                if let entry = SharedWallpaperWindowManager.shared.screenContent[id], entry.type == .video {
                    do {
@@ -275,7 +282,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                if let contentBounds = wallpaperWindow.contentView?.bounds {
                    // 使用和 updateClockLabels 相同的逻辑：顶部中央，向下偏移20点
                    let dateX = contentBounds.midX - dateLabel.frame.width / 2
-                   let dateY = contentBounds.maxY - dateLabel.frame.height - 50
+                   let dateY = contentBounds.maxY - dateLabel.frame.height - contentBounds.maxY * 0.1
                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
                }
                wallpaperWindow.contentView?.addSubview(dateLabel)
@@ -293,9 +300,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                if let contentBounds = wallpaperWindow.contentView?.bounds {
                    // 使用和 updateClockLabels 相同的逻辑：日期标签下方，间隔10点
                    let dateY = dateLabel.frame.origin.y
-                   let dateHeight = dateLabel.frame.height
                    let timeX = contentBounds.midX - timeLabel.frame.width / 2
-                   let timeY = dateY - dateHeight - timeLabel.frame.height - 30
+                   let timeY = dateY - timeLabel.frame.height - dateLabel.frame.height - contentBounds.maxY * 0.1
                    timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
                }
                wallpaperWindow.contentView?.addSubview(timeLabel)
@@ -721,14 +727,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                dateLabel.stringValue = dateString
                dateLabel.sizeToFit()
                let dateX = contentBounds.midX - dateLabel.frame.width / 2
-               let dateY = contentBounds.maxY - dateLabel.frame.height - 50
+               let dateY = contentBounds.maxY - dateLabel.frame.height - contentBounds.maxY * 0.1
                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
                // 更新时间标签
                timeLabel.stringValue = timeString
                timeLabel.sizeToFit()
                let timeX = contentBounds.midX - timeLabel.frame.width / 2
-               let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height - 30
+               let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height - contentBounds.maxY * 0.1
                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
            }
        }

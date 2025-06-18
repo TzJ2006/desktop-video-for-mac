@@ -95,7 +95,7 @@ struct PreferencesView: View {
     @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
     @AppStorage("idlePauseSensitivity")  private var idlePauseSensitivityStorage:  Double = 40.0
     @AppStorage("screensaverEnabled") private var screensaverEnabledStorage: Bool = false
-    @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Int = 5
+    @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Double = 5.0
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGBStorage: Double = 1.0
 
     // 本地 State，用于暂存用户在界面上的修改
@@ -106,7 +106,7 @@ struct PreferencesView: View {
     @State private var idlePauseEnabled:  Bool = false
     @State private var idlePauseSensitivity:  Double = 40.0
     @State private var screensaverEnabled: Bool = false
-    @State private var screensaverDelayMinutes: Int = 5
+    @State private var screensaverDelayMinutes: Double = 5.0
     @State private var maxVideoFileSizeInGB: Double = 1.0
 
     // 原始值缓存，用于恢复
@@ -117,7 +117,7 @@ struct PreferencesView: View {
     @State private var originalIdlePauseEnabled:  Bool = false
     @State private var originalidlePauseSensitivity:  Double = 40.0
     @State private var originalScreensaverEnabled: Bool = false
-    @State private var originalScreensaverDelayMinutes: Int = 5
+    @State private var originalScreensaverDelayMinutes: Double = 5.0
     @State private var originalMaxVideoFileSizeInGB: Double = 1.0
 
     /// 是否有未保存的更改

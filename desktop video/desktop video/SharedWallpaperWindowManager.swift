@@ -14,6 +14,9 @@ import UniformTypeIdentifiers
 class SharedWallpaperWindowManager {
     static let shared = SharedWallpaperWindowManager()
 
+    /// 屏幕暂停状态集合
+    private var pausedScreens: Set<CGDirectDisplayID> = []
+
     private var debounceWorkItem: DispatchWorkItem?
     private let idlePauseSensitivityKey = "idlePauseSensitivity"
 
@@ -53,6 +56,11 @@ class SharedWallpaperWindowManager {
         dlog("handling wake")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             for (_, player) in self.players {
+                // 检查是否为暂停状态的屏幕
+                if let sid = self.id(for: NSScreen.screens.first(where: { self.players[$0.dv_displayID!] == player }) ?? NSScreen.main!),
+                   self.pausedScreens.contains(sid) {
+                    continue
+                }
                 if let currentItem = player.currentItem {
                     // 如果播放已经暂停但应该播放
                     if player.timeControlStatus != .playing {
@@ -353,6 +361,9 @@ class SharedWallpaperWindowManager {
         overlayWindows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
+        // 清除暂停状态
+        pausedScreens.remove(sid)
+
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
         if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
             UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
@@ -642,8 +653,8 @@ class SharedWallpaperWindowManager {
             if existingSID != sid,
                content.type == .video,
                content.url == originalURL,
-               let existingPlayer = players[existingSID],
-               let existingView = currentViews[existingSID] as? AVPlayerView {
+               let existingPlayer = players[existingSID] {
+                _ = currentViews[existingSID] as? AVPlayerView
                 dlog("reuse existing video player from screen \(existingSID)")
                 ensureWindow(for: screen)
                 stopVideoIfNeeded(for: screen)
@@ -727,6 +738,8 @@ class SharedWallpaperWindowManager {
         }
 
         switchContent(to: playerView, for: screen)
+        // 视频开始播放时移除暂停标记
+        pausedScreens.remove(sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
     
@@ -754,9 +767,21 @@ class SharedWallpaperWindowManager {
 
         saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
         switchContent(to: playerView, for: screen)
+        // 视频开始播放时移除暂停标记
+        pausedScreens.remove(sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
-    
+    /// 控制单个屏幕视频的暂停/播放
+    func setPaused(_ paused: Bool, for screen: NSScreen) {
+        guard let sid = id(for: screen), let player = players[sid] else { return }
+        if paused {
+            pausedScreens.insert(sid)
+            player.pause()
+        } else {
+            pausedScreens.remove(sid)
+            player.play()
+        }
+    }
 }
 
