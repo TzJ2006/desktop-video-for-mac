@@ -200,9 +200,9 @@ class SharedWallpaperWindowManager {
                                defer: false)
         overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
         overlay.isOpaque = false
-//        overlay.backgroundColor = .clear
-        // debug feature
-        overlay.backgroundColor = .white
+        overlay.backgroundColor = .clear
+//         debug feature
+//        overlay.backgroundColor = .white
         overlay.ignoresMouseEvents = true
 //        overlay.alphaValue = 0.0
         overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
