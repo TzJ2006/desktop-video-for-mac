@@ -34,6 +34,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var screensaverTimer: Timer?
    private var eventMonitors: [Any] = []
    private var isInScreensaver = false
+   // 遮挡事件节流器，按屏幕存储
+   private var occlusionDebounceWorkItems: [CGDirectDisplayID: DispatchWorkItem] = [:]
    // 屏保模式下的时钟标签
    private var clockDateLabels: [NSTextField] = []
    private var clockTimeLabels: [NSTextField] = []
@@ -204,6 +206,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
        if isInScreensaver { return }
 
+       // 若全屏覆盖窗口被完全遮挡，则取消进入屏保
+       let shouldCancel = SharedWallpaperWindowManager.shared.screensaverOverlayWindows.values.contains { window in
+           !window.occlusionState.contains(.visible)
+       }
+       if shouldCancel {
+           dlog("Screensaver not started: overlay fully covered")
+           startScreensaverTimer()
+           return
+       }
+
+       // 屏保模式即将开启，立即标记以避免窗口遮挡事件暂停视频
+       isInScreensaver = true
+
        dlog("Starting screensaver mode")
 
 //        防止系统进入屏保或息屏
@@ -225,6 +240,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // 隐藏检测窗口，避免屏保模式下触发自动暂停
        for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
+           overlay.orderOut(nil)
+       }
+       // 隐藏全屏检测窗口，避免干扰
+       for overlay in SharedWallpaperWindowManager.shared.screensaverOverlayWindows.values {
            overlay.orderOut(nil)
        }
 
@@ -339,7 +358,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            if let localMonitor = localMonitor {
                self.eventMonitors.append(localMonitor)
            }
-           self.isInScreensaver = true
        }
    }
 
@@ -389,6 +407,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // 重新显示检测窗口
        for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
+           overlay.orderFrontRegardless()
+       }
+       // 恢复全屏检测窗口
+       for overlay in SharedWallpaperWindowManager.shared.screensaverOverlayWindows.values {
            overlay.orderFrontRegardless()
        }
 
@@ -681,13 +703,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
              let screen = NSScreen.screen(forDisplayID: sid) else { return }
        if isInScreensaver { return }
        guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return }
-       if shouldPauseVideo(on: screen) {
-           dlog("Occlusion Did Change: Pausing video on screen \(screen.dv_localizedName)")
-           player.pause()
-       } else {
-           dlog("Occlusion Did Change: Resuming video on screen \(screen.dv_localizedName)")
-           reloadAndPlayVideoFromMemory(displayID: sid)
+
+       // 先取消旧的任务，避免频繁触发暂停/播放
+       occlusionDebounceWorkItems[sid]?.cancel()
+       let workItem = DispatchWorkItem { [weak self] in
+           guard let self = self else { return }
+           if self.isInScreensaver { return }
+           if self.shouldPauseVideo(on: screen) {
+               dlog("Occlusion Debounce: Pausing video on screen \(screen.dv_localizedName)")
+               player.pause()
+           } else {
+               dlog("Occlusion Debounce: Resuming video on screen \(screen.dv_localizedName)")
+               self.reloadAndPlayVideoFromMemory(displayID: sid)
+           }
        }
+       occlusionDebounceWorkItems[sid] = workItem
+       DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: workItem)
    }
 
    // MARK: - NSApplicationDelegate Idle Pause

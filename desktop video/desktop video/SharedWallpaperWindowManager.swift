@@ -137,6 +137,8 @@ class SharedWallpaperWindowManager {
     var windows: [CGDirectDisplayID: WallpaperWindow] = [:]
     /// 用于检测遮挡状态的小窗口（每个屏幕四个）
     var overlayWindows: [CGDirectDisplayID: NSWindow] = [:]
+    /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
+    var screensaverOverlayWindows: [CGDirectDisplayID: NSWindow] = [:]
     var players: [CGDirectDisplayID: AVQueuePlayer] = [:]
     var screenContent: [CGDirectDisplayID: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
@@ -218,8 +220,22 @@ class SharedWallpaperWindowManager {
             name: NSWindow.didChangeOcclusionStateNotification,
             object: overlay
         )
+        // 创建用于屏保检测的全屏透明窗口
+        let screensaverOverlay = NSWindow(contentRect: screenFrame,
+                                          styleMask: .borderless,
+                                          backing: .buffered,
+                                          defer: false)
+        screensaverOverlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
+        screensaverOverlay.isOpaque = false
+        screensaverOverlay.backgroundColor = .clear
+        screensaverOverlay.ignoresMouseEvents = true
+        screensaverOverlay.alphaValue = 0.0
+        screensaverOverlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        screensaverOverlay.orderFrontRegardless()
+
         self.windows[sid] = win
         self.overlayWindows[sid] = overlay
+        self.screensaverOverlayWindows[sid] = screensaverOverlay
     }
 
     func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
@@ -353,12 +369,17 @@ class SharedWallpaperWindowManager {
             overlay.orderOut(nil)
             overlayWindows.removeValue(forKey: sid)
         }
+        if let overlay = screensaverOverlayWindows[sid] {
+            overlay.orderOut(nil)
+            screensaverOverlayWindows.removeValue(forKey: sid)
+        }
         if let win = windows[sid] {
             win.orderOut(nil)
         }
         screenContent.removeValue(forKey: sid)
         windows.removeValue(forKey: sid)
         overlayWindows.removeValue(forKey: sid)
+        screensaverOverlayWindows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
 
         // 清除暂停状态
@@ -579,6 +600,10 @@ class SharedWallpaperWindowManager {
                         object: overlay)
                     overlay.orderOut(nil)
                     overlayWindows.removeValue(forKey: sid)
+                }
+                if let overlay = screensaverOverlayWindows[sid] {
+                    overlay.orderOut(nil)
+                    screensaverOverlayWindows.removeValue(forKey: sid)
                 }
 
                 if let win = windows[sid] {
