@@ -111,6 +111,8 @@ class SharedWallpaperWindowManager {
         switch entry.type {
         case .image:
             showImage(for: screen, url: entry.url, stretch: isImageStretch)
+            // Save bookmark for newly synced image screen
+            saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: screen)
         case .video:
             showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
                 if let time = currentTime {
@@ -121,6 +123,8 @@ class SharedWallpaperWindowManager {
                         }
                     }
                 }
+                // Save bookmark for newly synced video screen
+                self.saveBookmark(for: entry.url, stretch: isVideoStretch, volume: currentVolume, screen: screen)
             }
         }
 
@@ -198,13 +202,15 @@ class SharedWallpaperWindowManager {
                                styleMask: .borderless,
                                backing: .buffered,
                                defer: false)
-        overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
+        // overlay 必须高于 screensaverOverlay，但仍低于普通窗口
+        overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 2
         overlay.isOpaque = false
-        overlay.backgroundColor = .clear
-//         debug feature
-//        overlay.backgroundColor = .white
+        overlay.backgroundColor = .clear   // keep fully transparent for occlusion checks
+        // To debug overlay position, uncomment next two lines:
+        // overlay.backgroundColor = .white
+        // dlog("Debug Feature On!")
         overlay.ignoresMouseEvents = true
-//        overlay.alphaValue = 0.0
+        overlay.alphaValue = 0.0001   // barely visible but participates in occlusion
         overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
         overlay.orderFrontRegardless()
 
@@ -225,6 +231,7 @@ class SharedWallpaperWindowManager {
                                           styleMask: .borderless,
                                           backing: .buffered,
                                           defer: false)
+        // screensaverOverlay 位于 overlay 之下、壁纸窗口之上
         screensaverOverlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 1
         screensaverOverlay.isOpaque = false
         screensaverOverlay.backgroundColor = .clear
@@ -256,6 +263,7 @@ class SharedWallpaperWindowManager {
         imageView.autoresizingMask = [.width, .height]
 
         self.screenContent[sid] = (.image, url, stretch, nil)
+        dlog("saveBookmark in showImage for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
         saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
 
         switchContent(to: imageView, for: screen)
@@ -291,6 +299,8 @@ class SharedWallpaperWindowManager {
                 AppDelegate.shared.cacheVideoData(loaded, for: url)
                 data = loaded
             }
+            dlog("saveBookmark in showVideo for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
+            saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
             showVideoFromMemory(for: screen,
                                 data: data,
                                 stretch: stretch,
@@ -359,10 +369,26 @@ class SharedWallpaperWindowManager {
     func clear(for screen: NSScreen) {
         dlog("clear content for \(screen.dv_localizedName)")
         guard let sid = id(for: screen) else { return }
-        stopVideoIfNeeded(for: screen)
+
+        // ---------- 新增：释放缓存 ----------
         if let entry = screenContent[sid], entry.type == .video {
+            // 1️⃣ 先暂停并移除 player，确保没有引用
+            stopVideoIfNeeded(for: screen)
             players[sid]?.replaceCurrentItem(with: nil)
+
+            // 2️⃣ 若别的屏幕没在用，移除 Data 缓存
+            let usedElsewhere = screenContent.contains { $0.key != sid && $0.value.url == entry.url }
+            if !usedElsewhere { AppDelegate.shared.removeCachedVideoData(for: entry.url) }
+
+            // 3️⃣ 无论如何，删除 **所有** 以 sid 为前缀的 temp 文件
+            let tempDir  = URL(fileURLWithPath: NSTemporaryDirectory())
+            if let contents = try? FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil) {
+                for file in contents where file.lastPathComponent.hasPrefix("cached-\(sid)-") {
+                    try? FileManager.default.removeItem(at: file)
+                }
+            }
         }
+        
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
         if let overlay = overlayWindows[sid] {
@@ -389,12 +415,12 @@ class SharedWallpaperWindowManager {
         pausedScreens.remove(sid)
 
         // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
-        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
-            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
-            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
-            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
-            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
-        }
+//        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
+//            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+//            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+//            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+//            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
+//        }
     }
 
     func restoreContent(for screen: NSScreen) {
@@ -469,24 +495,19 @@ class SharedWallpaperWindowManager {
     func restoreFromBookmark() {
         dlog("restore from bookmark")
         for screen in NSScreen.screens {
+            print("Check screen: \(screen.dv_localizedName)")
             guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
+            print(displayID)
             guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(displayID)") else { continue }
-
-            // 检查记录是否过期
-            let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
-            if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
-                // 超过 24 小时，删除记录
-                UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
-                UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
-                UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
-                UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
-                continue
-            }
 
             var isStale = false
             do {
                 let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
-                guard url.startAccessingSecurityScopedResource() else { continue }
+                guard url.startAccessingSecurityScopedResource() else {
+                    url.stopAccessingSecurityScopedResource()
+                    errorLog("Failed to startAccessing for \(url.lastPathComponent)")
+                    continue
+                }
                 let ext = url.pathExtension.lowercased()
                 let stretch = UserDefaults.standard.bool(forKey: "stretch-\(displayID)")
                 let volume = UserDefaults.standard.object(forKey: "volume-\(displayID)") as? Float ?? 1.0
@@ -498,8 +519,21 @@ class SharedWallpaperWindowManager {
                     dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
                     showImage(for: screen, url: url, stretch: stretch)
                 }
+                url.stopAccessingSecurityScopedResource()
             } catch {
                 errorLog("Failed to restore bookmark for screen \(displayID): \(error)")
+            }
+            
+            // 检查记录是否过期
+            let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(displayID)")
+            if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+                // 超过 24 小时，删除记录
+                dlog("Outdated bookmark for screen \(displayID), removing...")
+                UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
+                UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
+                UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
+                UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
+                continue
             }
         }
     }
@@ -585,9 +619,13 @@ class SharedWallpaperWindowManager {
                             }
                         }
                     }
+                    // Save bookmark for synced video
+                    self.saveBookmark(for: currentEntry.url, stretch: isVideoStretch, volume: currentVolume, screen: screen)
                 }
             } else if currentEntry.type == .image {
                 showImage(for: screen, url: currentEntry.url, stretch: isImageStretch)
+                // Save bookmark for synced image
+                saveBookmark(for: currentEntry.url, stretch: isImageStretch, volume: nil, screen: screen)
             }
         }
     }
@@ -690,6 +728,28 @@ class SharedWallpaperWindowManager {
         dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
 
+        // Fast path: same screen, same URL → just reuse the existing player / view.
+        if let existingContent = screenContent[sid],
+           existingContent.type == .video,
+           existingContent.url == originalURL,
+           let existingPlayer = players[sid] {
+
+            dlog("reuse existing video player on same screen \(sid)")
+            // Update stretch and volume only.
+            existingPlayer.volume = volume
+            if let playerView = currentViews[sid] as? AVPlayerView {
+                playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+            }
+            // Ensure it is playing.
+            if existingPlayer.timeControlStatus != .playing {
+                existingPlayer.play()
+            }
+            // Refresh cached meta.
+            screenContent[sid] = (.video, originalURL ?? existingContent.url, stretch, volume)
+            NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+            return
+        }
+
         // 1. 优先尝试重用已存在的相同视频播放器
         for (existingSID, content) in screenContent {
             if existingSID != sid,
@@ -714,11 +774,14 @@ class SharedWallpaperWindowManager {
             }
         }
 
-        // Cleanup old cached files for this screen before writing the new one
+        // Cleanup *other* cached temp files for this screen (keep the current hashed one)
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
-        let cachedPrefix = "cached-\(sid)-"
+        // Use a stable file name derived from the original URL so we only write once.
+        let hashed = originalURL?.lastPathComponent.hashValue ?? 0
+        let fileName = "cached-\(sid)-\(hashed).\(originalURL?.pathExtension ?? "mov")"
         if let contents = try? FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil, options: []) {
-            for fileURL in contents where fileURL.lastPathComponent.hasPrefix(cachedPrefix) {
+            for fileURL in contents
+            where fileURL.lastPathComponent.hasPrefix("cached-\(sid)-") && fileURL.lastPathComponent != fileName {
                 try? FileManager.default.removeItem(at: fileURL)
             }
         }
@@ -742,7 +805,6 @@ class SharedWallpaperWindowManager {
             return
         }
 
-        let fileName = "cached-\(sid)-\(UUID().uuidString).\(originalURL?.pathExtension ?? "mov")"
         let tempURL = tempDir.appendingPathComponent(fileName)
 
         if !FileManager.default.fileExists(atPath: tempURL.path) {
@@ -807,6 +869,7 @@ class SharedWallpaperWindowManager {
         loopers[sid] = looper
         screenContent[sid] = (.video, url, stretch, volume)
 
+        dlog("saveBookmark in showVideoDirectly for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
         saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
         switchContent(to: playerView, for: screen)
         // 视频开始播放时移除暂停标记

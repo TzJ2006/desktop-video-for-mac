@@ -196,6 +196,7 @@ struct PreferencesView: View {
             }
         }
         .fixedSize(horizontal: true, vertical: true)
+        .frame(minWidth: 240, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
         .padding(20)
         .onAppear {
             // 首次出现时缓存原始值
@@ -267,7 +268,7 @@ private func handleLaunchAtLoginChange() {
         launchAtLoginStorage = launchAtLogin
     } catch {
         let alert = NSAlert()
-        alert.messageText = NSLocalizedString("LaunchAtLoginFailed", comment: "")
+        alert.messageText = NSLocalizedString(L("LaunchAtLoginFailed"), comment: "")
         alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
         alert.runModal()

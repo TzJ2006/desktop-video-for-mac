@@ -461,6 +461,23 @@
         }
       }
     },
+    "idlePauseSensitivity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idle Pause Sensitivity"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动暂停灵敏度"
+          }
+        }
+      }
+    },
     "Language" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -562,6 +579,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "設定開機啟動失敗"
+          }
+        }
+      }
+    },
+    "MaxVideoFileSizeGB" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max Supported Video Size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缓存视频大小限制"
           }
         }
       }
@@ -835,7 +869,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "语言更改将在下次启动时生效"
+            "value" : "更改将在下次启动时生效"
           }
         },
         "zh-Hant" : {

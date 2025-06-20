@@ -127,6 +127,7 @@ struct ContentView: View {
             ))
         }
         .padding(.bottom)
+        .fixedSize(horizontal: true, vertical: true)
         .frame(minWidth: 400, idealWidth: 480, maxWidth: .infinity, minHeight: 200, idealHeight: 325, maxHeight: .infinity)
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             dlog("onDrop count=\(providers.count)")
