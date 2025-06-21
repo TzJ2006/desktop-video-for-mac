@@ -73,10 +73,18 @@ func dvTimestamp() -> String {
 }
 
 // MARK: - 日志辅助函数
+/// 日志级别定义
+enum DVLogLevel: String {
+    case debug = "DEBUG"
+    case info  = "INFO"
+    case warn  = "WARN"
+    case error = "ERROR"
+}
+
 /// 调试日志，仅在 DEBUG 构建输出
-func dlog(_ message: String, function: String = #function) {
+func dlog(_ message: String, level: DVLogLevel = .debug, function: String = #function) {
 #if DEBUG
-    print("[\(dvTimestamp())] \(function): \(message)")
+    print("[\(dvTimestamp())][\(level.rawValue)] \(function): \(message)")
 #endif
 }
 

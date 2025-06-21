@@ -23,7 +23,7 @@ struct AudioMixerMenuBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Mixer") {
+        MenuBarExtra(NSLocalizedString("Mixer", comment: "菜单栏标题")) {
             MixerView()
         }
         .menuBarExtraStyle(.window) // gives us the detachable pop‑over style
@@ -219,7 +219,7 @@ final class AppAudioManager: ObservableObject {
     }
 
     private func setupAudioEngine() {
-        // Attach a mixer node that taps system output
+        // 连接混音节点以截取系统输出
         engine.attach(systemTap)
         let mainMixer = engine.mainMixerNode
         engine.connect(systemTap, to: mainMixer, format: nil)
@@ -228,13 +228,15 @@ final class AppAudioManager: ObservableObject {
         } catch {
             print("⚠️ Failed to start AVAudioEngine:", error)
         }
-        // TODO: Add tap on systemTap to capture and split per-app streams
+        dlog("Audio engine started", level: .info)
+        // TODO: 在 systemTap 上添加 tap，按应用拆分系统音频流
     }
 
     private func discoverAudioProcesses() {
-        // TODO: Query running audio processes (AudioObject with kAudioHardwarePropertyProcessIsAudioProcess)
-        // For each PID, create a mixer node and attach to systemTap via a tap bus
-        // Example stub:
+        dlog("discoverAudioProcesses", level: .info)
+        // TODO: 查询正在输出音频的进程 (AudioObject + kAudioHardwarePropertyProcessIsAudioProcess)
+        //       为每个 PID 创建 mixer node 并通过 tap bus 连接到 systemTap
+        // 示例代码：
         let audioPIDs: [pid_t] = [] // fill via AudioObject APIs
         for pid in audioPIDs {
             let node = AVAudioMixerNode()
@@ -250,7 +252,8 @@ final class AppAudioManager: ObservableObject {
     }
 
     func setVolume(for pid: pid_t, to newValue: Float32) {
-        // Software gain up to 4×
+        // 软件增益最高可达 4×
+        dlog("setVolume pid=\(pid) newValue=\(newValue)", level: .debug)
         let gain = min(max(newValue, 0), 4)
         if let node = processNodes[pid] {
             node.volume = gain
