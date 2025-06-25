@@ -228,12 +228,12 @@ final class AppAudioManager: ObservableObject {
         } catch {
             print("⚠️ Failed to start AVAudioEngine:", error)
         }
-        dlog("Audio engine started", level: .info)
+//        dlog("Audio engine started", level: .info)
         // TODO: 在 systemTap 上添加 tap，按应用拆分系统音频流
     }
 
     private func discoverAudioProcesses() {
-        dlog("discoverAudioProcesses", level: .info)
+//        dlog("discoverAudioProcesses", level: .info)
         // TODO: 查询正在输出音频的进程 (AudioObject + kAudioHardwarePropertyProcessIsAudioProcess)
         //       为每个 PID 创建 mixer node 并通过 tap bus 连接到 systemTap
         // 示例代码：
@@ -253,7 +253,7 @@ final class AppAudioManager: ObservableObject {
 
     func setVolume(for pid: pid_t, to newValue: Float32) {
         // 软件增益最高可达 4×
-        dlog("setVolume pid=\(pid) newValue=\(newValue)", level: .debug)
+//        dlog("setVolume pid=\(pid) newValue=\(newValue)", level: .debug)
         let gain = min(max(newValue, 0), 4)
         if let node = processNodes[pid] {
             node.volume = gain
