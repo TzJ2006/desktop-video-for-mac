@@ -1,5 +1,3 @@
-![TzJ's GitHub stats](https://github-readme-stats.vercel.app/api?username=TzJ2006&show_icons=true)
-
 # Desktop Video Wallpaper
 
 [Readme of English Version](https://github.com/TzJ2006/desktop-video/blob/main/README-EN.md)
