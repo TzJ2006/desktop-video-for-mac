@@ -1,13 +1,34 @@
 # Desktop Video Wallpaper Change Log
 
+# Desktop Video 更新日志
+
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
-### Version 3.0 Beta hot-fix 5 (2025-06-27)
+### Version 3.0 hot-fix 1 (2025-06-27)
 
 - 修复新增或移除显示器后壁纸黑屏的问题
 - 检测黑屏并自动从书签恢复
 - Fix rare black screen when displays are added or removed
 - Detect black screens and reload from bookmarks
+
+### Version 3.0 (2025-06-25)
+
+* 更新闲置暂停逻辑，更智能，更节能
+* 修复闲置暂停开关无法生效的问题
+* 改进显示器热插拔处理，移除黑屏窗口
+* 新连接显示器时同步当前视频并保持时间戳
+* 优化视频读取逻辑，优先从内存加载
+* 添加屏保功能
+* 为单桌面控制预留了接口 (currently unavailable because of Apple's settings)
+* 修复了一些 bug
+* Update idle-pause; smarter and more energy-efficient
+* Fix the issue where the idle-pause toggle
+* Improve hot-plug handling for displays and eliminate black-screen windows
+* Sync the current video and preserve its timestamp when a new display is connected
+* Optimize video loading to prioritize in-memory playback
+* Add screen-saver
+* Add potential code for single space wallpaper control (currently unavailable because of Apple's settings)
+* Fix some bugs
 
 ### Version 3.0 Beta hot-fix 4 (2025-06-20)
 
@@ -146,4 +167,4 @@
 - 梦开始的地方
 - 可以让视频作为 Mac 动态壁纸
 - The first version of desktop video
-- Users can choose video as Mac's wallpaper
+- Users can choose a video as Mac's wallpaper
