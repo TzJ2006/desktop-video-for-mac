@@ -196,7 +196,18 @@ struct SingleScreenView: View {
                     }
                 }()
 
-                Text("\(L("NowPlaying")) \(filename)")
+                // Shorten long filenames (>30 chars) for display while keeping them informative
+                let displayedFilename: String = {
+                    if filename.count > 30 {
+                        let prefix = filename.prefix(10)
+                        let suffix = filename.suffix(10)
+                        return "\(prefix)…\(suffix)"
+                    } else {
+                        return filename
+                    }
+                }()
+
+                Text("\(L("NowPlaying")) \(displayedFilename)")
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .onAppear {

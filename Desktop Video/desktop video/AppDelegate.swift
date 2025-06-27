@@ -144,7 +144,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    func startScreensaverTimer() {
        // 若计时器已在运行则直接返回
        if screensaverTimer != nil && screensaverTimer?.isValid == true {
-           dlog("startScreensaverTimer: timer already running, returning early")
+//           dlog("startScreensaverTimer: timer already running, returning early")
            return
        }
        dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")

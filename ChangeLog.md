@@ -4,17 +4,18 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
-### Version 3.0 hot-fix 2 (2025-06-27)
-
-- 强绑定显示器 UUID，避免 PID 变化导致错绑
-- Use stable screen UUID to prevent window misalignment
-
 ### Version 3.0 hot-fix 1 (2025-06-27)
 
+- 强绑定显示器 UUID，避免 PID 变化导致错绑
 - 修复新增或移除显示器后壁纸黑屏的问题
+- 修复新增或移除显示器后壁纸不显示的问题
 - 检测黑屏并自动从书签恢复
+- 当视频名称超过 30 个字符时，自动截取前后两半以保证正确显示
+- Use stable screen UUID to prevent window misalignment
+- Fix bug when screens do not exist when displays are added or removed
 - Fix rare black screen when displays are added or removed
 - Detect black screens and reload from bookmarks
+- Better Appearence when the name of the video is longer than 30 characters
 
 ### Version 3.0 (2025-06-25)
 
