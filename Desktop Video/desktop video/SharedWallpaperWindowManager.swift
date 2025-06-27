@@ -77,6 +77,9 @@ class SharedWallpaperWindowManager {
         dlog("screens did wake")
         handleWake()
         handleScreenChange()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.checkBlackScreens()
+        }
     }
 
     @objc private func handleScreensDidSleep() {
@@ -538,6 +541,37 @@ class SharedWallpaperWindowManager {
         }
     }
 
+    /// 仅恢复指定屏幕的书签内容
+    func restoreFromBookmark(for screen: NSScreen) {
+        guard let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value,
+              let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(displayID)") else {
+            return
+        }
+        var isStale = false
+        do {
+            let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+            guard url.startAccessingSecurityScopedResource() else {
+                url.stopAccessingSecurityScopedResource()
+                errorLog("Failed to startAccessing for \(url.lastPathComponent)")
+                return
+            }
+            let ext = url.pathExtension.lowercased()
+            let stretch = UserDefaults.standard.bool(forKey: "stretch-\(displayID)")
+            let volume = UserDefaults.standard.object(forKey: "volume-\(displayID)") as? Float ?? 1.0
+
+            if ["mp4", "mov", "m4v"].contains(ext) {
+                dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
+                showVideo(for: screen, url: url, stretch: stretch, volume: volume)
+            } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+                dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
+                showImage(for: screen, url: url, stretch: stretch)
+            }
+            url.stopAccessingSecurityScopedResource()
+        } catch {
+            errorLog("Failed to restore bookmark for screen \(displayID): \(error)")
+        }
+    }
+
     func setVolume(_ volume: Float, for screen: NSScreen) {
         dlog("set volume for \(screen.dv_localizedName) volume=\(volume)")
         guard let sid = id(for: screen) else { return }
@@ -712,6 +746,26 @@ class SharedWallpaperWindowManager {
                         }
                     }
                 }
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.checkBlackScreens()
+        }
+    }
+
+    /// 检测并修复黑屏问题
+    private func checkBlackScreens() {
+        dlog("check black screens")
+        for screen in NSScreen.screens {
+            guard let sid = id(for: screen) else { continue }
+            let hasBookmark = UserDefaults.standard.data(forKey: "bookmark-\(sid)") != nil
+            let viewMissing = currentViews[sid] == nil
+            let playerMissing = screenContent[sid]?.type == .video && players[sid] == nil
+            if hasBookmark && (viewMissing || playerMissing) {
+                dlog("black screen detected on \(screen.dv_localizedName)")
+                clear(for: screen)
+                restoreFromBookmark(for: screen)
             }
         }
     }
