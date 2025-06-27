@@ -613,6 +613,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    keyEquivalent: ""
                )
                menu.addItem(
+                   withTitle: L("StartScreensaver"),          // 本地化键
+                   action: #selector(manualRunScreensaver(_:)),
+                   keyEquivalent: ""                          // 可按需要指定快捷键
+               )
+               menu.addItem(
                     withTitle: L("QuitDesktopVideo"),
                     action: #selector(NSApplication.terminate(_:)),
                     keyEquivalent: ""
@@ -636,6 +641,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        dlog("statusBarIconClicked")
        toggleMainWindow()
    }
+    
+    /// Manually trigger the screensaver from UI.
+    @objc func manualRunScreensaver(_ sender: Any? = nil) {
+        // 若用户在偏好里关闭了屏保，也顺便帮他打开
+        if !UserDefaults.standard.bool(forKey: screensaverEnabledKey) {
+            UserDefaults.standard.set(true, forKey: screensaverEnabledKey)
+        }
+        runScreenSaver()    // 已有方法，直接复用
+    }
 
    // 是否显示 Docker 栏图标
    public func setDockIconVisible(_ visible: Bool) {
