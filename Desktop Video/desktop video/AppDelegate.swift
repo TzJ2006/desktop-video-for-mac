@@ -257,9 +257,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // 使用现有窗口列表的键值
        let keys = NSScreen.screens.compactMap { screen in
-           screen.dv_displayID.flatMap { id in
-               SharedWallpaperWindowManager.shared.windows.keys.contains(id) ? id : nil
-           }
+           let id = screen.dv_displayUUID
+           return SharedWallpaperWindowManager.shared.windows.keys.contains(id) ? id : nil
        }
        dlog("windows.keys = \(keys)")
 
@@ -274,10 +273,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
        // 👇 先把需要恢复播放的屏幕 ID 收集起来，稍后统一延迟 5 s 再播放
-       var pendingResumeIDs: [CGDirectDisplayID] = []
+       var pendingResumeIDs: [String] = []
        for id in keys {
            dlog("looping id = \(id)")
-           if let screen = NSScreen.screen(forDisplayID: id) {
+           if let screen = NSScreen.screen(forUUID: id) {
                dlog("found screen: \(screen)")
                guard let wallpaperWindow = SharedWallpaperWindowManager.shared.windows[id] else { continue }
                wallpaperWindow.level = .screenSaver
@@ -339,7 +338,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // === 立即恢复各屏幕的视频播放 ===
        for pid in pendingResumeIDs {
-           reloadAndPlayVideoFromMemory(displayID: pid)
+           reloadAndPlayVideoFromMemory(displayUUID: pid)
        }
 
        // 开始更新时钟标签
@@ -649,7 +648,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    // MARK: - Idle Timer Methods
     
     // MARK: - Per-Screen Pause / Resume
-    private var pausedScreens = Set<CGDirectDisplayID>()
+    private var pausedScreens = Set<String>()
 
 //    private func pauseVideo(for sid: CGDirectDisplayID) {
 //        if let player = SharedWallpaperWindowManager.shared.players[sid],
@@ -681,8 +680,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //    }
 
    /// 重新从内存加载并播放指定显示器上的视频。若读取失败则回退到直接播放。
-   private func reloadAndPlayVideoFromMemory(displayID sid: CGDirectDisplayID) {
-       guard let screen = NSScreen.screen(forDisplayID: sid),
+   private func reloadAndPlayVideoFromMemory(displayUUID sid: String) {
+       guard let screen = NSScreen.screen(forUUID: sid),
              let entry = SharedWallpaperWindowManager.shared.screenContent[sid] else {
            SharedWallpaperWindowManager.shared.players[sid]?.play()
            return
@@ -771,7 +770,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             } else {
                 if player.timeControlStatus != .playing {
-                    reloadAndPlayVideoFromMemory(displayID: sid)
+                    reloadAndPlayVideoFromMemory(displayUUID: sid)
                 }
             }
         }
@@ -862,8 +861,8 @@ func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
            let timeLabel = clockTimeLabels[index]
            let screen = NSScreen.screens[index]
            // 找到对应屏幕的 WallpaperWindow
-           if let sid = screen.dv_displayID,
-              let window = SharedWallpaperWindowManager.shared.windows[sid],
+           let sid = screen.dv_displayUUID
+           if let window = SharedWallpaperWindowManager.shared.windows[sid],
               let contentBounds = window.contentView?.bounds {
 
                // 更新日期标签
