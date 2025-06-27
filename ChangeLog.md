@@ -4,6 +4,15 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 3.1 (2025-06-27)
+
+- 新增手动启动屏保菜单项
+- 自动检测并重新分配被系统移到错误显示器的窗口
+- 更稳定地恢复黑屏窗口
+- Added menu option to start the screensaver manually
+- Automatically reassign windows that macOS moves to the wrong display
+- More robust recovery when wallpaper windows disappear
+
 ### Version 3.0 hot-fix 1 (2025-06-27)
 
 - 强绑定显示器 UUID，避免 PID 变化导致错绑

@@ -596,6 +596,7 @@ class SharedWallpaperWindowManager {
 
     /// 仅恢复指定屏幕的书签内容
     func restoreFromBookmark(for screen: NSScreen) {
+        dlog("restoreFromBookmark \(screen.dv_localizedName)")
         let uuid = screen.dv_displayUUID
         guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(uuid)") else {
             return
@@ -1012,6 +1013,7 @@ class SharedWallpaperWindowManager {
     // MARK: - Automatic window reassignment
     /// 当系统把窗口挪到错误显示器时，自动迁回正确屏幕
     private func reassignWindowIfNeeded(for sid: String) {
+        dlog("reassignWindowIfNeeded \(sid)")
         guard
             let expected = NSScreen.screen(forUUID: sid),
             let win      = windows[sid],
@@ -1040,12 +1042,14 @@ class SharedWallpaperWindowManager {
 
     /// 遍历全部窗口/overlay，批量校正
     private func reassignAllWindows() {
+        dlog("reassignAllWindows")
         for sid in windows.keys        { reassignWindowIfNeeded(for: sid) }
         for sid in overlayWindows.keys { reassignWindowIfNeeded(for: sid) }
     }
 
     /// 捕捉窗口被系统改屏事件
     @objc private func windowScreenDidChange(_ note: Notification) {
+        dlog("windowScreenDidChange")
         guard let win = note.object as? NSWindow else { return }
         if let sid = windows .first(where: { $0.value == win })?.key {
             reassignWindowIfNeeded(for: sid)
