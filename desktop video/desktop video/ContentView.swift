@@ -358,6 +358,10 @@ struct SingleScreenView: View {
             dlog("picker selected \(url.lastPathComponent) type=\(String(describing: fileType))")
 
             DispatchQueue.main.async {
+                
+                dlog("Clear screen on \(screen.dv_localizedName)")
+                SharedWallpaperWindowManager.shared.clear(for: screen)
+                
                 if fileType?.conforms(to: .movie) == true {
                     appState.lastMediaURL = url
                     SharedWallpaperWindowManager.shared.showVideo(
