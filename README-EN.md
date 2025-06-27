@@ -14,6 +14,9 @@
 - 🖥 **Multi-Screen Video Sync**: Automatically sync the current wallpaper across all displays
 - 🔠 **Multiple Language Support**：Automatically change the language to your system language.
 - 🔋 **Autostop**: Stop Automatically to lower energy consumption.
+- 📺 **Stable Screen Binding**: Uses display UUIDs so wallpapers stay on the correct monitor
+- 💫 **Automatic Black Screen Recovery**: Detects missing windows and reloads from bookmarks
+- 🌙 **Manual Screensaver**: Quickly trigger the screensaver from the menu
 
 ## 🛠 Tech Stack
 

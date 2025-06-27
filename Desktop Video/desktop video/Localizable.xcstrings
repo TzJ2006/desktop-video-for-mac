@@ -1300,7 +1300,7 @@
         }
       }
     },
-    "Volume" : {
+  "Volume" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -1336,5 +1336,45 @@
       }
     }
   },
+    "StartScreensaver" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start Screensaver" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar protector de pantalla" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lancer l'economiseur d'ecran" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "启动屏保" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "啟動螢幕保護程式" } }
+      }
+    },
+    "Filetoolarge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File too large" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Archivo demasiado grande" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier trop volumineux" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文件过大" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "檔案過大" } }
+      }
+    },
+    "size%.2f GBover%.1f GBplayfromdisk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This file is %1$.2f GB, exceeding the %.1f GB limit. It will play directly from disk." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El archivo tiene %1$.2f GB y supera el límite de %.1f GB. Se reproducirá directamente desde el disco." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce fichier fait %1$.2f Go, au-delà de la limite de %.1f Go. Il sera lu directement depuis le disque." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "此文件大小为 %1$.2f GB，超过限制的 %.1f GB，将直接从磁盘播放。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "此檔案大小為 %1$.2f GB，超過限制的 %.1f GB，將直接從磁碟播放。" } }
+      }
+    },
+    "UnknownPath" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown path" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ruta desconocida" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chemin inconnu" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未知路径" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "未知路徑" } }
+      }
+    },
   "version" : "1.0"
 }
