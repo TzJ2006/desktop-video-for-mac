@@ -7,6 +7,7 @@
 
 import AppKit
 import Foundation
+import CoreGraphics
 
 // MARK: - Notification 统一管理
 extension Notification.Name {
@@ -33,8 +34,23 @@ extension NSScreen {
         deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
     }
 
+    /// 稳定的屏幕标识，优先使用 CGDisplay 的 UUID
+    var dv_displayUUID: String {
+        if let id = dv_displayID,
+           let uuidRef = CGDisplayCreateUUIDFromDisplayID(id) {
+            let uuid = uuidRef.takeRetainedValue() as UUID
+            return uuid.uuidString
+        }
+        let res = "\(Int(frame.width))x\(Int(frame.height))"
+        return "\(dv_localizedName)-\(res)"
+    }
+
     static func screen(forDisplayID id: CGDirectDisplayID) -> NSScreen? {
         NSScreen.screens.first { $0.dv_displayID == id }
+    }
+
+    static func screen(forUUID uuid: String) -> NSScreen? {
+        NSScreen.screens.first { $0.dv_displayUUID == uuid }
     }
 }
 

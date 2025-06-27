@@ -91,7 +91,7 @@ struct ContentView: View {
             if screenObserver.screens.count > 1 {
                 Button {
                     if let sourceScreen = selectedTabScreen,
-                       let id = sourceScreen.dv_displayID,
+                       let id = sourceScreen.dv_displayUUID,
                        let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
 
                         if let fileType = UTType(filenameExtension: entry.url.pathExtension) {
@@ -231,10 +231,8 @@ struct SingleScreenView: View {
 
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                     let playerVolume: Float = {
-                                        if let id = screen.dv_displayID {
-                                            return SharedWallpaperWindowManager.shared.players[id]?.volume ?? newVolume
-                                        }
-                                        return newVolume
+                                        let id = screen.dv_displayUUID
+                                        return SharedWallpaperWindowManager.shared.players[id]?.volume ?? newVolume
                                     }()
                                     if abs(playerVolume - newVolume) > 0.01 {
 
@@ -311,8 +309,8 @@ struct SingleScreenView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
         .onReceive(NotificationCenter.default.publisher(for: .wallpaperContentDidChange)) { _ in
-            if let id = screen.dv_displayID,
-               let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
+            let id = screen.dv_displayUUID
+            if let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
                 if currentEntry?.url != entry.url ||
                     currentEntry?.volume != entry.volume ||
                     currentEntry?.stretch != entry.stretch {
@@ -333,8 +331,8 @@ struct SingleScreenView: View {
         }
         .onAppear {
             dlog("SingleScreenView onAppear \(screen.dv_localizedName)")
-            if let id = screen.dv_displayID,
-               let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
+            let id = screen.dv_displayUUID
+            if let entry = SharedWallpaperWindowManager.shared.screenContent[id] {
                 self.currentEntry = entry
                 self.volume = entry.volume ?? 1.0
                 self.stretchToFill = entry.stretch
