@@ -52,6 +52,31 @@ class SharedWallpaperWindowManager {
         screen.dv_displayUUID
     }
 
+    /// Ensure the wallpaper, overlay and screensaver overlay windows for the
+    /// given screen are still located on that physical display.
+    /// If the system has moved any of them, dispose of them so they can be
+    /// recreated on the correct screen.
+    private func ensureWindowOnCorrectScreen(for screen: NSScreen) {
+        let sid = id(for: screen)
+
+        // Wallpaper window
+        if let win = windows[sid], win.screen !== screen {
+            clear(for: screen)
+        }
+
+        // Overlay window
+        if let overlay = overlayWindows[sid], overlay.screen !== screen {
+            overlay.orderOut(nil)
+            overlayWindows.removeValue(forKey: sid)
+        }
+
+        // Screensaver‑overlay window
+        if let saverOverlay = screensaverOverlayWindows[sid], saverOverlay.screen !== screen {
+            saverOverlay.orderOut(nil)
+            screensaverOverlayWindows.removeValue(forKey: sid)
+        }
+    }
+
     @objc private func handleWake() {
         dlog("handling wake")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -79,6 +104,7 @@ class SharedWallpaperWindowManager {
         handleScreenChange()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.checkBlackScreens()
+            self?.reassignAllWindows()
         }
     }
 
@@ -91,6 +117,9 @@ class SharedWallpaperWindowManager {
     }
 
     func syncWindow(to screen: NSScreen, from source: NSScreen) {
+        
+//        return;
+        
         dlog("syncing window from \(source.dv_localizedName) to \(screen.dv_localizedName)")
         let destID = id(for: screen)
         let srcID = id(for: source)
@@ -114,8 +143,9 @@ class SharedWallpaperWindowManager {
         switch entry.type {
         case .image:
             showImage(for: screen, url: entry.url, stretch: isImageStretch)
-            // Save bookmark for newly synced image screen
+            showImage(for: source, url: entry.url, stretch: isImageStretch)
             saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: screen)
+            saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: source)
         case .video:
             showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
                 if let time = currentTime {
@@ -126,8 +156,19 @@ class SharedWallpaperWindowManager {
                         }
                     }
                 }
-                // Save bookmark for newly synced video screen
                 self.saveBookmark(for: entry.url, stretch: isVideoStretch, volume: currentVolume, screen: screen)
+            }
+            showVideo(for: source, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
+                if let time = currentTime {
+                    let srcSID = self.id(for: source)
+                    self.players[srcSID]?.pause()
+                    self.players[srcSID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                        if shouldPlay {
+                            self.players[srcSID]?.play()
+                        }
+                    }
+                }
+                self.saveBookmark(for: entry.url, stretch: isVideoStretch, volume: currentVolume, screen: source)
             }
         }
 
@@ -229,6 +270,13 @@ class SharedWallpaperWindowManager {
             name: NSWindow.didChangeOcclusionStateNotification,
             object: overlay
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowScreenDidChange(_:)),
+            name: NSWindow.didChangeScreenNotification,
+            object: nil
+        )
+        
         // 创建用于屏保检测的全屏透明窗口
         let screensaverOverlay = NSWindow(contentRect: screenFrame,
                                           styleMask: .borderless,
@@ -253,6 +301,7 @@ class SharedWallpaperWindowManager {
 
     func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
         dlog("show image \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch)")
+        ensureWindowOnCorrectScreen(for: screen)
         let sid = id(for: screen)
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
@@ -270,11 +319,13 @@ class SharedWallpaperWindowManager {
         saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
 
         switchContent(to: imageView, for: screen)
+//        player.play()
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
     /// 为指定屏幕播放视频，始终从内存缓存读取数据。
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
+        ensureWindowOnCorrectScreen(for: screen)
         // Check file size and use AVPlayer directly if too large
         let fileSizeLimit = desktop_videoApp.shared?.maxVideoFileSizeInGB ?? 1.0
         if let fileSize = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64 {
@@ -282,8 +333,8 @@ class SharedWallpaperWindowManager {
             if sizeInGB > fileSizeLimit {
                 DispatchQueue.main.async {
                     let alert = NSAlert()
-                    alert.messageText = "视频文件过大"
-                    alert.informativeText = "此视频大小为 \(String(format: "%.2f", sizeInGB)) GB，超过限制的 \(fileSizeLimit) GB，将直接从磁盘播放以节省内存。"
+                    alert.messageText = L("Filetoolarge")
+                    alert.informativeText = String(format: L("size%.2f GBover%.1f GBplayfromdisk"), sizeInGB, fileSizeLimit)
                     alert.alertStyle = .warning
                     alert.runModal()
                 }
@@ -292,7 +343,7 @@ class SharedWallpaperWindowManager {
                 return
             }
         }
-        dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
+        dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume) UID=\(id(for: screen))")
         do {
             let data: Data
             if let cached = AppDelegate.shared.cachedVideoData(for: url) {
@@ -624,10 +675,11 @@ class SharedWallpaperWindowManager {
     func syncAllWindows(sourceScreen: NSScreen) {
         dlog("sync all windows from \(sourceScreen.dv_localizedName)")
         cleanupDisconnectedScreens()
-        guard let srcID = id(for: sourceScreen), let currentEntry = screenContent[srcID] else {
+        let srcID = id(for: sourceScreen)
+        guard let currentEntry = screenContent[srcID] else {
             return
         }
-
+        
         let currentVolume = players[srcID]?.volume ?? 1.0
         let isVideoStretch: Bool
         if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
@@ -668,9 +720,13 @@ class SharedWallpaperWindowManager {
     }
 
     @objc private func handleScreenChange() {
+        
+//        return;
+        
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem { [weak self] in
             self?.reloadScreens()
+            self?.reassignAllWindows()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: debounceWorkItem!)
     }
@@ -755,6 +811,7 @@ class SharedWallpaperWindowManager {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.checkBlackScreens()
+            self?.reassignAllWindows()
         }
     }
 
@@ -784,6 +841,7 @@ class SharedWallpaperWindowManager {
     ///   - onReady: 准备完成回调
     func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, onReady: (() -> Void)? = nil) {
         dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
+        ensureWindowOnCorrectScreen(for: screen)
         let sid = id(for: screen)
 
         // Fast path: same screen, same URL → just reuse the existing player / view.
@@ -900,6 +958,7 @@ class SharedWallpaperWindowManager {
         }
 
         switchContent(to: playerView, for: screen)
+        queuePlayer.play()
         // 视频开始播放时移除暂停标记
         pausedScreens.remove(sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
@@ -907,6 +966,7 @@ class SharedWallpaperWindowManager {
     
     /// 直接用 AVPlayer 播放本地大视频文件，避免加载进内存。
     private func showVideoDirectly(for screen: NSScreen, url: URL, stretch: Bool, volume: Float) {
+        ensureWindowOnCorrectScreen(for: screen)
         let sid = id(for: screen)
         ensureWindow(for: screen)
         stopVideoIfNeeded(for: screen)
@@ -930,6 +990,7 @@ class SharedWallpaperWindowManager {
         dlog("saveBookmark in showVideoDirectly for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
         saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
         switchContent(to: playerView, for: screen)
+        player.play()
         // 视频开始播放时移除暂停标记
         pausedScreens.remove(sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
@@ -947,5 +1008,51 @@ class SharedWallpaperWindowManager {
             player.play()
         }
     }
+    
+    // MARK: - Automatic window reassignment
+    /// 当系统把窗口挪到错误显示器时，自动迁回正确屏幕
+    private func reassignWindowIfNeeded(for sid: String) {
+        guard
+            let expected = NSScreen.screen(forUUID: sid),
+            let win      = windows[sid],
+            win.screen   !== expected         // 屏幕不一致
+        else { return }
+
+        // 记录内容描述后先清理
+        let entry = screenContent[sid]
+        if let wrong = win.screen { clear(for: wrong) }
+
+        // 重新创建窗口并恢复内容
+        if let entry = entry {
+            switch entry.type {
+            case .image:
+                showImage(for: expected, url: entry.url, stretch: entry.stretch)
+            case .video:
+                showVideo(for: expected,
+                          url:     entry.url,
+                          stretch: entry.stretch,
+                          volume:  entry.volume ?? 1.0)
+            }
+        } else {
+            restoreFromBookmark(for: expected)   // 没记录时走书签恢复
+        }
+    }
+
+    /// 遍历全部窗口/overlay，批量校正
+    private func reassignAllWindows() {
+        for sid in windows.keys        { reassignWindowIfNeeded(for: sid) }
+        for sid in overlayWindows.keys { reassignWindowIfNeeded(for: sid) }
+    }
+
+    /// 捕捉窗口被系统改屏事件
+    @objc private func windowScreenDidChange(_ note: Notification) {
+        guard let win = note.object as? NSWindow else { return }
+        if let sid = windows .first(where: { $0.value == win })?.key {
+            reassignWindowIfNeeded(for: sid)
+        } else if let sid = overlayWindows.first(where: { $0.value == win })?.key {
+            reassignWindowIfNeeded(for: sid)
+        }
+    }
+    
 }
 

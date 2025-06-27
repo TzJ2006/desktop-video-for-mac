@@ -782,7 +782,7 @@ private func shouldPauseAllVideos() -> Bool {
     // 1. 保留原有前置条件
     if isInScreensaver { return false }
     guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
-    dlog("testing shouldPauseAllVideos")
+    dlog("testing pause videos or not")
 
     // 2. 取出所有 overlay
     let overlaysDict = SharedWallpaperWindowManager.shared.overlayWindows
@@ -796,7 +796,7 @@ private func shouldPauseAllVideos() -> Bool {
         var visibleScreens: [String] = []
         for (sid, win) in overlaysDict {
             if win.occlusionState.contains(.visible),
-               let screen = NSScreen.screen(forDisplayID: sid) {
+               let screen = NSScreen.screen(forUUID: sid) {
                 visibleScreens.append(screen.dv_localizedName)
             }
         }

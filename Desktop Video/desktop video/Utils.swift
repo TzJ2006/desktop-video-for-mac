@@ -38,8 +38,9 @@ extension NSScreen {
     var dv_displayUUID: String {
         if let id = dv_displayID,
            let uuidRef = CGDisplayCreateUUIDFromDisplayID(id) {
-            let uuid = uuidRef.takeRetainedValue() as UUID
-            return uuid.uuidString
+            let cfuuid = uuidRef.takeRetainedValue()
+            let uuid = CFUUIDCreateString(nil, cfuuid) as String
+            return uuid
         }
         let res = "\(Int(frame.width))x\(Int(frame.height))"
         return "\(dv_localizedName)-\(res)"
