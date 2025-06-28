@@ -1195,6 +1195,23 @@
         }
       }
     },
+    "StartScreensaver" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Screen Saver"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启动屏保"
+          }
+        }
+      }
+    },
     "StretchToFill" : {
       "extractionState" : "manual",
       "localizations" : {
