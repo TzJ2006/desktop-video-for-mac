@@ -4,6 +4,22 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 3.1 hot-fix 2 (2025-07-01)
+
+- 将空闲暂停灵敏度迁移到 AppState
+- 修复沙盒环境下应用无法重启的问题
+- Moved idle pause sensitivity into AppState
+- Fixed restart logic for sandboxed environments
+
+### Version 3.1 hot-fix 1 (2025-07-01)
+
+- 替换“自动暂停”开关为全新的播放模式选择
+- 将播放模式选项移动到空闲暂停灵敏度之前
+- 更新本地化字符串
+- Replace *IdlePauseEnabled* toggle with a new playback mode picker
+- Moved the picker above the idle pause sensitivity setting
+- Updated localization strings
+
 ### Version 3.1 (2025-06-28)
 
 - 新增手动启动屏保菜单项

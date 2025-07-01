@@ -55,7 +55,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    
    // 把视频缓存在内存中
    private var videoCache = [URL: Data]()
-   private let idlePauseEnabledKey = "idlePauseEnabled"
 
    func cachedVideoData(for url: URL) -> Data? {
        videoCache[url]
@@ -762,8 +761,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return false
 
         case .automatic:
-            // 原有自动模式逻辑（保持 idlePauseEnabled 开关）
-            guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
             dlog("testing pause videos or not (automatic)")
 
             let overlaysDict = SharedWallpaperWindowManager.shared.overlayWindows
