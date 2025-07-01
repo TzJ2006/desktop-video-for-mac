@@ -2,7 +2,7 @@
 //  Utils.swift
 //  desktop video
 //
-//  Created by ChatGPT on 2025-05-11.
+//  Created by 汤子嘉 on 5/11/25.
 //
 
 import AppKit
@@ -147,38 +147,38 @@ final class LogFile {
     private init() {
         // 2.1 构造日志文件的绝对路径：~/Library/Logs/desktop-video.log
         let logURL = FileManager.default
-            .homeDirectoryForCurrentUser           // 获取当前用户主目录路径 :contentReference[oaicite:2]{index=2}
+            .homeDirectoryForCurrentUser           // 获取当前用户主目录路径
             .appendingPathComponent("Library/Logs")
             .appendingPathComponent("desktop-video.log")
 
         let fm = FileManager.default
-        // 2.2 确保 Logs 目录存在，否则创建（支持多级创建） :contentReference[oaicite:3]{index=3}
+        // 2.2 确保 Logs 目录存在，否则创建（支持多级创建）
         try? fm.createDirectory(at: logURL.deletingLastPathComponent(),
                                 withIntermediateDirectories: true,
                                 attributes: nil)
 
-        // 2.3 如果日志文件不存在，则创建一个空文件 :contentReference[oaicite:4]{index=4}
+        // 2.3 如果日志文件不存在，则创建一个空文件
         if !fm.fileExists(atPath: logURL.path) {
             fm.createFile(atPath: logURL.path,
                           contents: nil,
                           attributes: nil)
         }
 
-        // 2.4 打开文件句柄并定位到末尾，准备以追加模式写入 :contentReference[oaicite:5]{index=5}
+        // 2.4 打开文件句柄并定位到末尾，准备以追加模式写入
         fileHandle = try? FileHandle(forWritingTo: logURL)
-        fileHandle?.seekToEndOfFile()            // 定位到文件末尾 :contentReference[oaicite:6]{index=6}
+        fileHandle?.seekToEndOfFile()            // 定位到文件末尾
     }
 
     func write(_ message: String) {
         guard let handle = fileHandle,
               let data = (message + "\n").data(using: .utf8) else { return }
-        // 异步写入，避免阻塞主线程 :contentReference[oaicite:7]{index=7}
+        // 异步写入，避免阻塞主线程
         queue.async {
             handle.write(data)
         }
     }
 
     deinit {
-        try? fileHandle?.close()                // 关闭句柄 :contentReference[oaicite:8]{index=8}
+        try? fileHandle?.close()                // 关闭句柄
     }
 }

@@ -7,18 +7,11 @@
 
 // 主页视图，使用 SharedWallpaperWindowManager 管理壁纸窗口
 
+
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 import Foundation
-
-class AppState: ObservableObject {
-    static let shared = AppState()
-    @Published var lastMediaURL: URL?
-    @Published var lastVolume: Float = 1.0
-    @Published var lastStretchToFill: Bool = true
-    @Published var currentMediaURL: String?
-}
 
 class ScreenObserver: ObservableObject {
     @Published var screens: [NSScreen] = NSScreen.screens

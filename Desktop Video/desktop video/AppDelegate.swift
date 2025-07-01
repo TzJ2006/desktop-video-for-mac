@@ -346,6 +346,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        clockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
            self?.updateClockLabels()
        }
+       dlog("updateClockLabels")
 
        // 2. 延迟 0.5 秒后再添加事件监听器并设置 isInScreensaver
        eventMonitors.forEach { NSEvent.removeMonitor($0) }
@@ -405,10 +406,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                wallpaperWindow.ignoresMouseEvents = true
                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
                wallpaperWindow.orderBack(nil)
-                
-//               if let player = SharedWallpaperWindowManager.shared.players[id] {
-//                   self.reloadAndPlayVideoFromMemory(displayID: id)
-//               }
                wallpaperWindow.alphaValue = 1 // 恢复透明度供下一次屏保使用
            })
        }
@@ -660,8 +657,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //       hasOpenedMainWindowOnce = true
    }
 
-   // MARK: - Idle Timer Methods
-    
     // MARK: - Per-Screen Pause / Resume
     private var pausedScreens = Set<String>()
 
@@ -739,42 +734,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
    }
 
-   
-//   private func pauseVideoForAllScreens() {
-//       dlog("pauseVideoForAllScreens")
-//       if isInScreensaver { return }
-//
-//       for (sid, player) in SharedWallpaperWindowManager.shared.players {
-//           if let screen = NSScreen.screen(forDisplayID: sid) {
-//               let shouldPause = shouldPauseVideo(on: screen)
-//               dlog("pauseVideoForAllScreens: shouldPause=\(shouldPause) on \(screen.dv_localizedName)")
-//               if shouldPause {
-//                   dlog("Pausing video on screen \(screen.dv_localizedName)")
-////                   player.pause()
-//                   pauseVideo(for: sid)
-//               } else {
-//                   dlog("Playing video on screen \(screen.dv_localizedName)")
-////                   reloadAndPlayVideoFromMemory(displayID: sid)
-//                   resumeVideo(for: sid)
-//               }
-//           }
-//       }
-//   }
-
-    /// 判断指定屏幕的检测窗口是否被遮挡
-//    func shouldPauseVideo(on screen: NSScreen) -> Bool {
-//
-//        dlog("Should we pause video on \(screen.dv_localizedName)? \(isInScreensaver) \(UserDefaults.standard.bool(forKey: idlePauseEnabledKey))")
-//
-//        if isInScreensaver { return false }
-//        guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
-//
-//        let overlays = SharedWallpaperWindowManager.shared.overlayWindows.values
-//        guard !overlays.isEmpty else { return false }
-//        return overlays.allSatisfy { !$0.occlusionState.contains(.visible) }
-//
-//    }
-
     func updatePlaybackStateForAllScreens() {
         let pauseAll = shouldPauseAllVideos()
         dlog("[IdlePause] pauseAll=\(pauseAll)")
@@ -793,46 +752,59 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// Determines whether all videos should be paused (e.g., all overlays are fully occluded).
-private func shouldPauseAllVideos() -> Bool {
-    // 1. 保留原有前置条件
-    if isInScreensaver { return false }
-    guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
-    dlog("testing pause videos or not")
+    private func shouldPauseAllVideos() -> Bool {
+        // Respect screensaver first
+        if isInScreensaver { return false }
 
-    // 2. 取出所有 overlay
-    let overlaysDict = SharedWallpaperWindowManager.shared.overlayWindows
-    guard !overlaysDict.isEmpty else { return false }
+        // Fast path for “总是播放”
+        switch AppState.shared.playbackMode {
+        case .alwaysPlay:
+            return false
 
-    // 3. 判断是否全部被遮挡
-    let pauseAll = overlaysDict.values.allSatisfy { !$0.occlusionState.contains(.visible) }
+        case .automatic:
+            // 原有自动模式逻辑（保持 idlePauseEnabled 开关）
+            guard UserDefaults.standard.bool(forKey: idlePauseEnabledKey) else { return false }
+            dlog("testing pause videos or not (automatic)")
 
-    // 4. 若未达到暂停条件，列出“仍可见”的屏幕名称便于调试
-    if !pauseAll {
-        var visibleScreens: [String] = []
-        for (sid, win) in overlaysDict {
-            if win.occlusionState.contains(.visible),
-               let screen = NSScreen.screen(forUUID: sid) {
-                visibleScreens.append(screen.dv_localizedName)
+            let overlaysDict = SharedWallpaperWindowManager.shared.overlayWindows
+            guard !overlaysDict.isEmpty else { return false }
+
+            let pauseAll = overlaysDict.values.allSatisfy { !$0.occlusionState.contains(.visible) }
+
+            if !pauseAll {
+                // 列出仍可见的屏幕，便于调试
+                var visibleScreens: [String] = []
+                for (sid, win) in overlaysDict where win.occlusionState.contains(.visible) {
+                    if let screen = NSScreen.screen(forUUID: sid) {
+                        visibleScreens.append(screen.dv_localizedName)
+                    }
+                }
+                dlog("[IdlePause] overlay still visible on screens: \(visibleScreens.joined(separator: ", "))")
             }
-        }
-        dlog("[IdlePause] overlay still visible on screens: \(visibleScreens.joined(separator: ", "))")
-    }
+            return pauseAll
 
-    return pauseAll
-}
-    
-    @objc
-func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
-    dlog("occlusion did change")
-    // 防抖：短时间内只评估一次
-    occlusionDebounceWorkItem?.cancel()
-    occlusionDebounceWorkItem = DispatchWorkItem { [weak self] in
-        self?.updatePlaybackStateForAllScreens()
+        case .powerSave:
+            // 省电：所有 overlay 都被完全遮挡才暂停
+            return SharedWallpaperWindowManager.shared.allOverlaysCompletelyCovered()
+
+        case .powerSavePlus:
+            // 省电+：任意 overlay 被完全遮挡即暂停
+            return SharedWallpaperWindowManager.shared.anyOverlayCompletelyCovered()
+        }
     }
-    // Give the system a longer grace period (0.5 s) before re‑evaluating playback,
-    // so that transient occlusion states don't cause premature pauses.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: occlusionDebounceWorkItem!)
-}
+        
+        @objc
+    func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
+        // 防抖：短时间内只评估一次
+        occlusionDebounceWorkItem?.cancel()
+        occlusionDebounceWorkItem = DispatchWorkItem { [weak self] in
+            self?.updatePlaybackStateForAllScreens()
+        }
+        // Give the system a longer grace period (0.5 s) before re‑evaluating playback,
+        // so that transient occlusion states don't cause premature pauses.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: occlusionDebounceWorkItem!)
+        dlog("occlusion change")
+    }
 
     /// Called when a screensaver overlay window's occlusion changes.
     @objc
@@ -859,7 +831,7 @@ func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
    }
    // 更新时钟标签位置和时间
    private func updateClockLabels() {
-       dlog("updateClockLabels")
+//       dlog("updateClockLabels")
        let dateFormatter = DateFormatter()
        dateFormatter.locale = Locale.current
        dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
@@ -912,4 +884,3 @@ func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
        startScreensaverTimer()
    }
 }
-

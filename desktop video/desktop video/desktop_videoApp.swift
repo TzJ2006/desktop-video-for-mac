@@ -99,6 +99,9 @@ struct PreferencesView: View {
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Double = 5.0
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGBStorage: Double = 1.0
 
+    // Inject global app state to read/write playback mode
+    @ObservedObject private var appState = AppState.shared
+
     // 本地 State，用于暂存用户在界面上的修改
     @State private var autoSyncNewScreens: Bool = true
     @State private var launchAtLogin:     Bool = true
@@ -153,6 +156,20 @@ struct PreferencesView: View {
                     }
                     .pickerStyle(.menu)
                     .frame(width: 100)
+                }
+                .padding(.top, 10)
+
+                // 播放模式：总是播放 / 自动 / 省电 / 省电+
+                HStack {
+                    Text(L("PlaybackMode"))
+                    Picker(selection: $appState.playbackMode, label: EmptyView()) {
+                        Text(L("PlaybackAlways")).tag(AppState.PlaybackMode.alwaysPlay)
+                        Text(L("PlaybackAuto")).tag(AppState.PlaybackMode.automatic)
+                        Text(L("PlaybackPowerSave")).tag(AppState.PlaybackMode.powerSave)
+                        Text(L("PlaybackPowerSavePlus")).tag(AppState.PlaybackMode.powerSavePlus)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(minWidth: 220)
                 }
                 .padding(.top, 10)
 

@@ -5,6 +5,7 @@
 //  Created by 汤子嘉 on 3/25/25.
 //
 
+import CoreGraphics      // for CGWindowListCopyWindowInfo
 import Cocoa
 import AVKit
 import AVFoundation
@@ -18,7 +19,12 @@ class SharedWallpaperWindowManager {
     private var pausedScreens: Set<String> = []
 
     private var debounceWorkItem: DispatchWorkItem?
+    private var blackScreensWorkItem: DispatchWorkItem?
     private let idlePauseSensitivityKey = "idlePauseSensitivity"
+
+    private var playbackMode: AppState.playbackMode {
+        AppState.playbackMode
+    }
 
     init() {
         let wsnc = NSWorkspace.shared.notificationCenter
@@ -68,6 +74,7 @@ class SharedWallpaperWindowManager {
         if let overlay = overlayWindows[sid], overlay.screen !== screen {
             overlay.orderOut(nil)
             overlayWindows.removeValue(forKey: sid)
+            dlog("overlay level = \(overlay.level.rawValue)")
         }
 
         // Screensaver‑overlay window
@@ -117,9 +124,7 @@ class SharedWallpaperWindowManager {
     }
 
     func syncWindow(to screen: NSScreen, from source: NSScreen) {
-        
-//        return;
-        
+
         dlog("syncing window from \(source.dv_localizedName) to \(screen.dv_localizedName)")
         let destID = id(for: screen)
         let srcID = id(for: source)
@@ -230,14 +235,9 @@ class SharedWallpaperWindowManager {
         // 创建一个用于检测遮挡状态的透明窗口
         let rawSensitivity = UserDefaults.standard.object(forKey: idlePauseSensitivityKey) as? Double ?? 40.0
         let portionSize = 1 - rawSensitivity / 200.0
-        print("Sensitivity is: \(rawSensitivity)")
-        
-        print("window portion size:", portionSize)
-        
+
         let overlaySize = CGSize(width: screenFrame.width * portionSize, height: screenFrame.height * portionSize)
-        
-        print("Overlay Window size: ", overlaySize)
-        
+
         let position: CGPoint =
             CGPoint(x: screenFrame.midX - overlaySize.width / 2,
                     y: screenFrame.midY - overlaySize.height / 2)
@@ -249,14 +249,15 @@ class SharedWallpaperWindowManager {
         // overlay 必须高于 screensaverOverlay，但仍低于普通窗口
         overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 2
         overlay.isOpaque = false
-        overlay.backgroundColor = .clear   // keep fully transparent for occlusion checks
+//        overlay.backgroundColor = .clear   // keep fully transparent for occlusion checks
         // To debug overlay position, uncomment next two lines:
-        // overlay.backgroundColor = .white
-        // dlog("Debug Feature On!")
+         overlay.backgroundColor = .white
+         dlog("Debug Feature On!")
         overlay.ignoresMouseEvents = true
         overlay.alphaValue = 0.0001   // barely visible but participates in occlusion
         overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
         overlay.orderFrontRegardless()
+        dlog("overlay level = \(overlay.level.rawValue)")
 
         // Ensure occlusion observer is not duplicated
         NotificationCenter.default.removeObserver(
@@ -319,7 +320,6 @@ class SharedWallpaperWindowManager {
         saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
 
         switchContent(to: imageView, for: screen)
-//        player.play()
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
 
@@ -467,14 +467,6 @@ class SharedWallpaperWindowManager {
 
         // 清除暂停状态
         pausedScreens.remove(sid)
-
-        // 按照屏幕的 displayID 删除对应的 bookmark、stretch、volume 和 savedAt
-//        if let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
-//            UserDefaults.standard.removeObject(forKey: "bookmark-\(displayID)")
-//            UserDefaults.standard.removeObject(forKey: "stretch-\(displayID)")
-//            UserDefaults.standard.removeObject(forKey: "volume-\(displayID)")
-//            UserDefaults.standard.removeObject(forKey: "savedAt-\(displayID)")
-//        }
     }
 
     func restoreContent(for screen: NSScreen) {
@@ -513,7 +505,31 @@ class SharedWallpaperWindowManager {
     /// - Important: 该方法**只**影响当前屏幕，不会重建 playerItem，
     ///   避免 “恢复 B 导致 A 被唤醒” 的副作用。
     private func updatePlayState(for screen: NSScreen) {
-        AppDelegate.shared.updatePlaybackStateForAllScreens()
+        let sid = id(for: screen)
+        guard let player = players[sid] else { return }
+
+        switch playbackMode {
+        case .alwaysPlay:
+            if player.timeControlStatus != .playing { player.play() }
+
+        case .automatic:
+            // Delegate to existing global logic
+            AppDelegate.shared.updatePlaybackStateForAllScreens()
+
+        case .powerSave:
+            if allOverlaysCompletelyCovered() {
+                if player.timeControlStatus != .paused { player.pause() }
+            } else {
+                if player.timeControlStatus != .playing { player.play() }
+            }
+
+        case .powerSavePlus:
+            if anyOverlayCompletelyCovered() {
+                if player.timeControlStatus != .paused { player.pause() }
+            } else {
+                if player.timeControlStatus != .playing { player.play() }
+            }
+        }
     }
 
     /// 供外部在遮挡状态变更时调用，确保每屏独立刷新
@@ -551,9 +567,8 @@ class SharedWallpaperWindowManager {
     func restoreFromBookmark() {
         dlog("restore from bookmark")
         for screen in NSScreen.screens {
-            print("Check screen: \(screen.dv_localizedName)")
+            dlog("Check screen: \(screen.dv_localizedName)")
             let uuid = screen.dv_displayUUID
-            print(uuid)
             guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(uuid)") else { continue }
 
             var isStale = false
@@ -816,8 +831,18 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    /// 检测并修复黑屏问题
+    // Debounced entry‑point: calls performBlackScreensCheck() once the
     private func checkBlackScreens() {
+        blackScreensWorkItem?.cancel()
+        blackScreensWorkItem = DispatchWorkItem { [weak self] in
+            self?.performBlackScreensCheck()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1,
+                                      execute: blackScreensWorkItem!)
+    }
+
+    /// Actual black‑screen detection logic (formerly the body of checkBlackScreens).
+    private func performBlackScreensCheck() {
         dlog("check black screens")
         for screen in NSScreen.screens {
             let sid = id(for: screen)
@@ -1056,7 +1081,57 @@ class SharedWallpaperWindowManager {
         } else if let sid = overlayWindows.first(where: { $0.value == win })?.key {
             reassignWindowIfNeeded(for: sid)
         }
+        checkBlackScreens()
     }
-    
-}
+    // MARK: - Overlay coverage helpers (CoreGraphics)
 
+    /// Returns true iff *some* window in front of `overlay` completely covers its bounds.
+    private func overlayCompletelyCovered(_ overlay: NSWindow) -> Bool {
+        let overlayID   = CGWindowID(overlay.windowNumber)
+        let overlayRect = overlay.frame
+
+        let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+        guard let info = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else {
+            return false
+        }
+
+        for win in info {
+            guard let wid  = win[kCGWindowNumber as String] as? CGWindowID else { continue }
+
+            if wid == overlayID {
+                // Walked past overlay ⇒ nothing fully covers it
+                return false
+            }
+
+            // Skip transparent / off‑screen windows
+            let alpha = (win[kCGWindowAlpha as String] as? Double) ?? 1.0
+            let ons   = (win[kCGWindowIsOnscreen as String] as? Bool) ?? true
+            if alpha < 0.01 || !ons { continue }
+
+            var rect = CGRect.zero
+            if let bounds = win[kCGWindowBounds as String] as? CFDictionary,
+               CGRectMakeWithDictionaryRepresentation(bounds, &rect),
+               rect.contains(overlayRect) {
+                // Found a window entirely covering the overlay
+                return true
+            }
+        }
+        return false
+    }
+
+    /// All overlay windows are completely hidden by front‑most windows.
+    private func allOverlaysCompletelyCovered() -> Bool {
+        for overlay in overlayWindows.values where !overlayCompletelyCovered(overlay) {
+            return false
+        }
+        return !overlayWindows.isEmpty   // At least one overlay must exist
+    }
+
+    /// At least one overlay window is fully covered.
+    private func anyOverlayCompletelyCovered() -> Bool {
+        for overlay in overlayWindows.values where overlayCompletelyCovered(overlay) {
+            return true
+        }
+        return false
+    }
+}
