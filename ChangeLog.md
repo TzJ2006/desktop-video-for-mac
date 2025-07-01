@@ -16,6 +16,8 @@
 - 修复沙盒环境下应用无法重启的问题
 - Moved idle pause sensitivity into AppState
 - Fixed restart logic for sandboxed environment
+- 增强中文翻译并添加更多中文注释
+- Improved Chinese localization and added detailed Chinese comments
 
 ### Version 3.1 (2025-06-28)
 
