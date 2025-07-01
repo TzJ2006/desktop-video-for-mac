@@ -20,7 +20,6 @@ class SharedWallpaperWindowManager {
 
     private var debounceWorkItem: DispatchWorkItem?
     private var blackScreensWorkItem: DispatchWorkItem?
-    private let idlePauseSensitivityKey = "idlePauseSensitivity"
 
     private var playbackMode: AppState.PlaybackMode {
         AppState.shared.playbackMode
@@ -233,7 +232,7 @@ class SharedWallpaperWindowManager {
         win.orderFrontRegardless()
 
         // 创建一个用于检测遮挡状态的透明窗口
-        let rawSensitivity = UserDefaults.standard.object(forKey: idlePauseSensitivityKey) as? Double ?? 40.0
+        let rawSensitivity = AppState.shared.idlePauseSensitivity
         let portionSize = 1 - rawSensitivity / 200.0
 
         let overlaySize = CGSize(width: screenFrame.width * portionSize, height: screenFrame.height * portionSize)

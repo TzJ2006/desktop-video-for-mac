@@ -7,6 +7,7 @@
 
 import SwiftUI
 import ServiceManagement
+import AppKit
 
 @main
 struct desktop_videoApp: App {
@@ -93,8 +94,6 @@ struct PreferencesView: View {
     @AppStorage("launchAtLogin")     private var launchAtLoginStorage:     Bool = true
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
-    @AppStorage("idlePauseEnabled")  private var idlePauseEnabledStorage:  Bool = false
-    @AppStorage("idlePauseSensitivity")  private var idlePauseSensitivityStorage:  Double = 40.0
     @AppStorage("screensaverEnabled") private var screensaverEnabledStorage: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutesStorage: Double = 5.0
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGBStorage: Double = 1.0
@@ -107,7 +106,6 @@ struct PreferencesView: View {
     @State private var launchAtLogin:     Bool = true
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
-    @State private var idlePauseEnabled:  Bool = false
     @State private var idlePauseSensitivity:  Double = 40.0
     @State private var screensaverEnabled: Bool = false
     @State private var screensaverDelayMinutes: Double = 5.0
@@ -118,7 +116,6 @@ struct PreferencesView: View {
     @State private var originalLaunchAtLogin:     Bool = true
     @State private var originalGlobalMute:        Bool = false
     @State private var originalSelectedLanguage:  String = "system"
-    @State private var originalIdlePauseEnabled:  Bool = false
     @State private var originalidlePauseSensitivity:  Double = 40.0
     @State private var originalScreensaverEnabled: Bool = false
     @State private var originalScreensaverDelayMinutes: Double = 5.0
@@ -130,8 +127,7 @@ struct PreferencesView: View {
         || launchAtLogin != launchAtLoginStorage
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
-        || idlePauseEnabled != idlePauseEnabledStorage
-        || idlePauseSensitivity != idlePauseSensitivityStorage
+        || idlePauseSensitivity != appState.idlePauseSensitivity
         || screensaverEnabled != screensaverEnabledStorage
         || screensaverDelayMinutes != screensaverDelayMinutesStorage
         || maxVideoFileSizeInGB != maxVideoFileSizeInGBStorage
@@ -159,18 +155,6 @@ struct PreferencesView: View {
                 }
                 .padding(.top, 10)
 
-                // 播放模式：总是播放 / 自动 / 省电 / 省电+
-                VStack {
-                    Text(L("PlaybackMode"))
-                    Picker(selection: $appState.playbackMode, label: EmptyView()) {
-                        Text(L("PlaybackAlways")).tag(AppState.PlaybackMode.alwaysPlay)
-                        Text(L("PlaybackAuto")).tag(AppState.PlaybackMode.automatic)
-                        Text(L("PlaybackPowerSave")).tag(AppState.PlaybackMode.powerSave)
-                        Text(L("PlaybackPowerSavePlus")).tag(AppState.PlaybackMode.powerSavePlus)
-                    }
-                    .pickerStyle(.automatic)
-                }
-                .padding(.top, 10)
 
                 Toggle(L("EnableScreenSaver"), isOn: $screensaverEnabled)
                     .padding(.top, 10)
@@ -183,8 +167,18 @@ struct PreferencesView: View {
                 }
                 .disabled(!screensaverEnabled)
 
-                Toggle(L("IdlePauseEnabled"), isOn: $idlePauseEnabled)
-                    .padding(.top, 10)
+                // 播放模式：总是播放 / 自动 / 省电 / 省电+
+                VStack {
+                    Text(L("PlaybackMode"))
+                    Picker(selection: $appState.playbackMode, label: EmptyView()) {
+                        Text(L("PlaybackAlways")).tag(AppState.PlaybackMode.alwaysPlay)
+                        Text(L("PlaybackAuto")).tag(AppState.PlaybackMode.automatic)
+                        Text(L("PlaybackPowerSave")).tag(AppState.PlaybackMode.powerSave)
+                        Text(L("PlaybackPowerSavePlus")).tag(AppState.PlaybackMode.powerSavePlus)
+                    }
+                    .pickerStyle(.automatic)
+                }
+                .padding(.top, 10)
 
                 HStack {
                     Text(L("idlePauseSensitivity"))
@@ -220,8 +214,7 @@ struct PreferencesView: View {
             originalLaunchAtLogin = launchAtLoginStorage
             originalGlobalMute = globalMuteStorage
             originalSelectedLanguage = languageStorage
-            originalIdlePauseEnabled = idlePauseEnabledStorage
-            originalidlePauseSensitivity = idlePauseSensitivityStorage
+            originalidlePauseSensitivity = appState.idlePauseSensitivity
             originalScreensaverEnabled = screensaverEnabledStorage
             originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
             originalMaxVideoFileSizeInGB = maxVideoFileSizeInGBStorage
@@ -237,7 +230,6 @@ struct PreferencesView: View {
         launchAtLogin = originalLaunchAtLogin
         globalMute = originalGlobalMute
         selectedLanguage = originalSelectedLanguage
-        idlePauseEnabled = originalIdlePauseEnabled
         idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 40.0 : originalidlePauseSensitivity
         screensaverEnabled = originalScreensaverEnabled
         screensaverDelayMinutes = originalScreensaverDelayMinutes
@@ -251,10 +243,11 @@ struct PreferencesView: View {
         launchAtLoginStorage = launchAtLogin
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
-        idlePauseEnabledStorage = idlePauseEnabled
         screensaverEnabledStorage = screensaverEnabled
         screensaverDelayMinutesStorage = screensaverDelayMinutes
         maxVideoFileSizeInGBStorage = maxVideoFileSizeInGB
+
+        appState.idlePauseSensitivity = idlePauseSensitivity
 
         if launchAtLogin != launchAtLoginStorage {
             handleLaunchAtLoginChange()
@@ -294,12 +287,14 @@ private func handleLaunchAtLoginChange() {
 
     private func restartApplication() {
         dlog("restartApplication")
-        let url = URL(fileURLWithPath: Bundle.main.resourcePath!)
-        let path = url.deletingLastPathComponent().deletingLastPathComponent().absoluteString
-        let task = Process()
-        task.launchPath = "/usr/bin/open"
-        task.arguments = [path]
-        task.launch()
+        let appURL = Bundle.main.bundleURL
+        do {
+            try NSWorkspace.shared.launchApplication(at: appURL,
+                                                     options: .newInstance,
+                                                     configuration: [:])
+        } catch {
+            errorLog("Failed to relaunch app: \(error.localizedDescription)")
+        }
         NSApp.terminate(nil)
     }
 

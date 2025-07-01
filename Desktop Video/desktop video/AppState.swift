@@ -44,8 +44,18 @@ class AppState: ObservableObject {
         }
     }
 
+    /// 空闲暂停灵敏度 (0~100)，写入 UserDefaults 以便持久化
+    @Published var idlePauseSensitivity: Double {
+        didSet {
+            UserDefaults.standard.set(idlePauseSensitivity, forKey: idlePauseSensitivityKey)
+        }
+    }
+
+    private let idlePauseSensitivityKey = "idlePauseSensitivity"
+
     private init() {
         let raw = UserDefaults.standard.integer(forKey: "playbackMode")
         self.playbackMode = PlaybackMode(rawValue: raw) ?? .automatic
+        self.idlePauseSensitivity = UserDefaults.standard.object(forKey: idlePauseSensitivityKey) as? Double ?? 40.0
     }
 }
