@@ -160,7 +160,7 @@ struct PreferencesView: View {
                 .padding(.top, 10)
 
                 // 播放模式：总是播放 / 自动 / 省电 / 省电+
-                HStack {
+                VStack {
                     Text(L("PlaybackMode"))
                     Picker(selection: $appState.playbackMode, label: EmptyView()) {
                         Text(L("PlaybackAlways")).tag(AppState.PlaybackMode.alwaysPlay)
@@ -168,8 +168,7 @@ struct PreferencesView: View {
                         Text(L("PlaybackPowerSave")).tag(AppState.PlaybackMode.powerSave)
                         Text(L("PlaybackPowerSavePlus")).tag(AppState.PlaybackMode.powerSavePlus)
                     }
-                    .pickerStyle(.segmented)
-                    .frame(minWidth: 220)
+                    .pickerStyle(.automatic)
                 }
                 .padding(.top, 10)
 
@@ -212,8 +211,8 @@ struct PreferencesView: View {
                 .padding(.top, 10)
             }
         }
-        .fixedSize(horizontal: true, vertical: true)
-        .frame(minWidth: 240, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
+        .fixedSize()
+        .frame(minWidth: 300, maxWidth: .infinity, minHeight: 400, maxHeight: .infinity)
         .padding(20)
         .onAppear {
             // 首次出现时缓存原始值

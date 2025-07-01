@@ -22,8 +22,8 @@ class SharedWallpaperWindowManager {
     private var blackScreensWorkItem: DispatchWorkItem?
     private let idlePauseSensitivityKey = "idlePauseSensitivity"
 
-    private var playbackMode: AppState.playbackMode {
-        AppState.playbackMode
+    private var playbackMode: AppState.PlaybackMode {
+        AppState.shared.playbackMode
     }
 
     init() {
@@ -1108,11 +1108,9 @@ class SharedWallpaperWindowManager {
             let ons   = (win[kCGWindowIsOnscreen as String] as? Bool) ?? true
             if alpha < 0.01 || !ons { continue }
 
-            var rect = CGRect.zero
-            if let bounds = win[kCGWindowBounds as String] as? CFDictionary,
-               CGRectMakeWithDictionaryRepresentation(bounds, &rect),
-               rect.contains(overlayRect) {
-                // Found a window entirely covering the overlay
+            if let boundsDict = win[kCGWindowBounds as String] as? NSDictionary,
+               let winRect   = CGRect(dictionaryRepresentation: boundsDict),
+               winRect.contains(overlayRect) {
                 return true
             }
         }
@@ -1120,7 +1118,7 @@ class SharedWallpaperWindowManager {
     }
 
     /// All overlay windows are completely hidden by front‑most windows.
-    private func allOverlaysCompletelyCovered() -> Bool {
+    func allOverlaysCompletelyCovered() -> Bool {
         for overlay in overlayWindows.values where !overlayCompletelyCovered(overlay) {
             return false
         }
@@ -1128,7 +1126,7 @@ class SharedWallpaperWindowManager {
     }
 
     /// At least one overlay window is fully covered.
-    private func anyOverlayCompletelyCovered() -> Bool {
+    func anyOverlayCompletelyCovered() -> Bool {
         for overlay in overlayWindows.values where overlayCompletelyCovered(overlay) {
             return true
         }
