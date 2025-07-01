@@ -110,6 +110,7 @@ struct PreferencesView: View {
     @State private var screensaverEnabled: Bool = false
     @State private var screensaverDelayMinutes: Double = 5.0
     @State private var maxVideoFileSizeInGB: Double = 1.0
+    @State private var playbackMode: AppState.PlaybackMode = .alwaysPlay
 
     // 原始值缓存，用于恢复
     @State private var originalAutoSyncNewScreens: Bool = true
@@ -120,6 +121,7 @@ struct PreferencesView: View {
     @State private var originalScreensaverEnabled: Bool = false
     @State private var originalScreensaverDelayMinutes: Double = 5.0
     @State private var originalMaxVideoFileSizeInGB: Double = 1.0
+    @State private var originalPlaybackMode: AppState.PlaybackMode = .alwaysPlay
 
     /// 是否有未保存的更改
     private var hasChanges: Bool {
@@ -128,6 +130,18 @@ struct PreferencesView: View {
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
         || idlePauseSensitivity != appState.idlePauseSensitivity
+        || screensaverEnabled != screensaverEnabledStorage
+        || screensaverDelayMinutes != screensaverDelayMinutesStorage
+        || maxVideoFileSizeInGB != maxVideoFileSizeInGBStorage
+        || playbackMode != appState.playbackMode
+    }
+
+    /// 是否需要重启应用才能完全生效
+    private var requiresRestart: Bool {
+        // 语言、屏幕同步等需要重建窗口；播放模式 / 静音等则可即时生效
+        autoSyncNewScreens != autoSyncNewScreensStorage
+        || launchAtLogin != launchAtLoginStorage
+        || selectedLanguage != languageStorage
         || screensaverEnabled != screensaverEnabledStorage
         || screensaverDelayMinutes != screensaverDelayMinutesStorage
         || maxVideoFileSizeInGB != maxVideoFileSizeInGBStorage
@@ -170,7 +184,7 @@ struct PreferencesView: View {
                 // 播放模式：总是播放 / 自动 / 省电 / 省电+
                 VStack {
                     Text(L("PlaybackMode"))
-                    Picker(selection: $appState.playbackMode, label: EmptyView()) {
+                    Picker(selection: $playbackMode, label: EmptyView()) {
                         Text(L("PlaybackAlways")).tag(AppState.PlaybackMode.alwaysPlay)
                         Text(L("PlaybackAuto")).tag(AppState.PlaybackMode.automatic)
                         Text(L("PlaybackPowerSave")).tag(AppState.PlaybackMode.powerSave)
@@ -197,7 +211,11 @@ struct PreferencesView: View {
                 
                 HStack {
                     Button(L("Confirm")) {
-                        showRestartAlert()
+                        if requiresRestart {
+                            showRestartAlert()
+                        } else {
+                            confirmChanges()          // 直接保存并即时生效
+                        }
                     }
                     .buttonStyle(.bordered)
                     .disabled(!hasChanges)
@@ -206,7 +224,7 @@ struct PreferencesView: View {
             }
         }
         .fixedSize()
-        .frame(minWidth: 300, maxWidth: .infinity, minHeight: 400, maxHeight: .infinity)
+        .frame(minWidth: 270, maxWidth: .infinity, minHeight: 360, maxHeight: .infinity)
         .padding(20)
         .onAppear {
             // 首次出现时缓存原始值
@@ -218,8 +236,10 @@ struct PreferencesView: View {
             originalScreensaverEnabled = screensaverEnabledStorage
             originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
             originalMaxVideoFileSizeInGB = maxVideoFileSizeInGBStorage
+            originalPlaybackMode = appState.playbackMode
             idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 40.0 : originalidlePauseSensitivity
             maxVideoFileSizeInGB = max(0.1, originalMaxVideoFileSizeInGB)
+            playbackMode = originalPlaybackMode
             loadStoredValues()
         }
     }
@@ -234,6 +254,7 @@ struct PreferencesView: View {
         screensaverEnabled = originalScreensaverEnabled
         screensaverDelayMinutes = originalScreensaverDelayMinutes
         maxVideoFileSizeInGB = originalMaxVideoFileSizeInGB
+        playbackMode = originalPlaybackMode
     }
 
     private func confirmChanges() {
@@ -249,6 +270,10 @@ struct PreferencesView: View {
 
         appState.idlePauseSensitivity = idlePauseSensitivity
 
+        appState.playbackMode = playbackMode
+        // Evaluate whether videos should be paused/resumed after mode change
+        AppDelegate.shared?.updatePlaybackStateForAllScreens()
+
         if launchAtLogin != launchAtLoginStorage {
             handleLaunchAtLoginChange()
         }
@@ -256,46 +281,68 @@ struct PreferencesView: View {
         desktop_videoApp.applyGlobalMute(globalMute)
     }
 
-private func handleLaunchAtLoginChange() {
-    dlog("handleLaunchAtLoginChange")
-    guard #available(macOS 13.0, *) else {
-        let alert = NSAlert()
-        alert.messageText = L("UnsupportedVersion")
-        alert.informativeText = L("Launch at login requires macOS 13.0 or later.")
-        alert.alertStyle = .warning
-        alert.runModal()
-        launchAtLogin = launchAtLoginStorage
-        return
-    }
-
-    do {
-        if launchAtLogin {
-            try SMAppService.mainApp.register()
-        } else {
-            try SMAppService.mainApp.unregister()
+    private func handleLaunchAtLoginChange() {
+        dlog("handleLaunchAtLoginChange")
+        guard #available(macOS 13.0, *) else {
+            let alert = NSAlert()
+            alert.messageText = L("UnsupportedVersion")
+            alert.informativeText = L("Launch at login requires macOS 13.0 or later.")
+            alert.alertStyle = .warning
+            alert.runModal()
+            launchAtLogin = launchAtLoginStorage
+            return
         }
-        launchAtLoginStorage = launchAtLogin
-    } catch {
-        let alert = NSAlert()
-        alert.messageText = NSLocalizedString(L("LaunchAtLoginFailed"), comment: "")
-        alert.informativeText = error.localizedDescription
-        alert.alertStyle = .warning
-        alert.runModal()
-        launchAtLogin = launchAtLoginStorage
-    }
-}
 
+        do {
+            if launchAtLogin {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            launchAtLoginStorage = launchAtLogin
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = NSLocalizedString(L("LaunchAtLoginFailed"), comment: "")
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+            launchAtLogin = launchAtLoginStorage
+        }
+    }
+
+    /// Relaunch the app so new preferences take effect.
     private func restartApplication() {
         dlog("restartApplication")
         let appURL = Bundle.main.bundleURL
-        do {
-            try NSWorkspace.shared.launchApplication(at: appURL,
-                                                     options: .newInstance,
-                                                     configuration: [:])
-        } catch {
-            errorLog("Failed to relaunch app: \(error.localizedDescription)")
+
+        if #available(macOS 14.0, *) {
+            // Modern API for macOS 14+
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            NSWorkspace.shared.openApplication(at: appURL,
+                                               configuration: config) { _, err in
+                if let err = err {
+                    errorLog("Failed to relaunch app: \(err.localizedDescription)")
+                }
+                // Give the new instance a moment to start before we quit.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NSApp.terminate(nil)
+                }
+            }
+        } else {
+            // Fallback for older versions
+            do {
+                try NSWorkspace.shared.launchApplication(at: appURL,
+                                                         options: .newInstance,
+                                                         configuration: [:])
+            } catch {
+                errorLog("Failed to relaunch app: \(error.localizedDescription)")
+            }
+            // Give the new instance a moment to start before we quit.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.terminate(nil)
+            }
         }
-        NSApp.terminate(nil)
     }
 
     private func showRestartAlert() {

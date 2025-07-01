@@ -43,7 +43,7 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 - Provide Chinese comments when adding command-line scripts.
 - For Change log, please write it in both English and Chinese; note that please put the later version on the top, above all previous methods
 - For the date of the Change log, do NOT infer, Check the current date through Internet or through your system;
-- For the version, do NOT infer, use "Version `<Previous-Version-number> `hot-fix `<index>`".
+- For the version, do NOT infer, use "Version `<Previous-Version-number> `hot-fix `<index>`". There should be only one hot-fix each day.
 
 ### Naming Conventions
 
