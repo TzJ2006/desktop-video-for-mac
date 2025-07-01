@@ -33,11 +33,15 @@ enum SupportedLanguage: String, CaseIterable, Identifiable {
 
 /// 全局语言管理器
 class LanguageManager: ObservableObject {
+    /// 单例实例，方便在整个应用中调用
     static let shared = LanguageManager()
 
+    /// 当前用户选择的语言，`system` 表示跟随系统语言
     @AppStorage("selectedLanguage") var selectedLanguage: String = "system"
 
-    /// 返回当前语言的 Bundle（默认为 main）
+    /// 根据 `selectedLanguage` 返回对应的 `Bundle`
+    /// - 如果选择跟随系统，则直接返回 `Bundle.main`
+    /// - 如果指定了其它语言，则从 `.lproj` 目录构造 Bundle
     var bundle: Bundle {
         guard selectedLanguage != "system" else {
             return .main
@@ -50,13 +54,15 @@ class LanguageManager: ObservableObject {
         return .main
     }
 
-    /// 根据当前语言加载字符串
+    /// 根据当前语言获取本地化字符串
+    /// - Parameter key: 本地化键值
+    /// - Returns: 对应语言的字符串，若不存在则返回原键值
     func localizedString(forKey key: String) -> String {
         return bundle.localizedString(forKey: key, value: nil, table: nil)
     }
 }
 
-/// 语法糖辅助：本地化 key
+/// 语法糖：快速访问当前语言的本地化字符串
 func L(_ key: String) -> String {
     return LanguageManager.shared.localizedString(forKey: key)
 }

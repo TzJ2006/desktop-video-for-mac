@@ -13,6 +13,7 @@ import AppKit
 struct desktop_videoApp: App {
     static var shared: desktop_videoApp?
 
+    /// 缓存视频文件的最大大小限制（单位 GB）
     @AppStorage("maxVideoFileSizeInGB") var maxVideoFileSizeInGB: Double = 1.0
 
     // 关联 AppDelegate，所有"打开主窗口"或"打开偏好窗口"逻辑都在 AppDelegate 中处理
@@ -310,6 +311,7 @@ struct PreferencesView: View {
         }
     }
 
+    /// 重新启动应用以使新设置生效
     /// Relaunch the app so new preferences take effect.
     private func restartApplication() {
         dlog("restartApplication")

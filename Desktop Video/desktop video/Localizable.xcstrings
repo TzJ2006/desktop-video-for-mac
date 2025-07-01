@@ -94,7 +94,7 @@
       "zh-Hans" : {
         "stringUnit" : {
           "state" : "translated",
-          "value" : "启动屏保"
+          "value" : "启动屏幕保护程序"
         }
       },
       "zh-Hant" : {
@@ -1395,7 +1395,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开屏保"
+            "value" : "启动屏幕保护程序"
           }
         },
         "zh-Hant" : {
