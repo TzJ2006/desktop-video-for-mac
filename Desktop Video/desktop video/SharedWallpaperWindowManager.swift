@@ -508,26 +508,31 @@ class SharedWallpaperWindowManager {
         guard let player = players[sid] else { return }
 
         switch playbackMode {
-        case .alwaysPlay:
-            if player.timeControlStatus != .playing { player.play() }
-
-        case .automatic:
-            // Delegate to existing global logic
-            AppDelegate.shared.updatePlaybackStateForAllScreens()
-
-        case .powerSave:
-            if allOverlaysCompletelyCovered() {
-                if player.timeControlStatus != .paused { player.pause() }
-            } else {
+            
+            case .alwaysPlay:
                 if player.timeControlStatus != .playing { player.play() }
-            }
 
-        case .powerSavePlus:
-            if anyOverlayCompletelyCovered() {
-                if player.timeControlStatus != .paused { player.pause() }
-            } else {
-                if player.timeControlStatus != .playing { player.play() }
-            }
+            case .automatic:
+                // Delegate to existing global logic
+                AppDelegate.shared.updatePlaybackStateForAllScreens()
+
+            case .powerSave:
+                if allOverlaysCompletelyCovered() {
+                    if player.timeControlStatus != .paused { player.pause() }
+                } else {
+                    if player.timeControlStatus != .playing { player.play() }
+                }
+
+            case .powerSavePlus:
+                if anyOverlayCompletelyCovered() {
+                    if player.timeControlStatus != .paused { player.pause() }
+                } else {
+                    if player.timeControlStatus != .playing { player.play() }
+                }
+            
+            case .stationary:
+                player.pause()
+            
         }
     }
 

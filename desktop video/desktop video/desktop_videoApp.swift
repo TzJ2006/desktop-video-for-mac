@@ -182,7 +182,7 @@ struct PreferencesView: View {
                 }
                 .disabled(!screensaverEnabled)
 
-                // 播放模式：总是播放 / 自动 / 省电 / 省电+
+                // 播放模式：总是播放 / 自动 / 省电 / 省电+ / 静止
                 VStack {
                     Text(L("PlaybackMode"))
                     Picker(selection: $playbackMode, label: EmptyView()) {
@@ -190,6 +190,7 @@ struct PreferencesView: View {
                         Text(L("PlaybackAuto")).tag(AppState.PlaybackMode.automatic)
                         Text(L("PlaybackPowerSave")).tag(AppState.PlaybackMode.powerSave)
                         Text(L("PlaybackPowerSavePlus")).tag(AppState.PlaybackMode.powerSavePlus)
+                        Text(L("PlaybackStatic")).tag(AppState.PlaybackMode.stationary)
                     }
                     .pickerStyle(.automatic)
                 }
@@ -332,17 +333,17 @@ struct PreferencesView: View {
                 }
             }
         } else {
-            // Fallback for older versions
-            do {
-                try NSWorkspace.shared.launchApplication(at: appURL,
-                                                         options: .newInstance,
-                                                         configuration: [:])
-            } catch {
-                errorLog("Failed to relaunch app: \(error.localizedDescription)")
-            }
-            // Give the new instance a moment to start before we quit.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSApp.terminate(nil)
+            // Fallback for older versions using modern API
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            config.createsNewApplicationInstance = true
+            NSWorkspace.shared.openApplication(at: appURL, configuration: config) { _, err in
+                if let err = err {
+                    errorLog("Failed to relaunch app: \(err.localizedDescription)")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NSApp.terminate(nil)
+                }
             }
         }
     }

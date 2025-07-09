@@ -787,6 +787,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         case .powerSavePlus:
             // 省电+：任意 overlay 被完全遮挡即暂停
             return SharedWallpaperWindowManager.shared.anyOverlayCompletelyCovered()
+        
+        case .stationary:
+            return true
         }
     }
         

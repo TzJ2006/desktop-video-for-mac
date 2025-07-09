@@ -24,6 +24,7 @@ class AppState: ObservableObject {
         case automatic  = 1      // 自动（空闲暂停）
         case powerSave  = 2      // 省电（全部遮挡暂停）
         case powerSavePlus = 3   // 省电+（任意遮挡暂停）
+        case stationary = 4 // 暂停播放
 
         var id: Int { rawValue }
 
@@ -33,6 +34,7 @@ class AppState: ObservableObject {
             case .automatic:     return L("PlaybackAuto")
             case .powerSave:     return L("PlaybackPowerSave")
             case .powerSavePlus: return L("PlaybackPowerSavePlus")
+            case .stationary: return L("PlaybackStatic")
             }
         }
     }
