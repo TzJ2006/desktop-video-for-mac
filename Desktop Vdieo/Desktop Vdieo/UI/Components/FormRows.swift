@@ -4,7 +4,10 @@ import SwiftUI
 struct ToggleRow: View {
     let title: LocalizedStringKey
     @Binding var value: Bool
-    var body: some View { Toggle(title, isOn: $value) }
+    var body: some View {
+        Toggle(title, isOn: $value)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
 }
 
 struct SliderRow: View {
@@ -16,6 +19,7 @@ struct SliderRow: View {
             Text(title)
             Slider(value: $value, in: range)
         }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -24,6 +28,7 @@ struct StepperRow: View {
     @Binding var value: Int
     var body: some View {
         Stepper(value: $value) { Text(title) }
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 
@@ -36,5 +41,8 @@ struct PickerRow<Content: View>: View {
         self._selection = selection
         self.content = content()
     }
-    var body: some View { Picker(title, selection: $selection) { content } }
+    var body: some View {
+        Picker(title, selection: $selection) { content }
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
 }

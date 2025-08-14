@@ -8,13 +8,13 @@ struct AppMainWindow: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(selection: $vm.selection)
-                .frame(minWidth: 150, maxWidth: 200)
+                .frame(width: 220)
                 .background(.ultraThinMaterial)
 
             Divider()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .center, spacing: 16) {
                     switch vm.selection {
                     case .wallpaper: WallpaperView()
                     case .playback: PlaybackSettingsView()

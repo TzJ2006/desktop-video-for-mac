@@ -1,16 +1,20 @@
 
 import SwiftUI
+import AppKit
 
 struct SidebarView: View {
     @Binding var selection: SidebarSelection
     var body: some View {
         VStack(spacing: 8) {
             VStack {
-                Image(systemName: "play.rectangle.on.rectangle")
-                    .font(.largeTitle)
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 48, height: 48)
                 Text("Desktop Video")
                     .font(.footnote)
-            }.padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
 
             ForEach(SidebarSelection.allCases, id: \.self) { item in
                 switch item {
