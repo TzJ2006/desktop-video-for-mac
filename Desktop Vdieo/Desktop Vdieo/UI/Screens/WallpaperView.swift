@@ -1,0 +1,15 @@
+
+import SwiftUI
+
+struct WallpaperView: View {
+    @State private var menuBarOnly = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
+    var body: some View {
+        CardSection(title: "Wallpaper", systemImage: "sparkles", help: "Manage video wallpapers per display.") {
+            SingleScreenView()
+            ToggleRow(title: "Show only in menu bar", value: Binding(
+                get: { menuBarOnly },
+                set: { UserDefaults.standard.set($0, forKey: "isMenuBarOnly"); menuBarOnly = $0 }
+            ))
+        }
+    }
+}

@@ -1,3 +1,4 @@
+
 import SwiftUI
 
 struct SidebarView: View {
@@ -5,25 +6,24 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 16) {
             VStack {
-                Image(systemName: "sparkles")
+                Image(systemName: "play.rectangle.on.rectangle")
                     .font(.largeTitle)
-                Text("v1.0")
+                Text("Desktop Video")
                     .font(.footnote)
-            }
-            .padding(.top, 24)
+            }.padding(.top, 24)
+
             ForEach(SidebarSelection.allCases, id: \.self) { item in
                 switch item {
-                case .startup:
-                    SidebarItem(icon: "bolt.circle", nameKey: "startup_display", selection: item, current: $selection)
-                case .custom:
-                    SidebarItem(icon: "slider.horizontal.3", nameKey: "custom_controls", selection: item, current: $selection)
-                case .battery:
-                    SidebarItem(icon: "battery.100", nameKey: "battery_charging", selection: item, current: $selection)
+                case .wallpaper:
+                    SidebarItem(icon: "sparkles", name: "Wallpaper", selection: item, current: $selection)
+                case .playback:
+                    SidebarItem(icon: "bolt.circle", name: "Playback", selection: item, current: $selection)
+                case .general:
+                    SidebarItem(icon: "gearshape", name: "General", selection: item, current: $selection)
                 }
             }
             Spacer()
         }
-        .frame(width: 220)
         .padding(.vertical, 24)
     }
 }

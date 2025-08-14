@@ -1,14 +1,15 @@
+
 import SwiftUI
 
 struct SidebarItem: View {
     let icon: String
-    let nameKey: LocalizedStringKey
+    let name: LocalizedStringKey
     let selection: SidebarSelection
     @Binding var current: SidebarSelection
 
     var body: some View {
         Button(action: { current = selection }) {
-            Label(nameKey, systemImage: icon)
+            Label(name, systemImage: icon)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

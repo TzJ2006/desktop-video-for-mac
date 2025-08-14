@@ -1,14 +1,14 @@
+
 import SwiftUI
 
 /// Global application view model.
 final class AppViewModel: ObservableObject {
-    /// Currently selected sidebar item.
-    @Published var selection: SidebarSelection = .startup
+    @Published var selection: SidebarSelection = .wallpaper
 }
 
-/// Sidebar navigation items.
+/// Sidebar items.
 enum SidebarSelection: Hashable, CaseIterable {
-    case startup
-    case custom
-    case battery
+    case wallpaper
+    case playback
+    case general
 }

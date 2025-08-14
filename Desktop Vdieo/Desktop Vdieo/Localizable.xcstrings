@@ -1,10 +1,14 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
     "?" : {
 
     },
     "「%@」" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -22,6 +26,7 @@
       "shouldTranslate" : false
     },
     "%@ %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -45,6 +50,7 @@
       "shouldTranslate" : false
     },
     "%@: %lld%%" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -111,6 +117,12 @@
         }
       }
     },
+    "Auto pause and power modes." : {
+
+    },
+    "Auto sync new screens" : {
+
+    },
     "AutoSyncNewScreens" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -145,18 +157,6 @@
           }
         }
       }
-    },
-    "battery" : {
-
-    },
-    "battery_charging" : {
-
-    },
-    "battery_help" : {
-
-    },
-    "battery_percent" : {
-
     },
     "ChangeFile" : {
       "extractionState" : "manual",
@@ -193,7 +193,10 @@
         }
       }
     },
-    "charge_limit" : {
+    "Choose Video…" : {
+
+    },
+    "Clear" : {
 
     },
     "CloseWallpaper" : {
@@ -230,6 +233,9 @@
           }
         }
       }
+    },
+    "Common preferences." : {
+
     },
     "Confirm" : {
       "extractionState" : "manual",
@@ -301,16 +307,7 @@
         }
       }
     },
-    "current_capacity" : {
-
-    },
-    "custom_controls" : {
-
-    },
-    "custom_help" : {
-
-    },
-    "design_capacity" : {
+    "Desktop Video" : {
 
     },
     "DiscardChange" : {
@@ -421,11 +418,11 @@
     "English" : {
 
     },
-    "exceed_action" : {
-
-    },
     "GB" : {
       "shouldTranslate" : false
+    },
+    "General" : {
+
     },
     "GlobalMute" : {
       "extractionState" : "manual",
@@ -465,6 +462,9 @@
     "help" : {
 
     },
+    "Idle pause sensitivity" : {
+
+    },
     "idlePauseSensitivity" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -499,12 +499,6 @@
           }
         }
       }
-    },
-    "keep_unchanged" : {
-
-    },
-    "language" : {
-
     },
     "Language" : {
       "extractionState" : "manual",
@@ -541,7 +535,7 @@
         }
       }
     },
-    "launch_at_login" : {
+    "Launch at login" : {
 
     },
     "LaunchAtLogin" : {
@@ -614,7 +608,10 @@
         }
       }
     },
-    "max_temperature" : {
+    "Manage video wallpapers per display." : {
+
+    },
+    "Max video cache (GB)" : {
 
     },
     "MaxVideoFileSizeGB" : {
@@ -687,6 +684,9 @@
         }
       }
     },
+    "Mode" : {
+
+    },
     "NowPlaying" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -756,6 +756,9 @@
           }
         }
       }
+    },
+    "Playback" : {
+
     },
     "PlaybackAlways" : {
       "extractionState" : "manual",
@@ -1317,7 +1320,7 @@
         }
       }
     },
-    "sleep_action" : {
+    "Show only in menu bar" : {
 
     },
     "StartScreensaver" : {
@@ -1355,16 +1358,7 @@
         }
       }
     },
-    "startup_display" : {
-
-    },
-    "startup_help" : {
-
-    },
-    "status_bar_style" : {
-
-    },
-    "stop_charging" : {
+    "Stretch to fill" : {
 
     },
     "StretchToFill" : {
@@ -1472,7 +1466,7 @@
         }
       }
     },
-    "thermal_protection" : {
+    "System" : {
 
     },
     "UnknownScreen" : {
@@ -1580,9 +1574,6 @@
         }
       }
     },
-    "v1.0" : {
-
-    },
     "Volume" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1617,6 +1608,9 @@
           }
         }
       }
+    },
+    "Wallpaper" : {
+
     },
     "中文" : {
 

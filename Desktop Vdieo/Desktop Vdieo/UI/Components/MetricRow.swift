@@ -1,21 +1,27 @@
+
 import SwiftUI
 
 struct MetricRow: View {
-    let titleKey: LocalizedStringKey
+    let title: LocalizedStringKey
     let value: String
     let footnote: String?
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
-                Text(titleKey)
+                Text(title)
                 Spacer()
-                Text(value)
-                    .foregroundStyle(.secondary)
+                if #available(macOS 12.0, *) {
+                    Text(value).foregroundStyle(.secondary)
+                } else {
+                    // Fallback on earlier versions
+                }
             }
             if let footnote {
-                Text(footnote)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                if #available(macOS 12.0, *) {
+                    Text(footnote).font(.footnote).foregroundStyle(.secondary)
+                } else {
+                    // Fallback on earlier versions
+                }
             }
         }
         .accessibilityElement(children: .combine)

@@ -1,33 +1,28 @@
+
 import SwiftUI
 
+/// Main window using a sidebar + card content layout.
 struct AppMainWindow: View {
-    @StateObject var appVM = AppViewModel()
+    @StateObject private var vm = AppViewModel()
+
     var body: some View {
         HStack(spacing: 0) {
-            SidebarView(selection: $appVM.selection)
-                .background(.regularMaterial)
+            SidebarView(selection: $vm.selection)
+                .frame(minWidth: 220)
+                .background(.ultraThinMaterial)
+
+            Divider()
+
             ScrollView {
-                VStack(spacing: 16) {
-                    switch appVM.selection {
-                    case .startup:
-                        StartupDisplayView()
-                    case .custom:
-                        CustomControlsView()
-                    case .battery:
-                        BatteryChargingView()
+                VStack(alignment: .leading, spacing: 16) {
+                    switch vm.selection {
+                    case .wallpaper: WallpaperView()
+                    case .playback: PlaybackSettingsView()
+                    case .general:  GeneralSettingsView()
                     }
                 }
-                .padding(24)
+                .padding(20)
             }
         }
     }
 }
-
-#if DEBUG
-struct AppMainWindow_Previews: PreviewProvider {
-    static var previews: some View {
-        AppMainWindow()
-            .frame(width: 900, height: 600)
-    }
-}
-#endif
