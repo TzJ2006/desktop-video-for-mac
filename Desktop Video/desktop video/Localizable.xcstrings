@@ -1179,19 +1179,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redémarrage requis"
+            "value" : "Redémarrage requis!"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "需要重启"
+            "value" : "需要重启!"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "需要重新啟動"
+            "value" : "需要重新啟動!"
           }
         }
       }

@@ -59,6 +59,9 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 
 ## Required Checks
 
+Please check the localizations and translations to find out whether there are changes or additions in code that needs to trasnlate.
+If translate is needed, please translate and put the result in the Localizable.xcstrings file.
+
 Run the following command to verify the project compiles:
 
 ```bash
