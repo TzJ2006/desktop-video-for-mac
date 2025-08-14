@@ -7,7 +7,7 @@ struct CardSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .center, spacing: 12) {
             HStack {
                 Label(title, systemImage: systemImage)
                     .font(.headline)
@@ -25,13 +25,8 @@ struct CardSection<Content: View>: View {
 
     @ViewBuilder
     private var cardBackground: some View {
-        if #available(macOS 12.0, *) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        } else {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(NSColor.windowBackgroundColor))
-        }
+        RoundedRectangle(cornerRadius: 8)
+            .fill(.regularMaterial)
     }
 }
 

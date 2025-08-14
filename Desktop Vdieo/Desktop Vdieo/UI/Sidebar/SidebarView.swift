@@ -4,13 +4,13 @@ import SwiftUI
 struct SidebarView: View {
     @Binding var selection: SidebarSelection
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             VStack {
                 Image(systemName: "play.rectangle.on.rectangle")
                     .font(.largeTitle)
                 Text("Desktop Video")
                     .font(.footnote)
-            }.padding(.top, 24)
+            }.padding(.top, 8)
 
             ForEach(SidebarSelection.allCases, id: \.self) { item in
                 switch item {
@@ -24,6 +24,6 @@ struct SidebarView: View {
             }
             Spacer()
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, 8)
     }
 }

@@ -8,7 +8,7 @@ struct AppMainWindow: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(selection: $vm.selection)
-                .frame(minWidth: 220)
+                .frame(minWidth: 150, maxWidth: 200)
                 .background(.ultraThinMaterial)
 
             Divider()

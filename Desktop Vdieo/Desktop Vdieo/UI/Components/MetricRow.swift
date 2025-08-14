@@ -10,18 +10,10 @@ struct MetricRow: View {
             HStack {
                 Text(title)
                 Spacer()
-                if #available(macOS 12.0, *) {
-                    Text(value).foregroundStyle(.secondary)
-                } else {
-                    // Fallback on earlier versions
-                }
+                Text(value).foregroundStyle(.secondary)
             }
             if let footnote {
-                if #available(macOS 12.0, *) {
-                    Text(footnote).font(.footnote).foregroundStyle(.secondary)
-                } else {
-                    // Fallback on earlier versions
-                }
+                Text(footnote).font(.footnote).foregroundStyle(.secondary)
             }
         }
         .accessibilityElement(children: .combine)

@@ -12,7 +12,7 @@ struct SliderRow: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .center) {
             Text(title)
             Slider(value: $value, in: range)
         }
