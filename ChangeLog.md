@@ -4,6 +4,13 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 3.1 hot-fix 2 (2025-08-14)
+
+- 引入现代化偏好窗口界面框架，基于 SwiftUI
+- 添加可扩展侧边栏与卡片式设置布局
+- Added SwiftUI-based preference window framework
+- Introduced extensible sidebar and card layout for settings
+
 ### Version 3.1 hot-fix 1 (2025-07-01)
 
 - 替换“自动暂停”开关为全新的播放模式选择
