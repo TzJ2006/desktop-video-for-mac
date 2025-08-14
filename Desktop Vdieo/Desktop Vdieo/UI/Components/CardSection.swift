@@ -9,6 +9,7 @@ struct CardSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .center, spacing: 12) {
             HStack {
+                Spacer()
                 Label(title, systemImage: systemImage)
                     .font(.headline)
                 Spacer()

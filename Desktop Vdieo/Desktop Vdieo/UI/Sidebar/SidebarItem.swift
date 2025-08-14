@@ -11,7 +11,8 @@ struct SidebarItem: View {
         Button(action: { current = selection }) {
             Label(name, systemImage: icon)
                 .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
