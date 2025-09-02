@@ -4,6 +4,22 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 3.1 hot-fix 9 (2025-09-02)
+
+- 为播放模式提供详细说明
+- Add descriptions for playback modes
+- 新增音量与空闲暂停灵敏度输入框并追加静音复选框
+- Add input fields for volume and idle-pause sensitivity with a mute checkbox
+
+### Version 3.1 hot-fix 8 (2025-09-02)
+
+- 修复语言选择器未正确显示所选语言的问题
+- Fix language picker not showing the selected language
+- 新增繁體中文、法语和西班牙语等语言选项
+- Add language options for Traditional Chinese, French, and Spanish
+- 缩小偏好设置窗口尺寸以更好匹配字体大小
+- Reduce preferences window size to better match the font size
+
 ### Version 3.1 hot-fix 7 (2025-09-02)
 
 - 修复“仅在菜单栏显示”选项未立即生效的问题
