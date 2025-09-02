@@ -27,8 +27,9 @@ struct SingleScreenView: View {
                     updateStretch(newValue)
                 }
         }
+        .onAppear(perform: syncInitialState)
     }
-    
+
     // 打开媒体选择面板并设置壁纸
     private func chooseMedia() {
         let panel = NSOpenPanel()
@@ -66,7 +67,7 @@ struct SingleScreenView: View {
         dlog("pause wallpaper for \(screen.dv_localizedName)")
         SharedWallpaperWindowManager.shared.players[sid]?.pause()
     }
-    
+
     private func updateStretch(_ stretch: Bool) {
         let sid = screen.dv_displayUUID
         if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
@@ -78,5 +79,16 @@ struct SingleScreenView: View {
             }
         }
         dlog("update stretch \(stretch) for \(screen.dv_localizedName)")
+    }
+
+    private func syncInitialState() {
+        let sid = screen.dv_displayUUID
+        if let player = SharedWallpaperWindowManager.shared.players[sid] {
+            volume = Double(player.volume)
+        }
+        if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
+            stretchToFill = entry.stretch
+        }
+        dlog("sync controls for \(screen.dv_localizedName)")
     }
 }
