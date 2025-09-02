@@ -36,7 +36,7 @@ private struct HelpButton: View {
     @State private var show = false
     var body: some View {
         Button("?") { show.toggle() }
-            .accessibilityLabel(Text("help"))
+            .accessibilityLabel(Text(L("help")))
             .popover(isPresented: $show) { Text(key).padding().frame(width: 200) }
     }
     init(_ key: LocalizedStringKey) { self.key = key }

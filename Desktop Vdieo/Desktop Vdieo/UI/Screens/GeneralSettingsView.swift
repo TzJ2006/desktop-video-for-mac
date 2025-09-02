@@ -16,8 +16,8 @@ struct GeneralSettingsView: View {
     @State private var isReverting = false
 
     var body: some View {
-        CardSection(title: "General", systemImage: "gearshape", help: "Common preferences.") {
-            ToggleRow(title: "Auto sync new screens", value: $autoSyncNewScreens)
+        CardSection(title: L("General"), systemImage: "gearshape", help: L("Common preferences.")) {
+            ToggleRow(title: L("Auto sync new screens"), value: $autoSyncNewScreens)
                 .onChange(of: autoSyncNewScreens) { newValue in
                     guard !isReverting else { isReverting = false; return }
                     dlog("autoSyncNewScreens changed to \(newValue), restart required")
@@ -29,7 +29,7 @@ struct GeneralSettingsView: View {
                         autoSyncNewScreens = previous
                     }
                 }
-            ToggleRow(title: "Launch at login", value: Binding(
+            ToggleRow(title: L("Launch at login"), value: Binding(
                 get: { launchAtLogin },
                 set: {
                     launchAtLogin = $0
@@ -87,7 +87,7 @@ struct GeneralSettingsView: View {
                 }
             }
             HStack {
-                Text("Max video cache (GB)")
+                Text(L("Max video cache (GB)"))
                 TextField("1.0", value: $maxVideoFileSizeInGB, formatter: NumberFormatter())
                     .frame(width: 60)
                     .onChange(of: maxVideoFileSizeInGB) { newValue in
