@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// Controls for a single screen's wallpaper.
 struct SingleScreenView: View {
     let screen: NSScreen
-    @State private var volume: Double = 1.0
+    @State private var volume: Double = 100
     @State private var stretchToFill: Bool = true
     
     var body: some View {
@@ -16,11 +16,13 @@ struct SingleScreenView: View {
                 Button("Play", action: play)
                 Button("Pause", action: pause)
             }
-            SliderRow(title: "Volume", value: $volume, range: 0...1)
+            SliderInputRow(title: "Volume", value: $volume, range: 0...100)
                 .onChange(of: volume) { newValue in
+                    let clamped = min(max(newValue, 0), 100)
+                    volume = clamped
                     let sid = screen.dv_displayUUID
-                    SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(newValue)
-                    dlog("set volume \(newValue) for \(screen.dv_localizedName)")
+                    SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
+                    dlog("set volume \(clamped) for \(screen.dv_localizedName)")
                 }
             ToggleRow(title: "Stretch to fill", value: $stretchToFill)
                 .onChange(of: stretchToFill) { newValue in
@@ -42,7 +44,7 @@ struct SingleScreenView: View {
                 if type.conforms(to: .image) {
                     SharedWallpaperWindowManager.shared.showImage(for: screen, url: url, stretch: stretchToFill)
                 } else {
-                    SharedWallpaperWindowManager.shared.showVideo(for: screen, url: url, stretch: stretchToFill, volume: Float(volume))
+                    SharedWallpaperWindowManager.shared.showVideo(for: screen, url: url, stretch: stretchToFill, volume: Float(volume / 100))
                 }
             }
         }
@@ -75,7 +77,7 @@ struct SingleScreenView: View {
             case .image:
                 SharedWallpaperWindowManager.shared.showImage(for: screen, url: entry.url, stretch: stretch)
             case .video:
-                SharedWallpaperWindowManager.shared.showVideo(for: screen, url: entry.url, stretch: stretch, volume: Float(volume))
+                SharedWallpaperWindowManager.shared.showVideo(for: screen, url: entry.url, stretch: stretch, volume: Float(volume / 100))
             }
         }
         dlog("update stretch \(stretch) for \(screen.dv_localizedName)")
@@ -84,7 +86,7 @@ struct SingleScreenView: View {
     private func syncInitialState() {
         let sid = screen.dv_displayUUID
         if let player = SharedWallpaperWindowManager.shared.players[sid] {
-            volume = Double(player.volume)
+            volume = Double(player.volume * 100)
         }
         if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
             stretchToFill = entry.stretch

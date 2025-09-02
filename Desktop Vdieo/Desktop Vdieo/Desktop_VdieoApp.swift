@@ -214,7 +214,11 @@ struct PreferencesView: View {
                 HStack {
                     Button(L("Confirm")) {
                         if requiresRestart {
-                            showRestartAlert()
+                            desktop_videoApp.showRestartAlert {
+                                confirmChanges()          // 保存设置
+                            } onDiscard: {
+                                loadStoredValues()
+                            }
                         } else {
                             confirmChanges()          // 直接保存并即时生效
                         }
@@ -312,9 +316,11 @@ struct PreferencesView: View {
         }
     }
 
-    /// 重新启动应用以使新设置生效
+}
+
+extension desktop_videoApp {
     /// Relaunch the app so new preferences take effect.
-    private func restartApplication() {
+    static func restartApplication() {
         dlog("restartApplication")
         let appURL = Bundle.main.bundleURL
 
@@ -323,7 +329,7 @@ struct PreferencesView: View {
             let config = NSWorkspace.OpenConfiguration()
             config.activates = true
             NSWorkspace.shared.openApplication(at: appURL,
-                                               configuration: config) { _, err in
+                                              configuration: config) { _, err in
                 if let err = err {
                     errorLog("Failed to relaunch app: \(err.localizedDescription)")
                 }
@@ -348,7 +354,9 @@ struct PreferencesView: View {
         }
     }
 
-    private func showRestartAlert() {
+    /// Show alert prompting user to restart. Executes handlers on confirm or discard.
+    static func showRestartAlert(onConfirm: @escaping () -> Void,
+                                 onDiscard: @escaping () -> Void) {
         dlog("showRestartAlert")
         let alert = NSAlert()
         alert.messageText = L("RestartRequiredTitle")
@@ -359,11 +367,10 @@ struct PreferencesView: View {
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            // 立即重启应用
-            confirmChanges()
+            onConfirm()
             restartApplication()
         } else {
-            loadStoredValues()
+            onDiscard()
         }
     }
 }

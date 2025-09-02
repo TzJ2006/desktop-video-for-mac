@@ -23,6 +23,31 @@ struct SliderRow: View {
     }
 }
 
+struct SliderInputRow: View {
+    let title: LocalizedStringKey
+    @Binding var value: Double
+    var range: ClosedRange<Double>
+
+    private let numberFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.minimum = 0
+        f.maximum = 100
+        return f
+    }()
+
+    var body: some View {
+        VStack(alignment: .center) {
+            HStack {
+                Text(title)
+                Slider(value: $value, in: range)
+                TextField("", value: $value, formatter: numberFormatter)
+                    .frame(width: 40)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 struct StepperRow: View {
     let title: LocalizedStringKey
     @Binding var value: Int
