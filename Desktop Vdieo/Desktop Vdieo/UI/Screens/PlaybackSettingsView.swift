@@ -15,7 +15,7 @@ struct PlaybackSettingsView: View {
     }()
 
     var body: some View {
-        CardSection(title: "Playback", systemImage: "bolt.circle", help: "Auto pause and power modes.") {
+        CardSection(title: L("Playback"), systemImage: "bolt.circle", help: L("Auto pause and power modes.")) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(L("PlaybackMode")).font(.subheadline)
                 Picker("", selection: Binding(
