@@ -4,82 +4,47 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
-### Version 3.1 hot-fix 12 (2025-09-02)
+### Version 4.0 Preview 0902 (2025-09-02)
 
 - 为主控制器侧边栏添加本地化支持
-- Add localization support for main controller sidebar
 - 补全缺失的多语言翻译
-- Complete missing translations in resource file
-
-### Version 3.1 hot-fix 11 (2025-09-02)
-
 - 在主界面调整通用设置时加入重启提示
-- Prompt restart when changing general settings in main interface
-
-### Version 3.1 hot-fix 10 (2025-09-02)
-
 - 将音量滑块与输入框结合为功率计样式
-- Combine volume slider and input box into a power-meter control
-
-### Version 3.1 hot-fix 9 (2025-09-02)
-
 - 为播放模式提供详细说明
-- Add descriptions for playback modes
 - 新增音量与空闲暂停灵敏度输入框并追加静音复选框
+- Add localization support for main controller sidebar
+- Complete missing translations in resource file
+- Prompt restart when changing general settings in main interface
+- Combine volume slider and input box into a power-meter control
+- Add descriptions for playback modes
 - Add input fields for volume and idle-pause sensitivity with a mute checkbox
 
-### Version 3.1 hot-fix 8 (2025-09-02)
-
-- 修复语言选择器未正确显示所选语言的问题
-- Fix language picker not showing the selected language
-- 新增繁體中文、法语和西班牙语等语言选项
-- Add language options for Traditional Chinese, French, and Spanish
-- 缩小偏好设置窗口尺寸以更好匹配字体大小
-- Reduce preferences window size to better match the font size
-
-### Version 3.1 hot-fix 7 (2025-09-02)
-
-- 修复“仅在菜单栏显示”选项未立即生效的问题
-- Fix issue where "Show only in menu bar" didn't apply immediately
-
-### Version 3.1 hot-fix 6 (2025-09-01)
+### Version 4.0 Preview 0901 (2025-09-01)
 
 - 改善多显示器列表更新逻辑
 - 移除调试遮挡窗口以避免桌面切换闪烁
 - 修复控制面板初始状态不同步的问题
+- 修复“仅在菜单栏显示”选项未立即生效的问题
+- 缩小偏好设置窗口尺寸以更好匹配字体大小
+- 修复语言选择器未正确显示所选语言的问题
+- 新增繁體中文、法语和西班牙语等语言选项
 - Improve multi-display list refresh
 - Remove debug overlay to prevent flashes when switching desktops
 - Sync initial control values in the settings page
+- Fix issue where "Show only in menu bar" didn't apply immediately
+- Fix language picker not showing the selected language
+- Add language options for Traditional Chinese, French, and Spanish
 
-### Version 3.1 hot-fix 5 (2025-08-14)
+### Version 4.0 Preview 0814 (2025-08-14)
 
-- 调整偏好设置窗口比例并居中文本
-- 替换侧边栏图标为应用 Logo
-- 新增选择、清除、播放与暂停壁纸的按钮
-- Refined preferences window layout and centered texts
-- Replaced sidebar emoji with the app logo
-- Added buttons to choose, clear, play and pause wallpapers
-
-### Version 3.1 hot-fix 4 (2025-08-14)
-
-- 恢复 GitHub 文档文件到仓库根目录
-- 确保源代码仅位于 `archive/` 和 `desktopVideo/`
-- Restore GitHub documentation files to repository root
-- Keep source code only under `archive/` and `desktopVideo/`
-
-### Version 3.1 hot-fix 3 (2025-08-14)
-
+- 引入基于 SwiftUI的现代化窗口界面框架，
+- 添加可扩展侧边栏与卡片式设置布局
+- Added SwiftUI-based preference window framework
+- Introduced extensible sidebar and card layout for settings
 - 归档多余文件并整理目录结构
 - 把 Desktop Video 项目文件集中到 `desktopVideo/`
 - Archived non-Xcode files and organized directory structure
 - Consolidated Desktop Video project files under `desktopVideo/`
-
-### Version 3.1 hot-fix 2 (2025-08-14)
-
-- 引入现代化偏好窗口界面框架，基于 SwiftUI
-- 添加可扩展侧边栏与卡片式设置布局
-- Added SwiftUI-based preference window framework
-- Introduced extensible sidebar and card layout for settings
 
 ### Version 3.1 hot-fix 1 (2025-07-01)
 
