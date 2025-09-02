@@ -12,7 +12,10 @@ struct WallpaperView: View {
             }
             ToggleRow(title: "Show only in menu bar", value: Binding(
                 get: { menuBarOnly },
-                set: { UserDefaults.standard.set($0, forKey: "isMenuBarOnly"); menuBarOnly = $0 }
+                set: {
+                    menuBarOnly = $0
+                    AppDelegate.shared.setDockIconVisible(!$0)
+                }
             ))
         }
     }
