@@ -2,82 +2,16 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {
-
+      "shouldTranslate" : false
     },
     "?" : {
-
-    },
-    "「%@」" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「%@」"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「%@」"
-          }
-        }
-      },
       "shouldTranslate" : false
     },
     "%" : {
-
-    },
-    "%@ %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ %2$@"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ %2$@"
-          }
-        }
-      },
-      "shouldTranslate" : false
-    },
-    "%@: %lld%%" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@: %2$lld%%"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@: %2$lld%%"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@: %2$lld%%"
-          }
-        }
-      },
       "shouldTranslate" : false
     },
     "0" : {
-
+      "shouldTranslate" : false
     },
     "1.0" : {
       "shouldTranslate" : false
@@ -89,7 +23,7 @@
       "shouldTranslate" : false
     },
     "100" : {
-
+      "shouldTranslate" : false
     },
     "AboutDesktopVideo" : {
       "extractionState" : "manual",
