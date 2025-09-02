@@ -5,8 +5,8 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         AppMainWindow()
-            // Set a more balanced default window size
-            .frame(minWidth: 900, minHeight: 600)
+            // Set a more balanced default window size (about 30% smaller)
+            .frame(minWidth: 630, minHeight: 420)
     }
 }
 

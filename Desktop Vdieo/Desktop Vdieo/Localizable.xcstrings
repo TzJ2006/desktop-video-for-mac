@@ -1021,6 +1021,76 @@
         }
       }
     },
+    "PlaybackStatic" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂停" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "暫停" } }
+      }
+    },
+    "PlaybackAlwaysDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Always play video regardless of activity." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reproduce siempre el video sin importar la actividad." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lit toujours la vidéo quelle que soit l'activité." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "始终播放，不受活动影响。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "始終播放，不受活動影響。" } }
+      }
+    },
+    "PlaybackAutoDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause when the system is idle." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausa cuando el sistema está inactivo." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Met en pause lorsque le système est inactif." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "空闲时暂停播放。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "閒置時暫停播放。" } }
+      }
+    },
+    "PlaybackPowerSaveDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause when the screen is fully covered." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausa cuando la pantalla está completamente cubierta." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Met en pause lorsque l'écran est entièrement couvert." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完全遮挡时暂停。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完全遮擋時暫停。" } }
+      }
+    },
+    "PlaybackPowerSavePlusDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause when any part of the screen is covered." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausa cuando cualquier parte de la pantalla está cubierta." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Met en pause lorsqu'une partie de l'écran est couverte." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任意遮挡时暂停。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "任意遮擋時暫停。" } }
+      }
+    },
+    "PlaybackStaticDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Do not play the video." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No reproducir el video." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ne pas lire la vidéo." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "不播放视频。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "不播放視頻。" } }
+      }
+    },
+    "MuteVideo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mute Video" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Silenciar video" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Couper le son de la vidéo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "静音视频" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "靜音視頻" } }
+      }
+    },
     "Preferences" : {
       "extractionState" : "manual",
       "localizations" : {

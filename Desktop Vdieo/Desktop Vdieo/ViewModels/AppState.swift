@@ -37,6 +37,17 @@ class AppState: ObservableObject {
             case .stationary: return L("PlaybackStatic")
             }
         }
+
+        /// Detailed description for UI display
+        var detail: String {
+            switch self {
+            case .alwaysPlay:    return L("PlaybackAlwaysDesc")
+            case .automatic:     return L("PlaybackAutoDesc")
+            case .powerSave:     return L("PlaybackPowerSaveDesc")
+            case .powerSavePlus: return L("PlaybackPowerSavePlusDesc")
+            case .stationary:    return L("PlaybackStaticDesc")
+            }
+        }
     }
 
     /// 用户选定的播放模式（默认 automatic）；写入 UserDefaults 以便持久化

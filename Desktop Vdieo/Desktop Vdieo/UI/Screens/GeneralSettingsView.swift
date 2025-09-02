@@ -27,14 +27,14 @@ struct GeneralSettingsView: View {
                 }
             ))
             HStack {
-                Text("Language")
+                Text(L("Language"))
                 Picker("", selection: $language) {
-                    Text("System").tag("system")
-                    Text("English").tag("en")
-                    Text("中文").tag("zh")
+                    ForEach(SupportedLanguage.allCases) { lang in
+                        Text(lang.displayName).tag(lang.rawValue)
+                    }
                 }
                 .pickerStyle(.menu)
-                .frame(width: 120)
+                .frame(width: 150)
                 .labelsHidden()
             }
             HStack {
