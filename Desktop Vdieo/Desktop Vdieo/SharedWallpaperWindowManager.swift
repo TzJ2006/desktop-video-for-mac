@@ -248,10 +248,7 @@ class SharedWallpaperWindowManager {
         // overlay 必须高于 screensaverOverlay，但仍低于普通窗口
         overlay.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow))) + 2
         overlay.isOpaque = false
-//        overlay.backgroundColor = .clear   // keep fully transparent for occlusion checks
-        // To debug overlay position, uncomment next two lines:
-         overlay.backgroundColor = .white
-         dlog("Debug Feature On!")
+        overlay.backgroundColor = .clear   // keep fully transparent for occlusion checks
         overlay.ignoresMouseEvents = true
         overlay.alphaValue = 0.0001   // barely visible but participates in occlusion
         overlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
