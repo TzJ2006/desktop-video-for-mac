@@ -36,16 +36,12 @@ struct desktop_videoApp: App {
         .commands {
             // Replace the About menu item
             CommandGroup(replacing: .appInfo) {
-                Button(L("AboutDesktopVideo")) {
-                    showAboutDialog()
-                }
+                Button(action: showAboutDialog) { Text(L("AboutDesktopVideo")) }
             }
 
             // Replace the default Settings menu to prevent conflicts
             CommandGroup(replacing: .appSettings) {
-                Button(L("Preferences…")) {
-                    AppDelegate.openPreferencesWindow() // 调用AppDelegate中的方法
-                }
+                Button(action: { AppDelegate.openPreferencesWindow() }) { Text(L("Preferences…")) }
                 .keyboardShortcut(",", modifiers: [.command])
             }
         }
@@ -154,9 +150,9 @@ struct PreferencesView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 12) {
-                Toggle(L("GlobalMute"), isOn: $globalMute)
-                Toggle(L("LaunchAtLogin"), isOn: $launchAtLogin)
-                Toggle(L("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
+                Toggle(isOn: $globalMute) { Text(L("GlobalMute")) }
+                Toggle(isOn: $launchAtLogin) { Text(L("LaunchAtLogin")) }
+                Toggle(isOn: $autoSyncNewScreens) { Text(L("AutoSyncNewScreens")) }
 
                 HStack {
                     Text(L("Language"))
@@ -171,7 +167,7 @@ struct PreferencesView: View {
                 .padding(.top, 10)
 
 
-                Toggle(L("EnableScreenSaver"), isOn: $screensaverEnabled)
+                Toggle(isOn: $screensaverEnabled) { Text(L("EnableScreenSaver")) }
                     .padding(.top, 10)
 
                 HStack {
@@ -207,12 +203,12 @@ struct PreferencesView: View {
                     Text(L("MaxVideoFileSizeGB"))
                     TextField("1.0", value: $maxVideoFileSizeInGB, formatter: NumberFormatter())
                         .frame(width: 40)
-                    Text("GB")
+                    Text(L("GB"))
                 }
                 .padding(.top, 10)
                 
                 HStack {
-                    Button(L("Confirm")) {
+                    Button(action: {
                         if requiresRestart {
                             desktop_videoApp.showRestartAlert {
                                 confirmChanges()          // 保存设置
@@ -222,6 +218,8 @@ struct PreferencesView: View {
                         } else {
                             confirmChanges()          // 直接保存并即时生效
                         }
+                    }) {
+                        Text(L("Confirm"))
                     }
                     .buttonStyle(.bordered)
                     .disabled(!hasChanges)

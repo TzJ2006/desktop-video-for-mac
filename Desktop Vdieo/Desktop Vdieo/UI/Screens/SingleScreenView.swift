@@ -11,12 +11,12 @@ struct SingleScreenView: View {
     var body: some View {
         VStack(alignment: .center, spacing: 12) {
             HStack(spacing: 8) {
-                Button("Choose Video…", action: chooseMedia)
-                Button("Clear", action: clear)
-                Button("Play", action: play)
-                Button("Pause", action: pause)
+                Button(action: chooseMedia) { Text(L("Choose Video…")) }
+                Button(action: clear) { Text(L("Clear")) }
+                Button(action: play) { Text(L("Play")) }
+                Button(action: pause) { Text(L("Pause")) }
             }
-            SliderInputRow(title: "Volume", value: $volume, range: 0...100)
+            SliderInputRow(title: LocalizedStringKey(L("Volume")), value: $volume, range: 0...100)
                 .onChange(of: volume) { newValue in
                     let clamped = min(max(newValue, 0), 100)
                     volume = clamped
@@ -24,7 +24,7 @@ struct SingleScreenView: View {
                     SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
                     dlog("set volume \(clamped) for \(screen.dv_localizedName)")
                 }
-            ToggleRow(title: "Stretch to fill", value: $stretchToFill)
+            ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
                 .onChange(of: stretchToFill) { newValue in
                     updateStretch(newValue)
                 }

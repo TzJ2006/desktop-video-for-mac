@@ -15,7 +15,7 @@ struct PlaybackSettingsView: View {
     }()
 
     var body: some View {
-        CardSection(title: "Playback", systemImage: "bolt.circle", help: "Auto pause and power modes.") {
+        CardSection(title: LocalizedStringKey(L("Playback")), systemImage: "bolt.circle", help: LocalizedStringKey(L("Auto pause and power modes."))) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(L("PlaybackMode")).font(.subheadline)
                 Picker("", selection: Binding(
@@ -36,8 +36,8 @@ struct PlaybackSettingsView: View {
                     Text(L("Volume"))
                     TextField("100", value: $globalVolume, formatter: numberFormatter)
                         .frame(width: 40)
-                    Text("%")
-                    Toggle(L("MuteVideo"), isOn: $globalMute)
+                    Text(L("%"))
+                    Toggle(isOn: $globalMute) { Text(L("MuteVideo")) }
                 }
                 .onChange(of: globalVolume) { newValue in
                     let clamped = min(max(newValue, 0), 100)
