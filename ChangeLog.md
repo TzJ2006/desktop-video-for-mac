@@ -8,6 +8,8 @@
 
 - 同步偏好设置到通用设置界面
 - Copy preference settings into general UI
+- 主窗口尺寸增大时同步放大文本和图标
+- Scale text and icons when enlarging main window
 
 ### Version 4.0 Preview 0903 (2025-09-03)
 
