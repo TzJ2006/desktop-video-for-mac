@@ -15,7 +15,7 @@ struct PlaybackSettingsView: View {
     }()
 
     var body: some View {
-        CardSection(title: L("Playback"), systemImage: "bolt.circle", help: L("Auto pause and power modes.")) {
+        CardSection(title: LocalizedStringKey(L("Playback")), systemImage: "bolt.circle", help: LocalizedStringKey(L("Auto pause and power modes."))) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(L("PlaybackMode")).font(.subheadline)
                 Picker("", selection: Binding(
@@ -32,13 +32,13 @@ struct PlaybackSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                HStack {
-                    Text(L("Volume"))
-                    TextField("100", value: $globalVolume, formatter: numberFormatter)
-                        .frame(width: 40)
-                    Text("%")
-                    Toggle(L("MuteVideo"), isOn: $globalMute)
-                }
+//                HStack {
+//                    Text(L("Volume"))
+//                    TextField("100", value: $globalVolume, formatter: numberFormatter)
+//                        .frame(width: 40)
+//                    Text("%")
+//                    Toggle(L("MuteVideo"), isOn: $globalMute)
+//                }
                 .onChange(of: globalVolume) { newValue in
                     let clamped = min(max(newValue, 0), 100)
                     globalVolume = clamped
@@ -53,9 +53,17 @@ struct PlaybackSettingsView: View {
                 }
 
                 HStack {
-                    Text(L("idlePauseSensitivity"))
-                    TextField("0", value: $appState.idlePauseSensitivity, formatter: numberFormatter)
-                        .frame(width: 40)
+                    Slider(
+                        value: Binding(
+                            get: { appState.idlePauseSensitivity },
+                            set: { appState.idlePauseSensitivity = min(max($0, 0), 100) }
+                        ),
+                        in: 0...100
+                    )
+                    .accessibilityLabel(LocalizedStringKey(L("idlePauseSensitivity")))
+
+                    TextField("", value: $appState.idlePauseSensitivity, formatter: numberFormatter)
+                        .frame(width: 44)
                 }
                 .onChange(of: appState.idlePauseSensitivity) { newValue in
                     let clamped = min(max(newValue, 0), 100)

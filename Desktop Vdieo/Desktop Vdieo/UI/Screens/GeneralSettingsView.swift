@@ -16,8 +16,8 @@ struct GeneralSettingsView: View {
     @State private var isReverting = false
 
     var body: some View {
-        CardSection(title: L("General"), systemImage: "gearshape", help: L("Common preferences.")) {
-            ToggleRow(title: L("Auto sync new screens"), value: $autoSyncNewScreens)
+        CardSection(title: LocalizedStringKey(L("General")), systemImage: "gearshape", help: LocalizedStringKey(L("Common preferences."))) {
+            ToggleRow(title: LocalizedStringKey(L("Auto sync new screens")), value: $autoSyncNewScreens)
                 .onChange(of: autoSyncNewScreens) { newValue in
                     guard !isReverting else { isReverting = false; return }
                     dlog("autoSyncNewScreens changed to \(newValue), restart required")
@@ -29,7 +29,7 @@ struct GeneralSettingsView: View {
                         autoSyncNewScreens = previous
                     }
                 }
-            ToggleRow(title: L("Launch at login"), value: Binding(
+            ToggleRow(title: LocalizedStringKey(L("Launch at login")), value: Binding(
                 get: { launchAtLogin },
                 set: {
                     launchAtLogin = $0

@@ -7,24 +7,45 @@ struct SingleScreenView: View {
     let screen: NSScreen
     @State private var volume: Double = 100
     @State private var stretchToFill: Bool = true
+    @State private var isMuted: Bool = false
+    @State private var lastVolumeBeforeMute: Double = 100
     
     var body: some View {
         VStack(alignment: .center, spacing: 12) {
             HStack(spacing: 8) {
-                Button(L("Choose Video…"), action: chooseMedia)
-                Button(L("Clear"), action: clear)
-                Button(L("Play"), action: play)
-                Button(L("Pause"), action: pause)
+                Button(action: chooseMedia) { Text(L("Choose Video…")) }
+                Button(action: clear) { Text(L("Clear")) }
+                Button(action: play) { Text(L("Play")) }
+                Button(action: pause) { Text(L("Pause")) }
             }
-            SliderInputRow(title: L("Volume"), value: $volume, range: 0...100)
-                .onChange(of: volume) { newValue in
-                    let clamped = min(max(newValue, 0), 100)
-                    volume = clamped
-                    let sid = screen.dv_displayUUID
-                    SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
-                    dlog("set volume \(clamped) for \(screen.dv_localizedName)")
-                }
-            ToggleRow(title: L("Stretch to fill"), value: $stretchToFill)
+            HStack(spacing: 8) {
+                SliderInputRow(title: LocalizedStringKey(L("Volume")), value: $volume, range: 0...100)
+                    .disabled(isMuted)
+                    .onChange(of: volume) { newValue in
+                        let clamped = min(max(newValue, 0), 100)
+                        volume = clamped
+                        guard !isMuted else { return }
+                        let sid = screen.dv_displayUUID
+                        SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
+                        dlog("set volume \(clamped) for \(screen.dv_localizedName)")
+                    }
+
+                Toggle(LocalizedStringKey(L("Mute")), isOn: $isMuted)
+                    .toggleStyle(.checkbox)
+                    .onChange(of: isMuted) { muted in
+                        let sid = screen.dv_displayUUID
+                        if muted {
+                            lastVolumeBeforeMute = volume
+                            SharedWallpaperWindowManager.shared.players[sid]?.volume = 0
+                            dlog("muted volume for \(screen.dv_localizedName)")
+                        } else {
+                            let clamped = min(max(lastVolumeBeforeMute, 0), 100)
+                            SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
+                            dlog("unmuted; restore volume \(clamped) for \(screen.dv_localizedName)")
+                        }
+                    }
+            }
+            ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
                 .onChange(of: stretchToFill) { newValue in
                     updateStretch(newValue)
                 }
@@ -44,7 +65,7 @@ struct SingleScreenView: View {
                 if type.conforms(to: .image) {
                     SharedWallpaperWindowManager.shared.showImage(for: screen, url: url, stretch: stretchToFill)
                 } else {
-                    SharedWallpaperWindowManager.shared.showVideo(for: screen, url: url, stretch: stretchToFill, volume: Float(volume / 100))
+                    SharedWallpaperWindowManager.shared.showVideo(for: screen, url: url, stretch: stretchToFill, volume: isMuted ? 0 : Float(volume / 100))
                 }
             }
         }
@@ -77,7 +98,7 @@ struct SingleScreenView: View {
             case .image:
                 SharedWallpaperWindowManager.shared.showImage(for: screen, url: entry.url, stretch: stretch)
             case .video:
-                SharedWallpaperWindowManager.shared.showVideo(for: screen, url: entry.url, stretch: stretch, volume: Float(volume / 100))
+                SharedWallpaperWindowManager.shared.showVideo(for: screen, url: entry.url, stretch: stretch, volume: isMuted ? 0 : Float(volume / 100))
             }
         }
         dlog("update stretch \(stretch) for \(screen.dv_localizedName)")
@@ -87,6 +108,8 @@ struct SingleScreenView: View {
         let sid = screen.dv_displayUUID
         if let player = SharedWallpaperWindowManager.shared.players[sid] {
             volume = Double(player.volume * 100)
+            isMuted = player.volume == 0
+            lastVolumeBeforeMute = max(volume, 0)
         }
         if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
             stretchToFill = entry.stretch

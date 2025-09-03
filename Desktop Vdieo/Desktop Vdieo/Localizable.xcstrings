@@ -7,12 +7,6 @@
     "?" : {
       "shouldTranslate" : false
     },
-    "%" : {
-      "shouldTranslate" : false
-    },
-    "0" : {
-      "shouldTranslate" : false
-    },
     "1.0" : {
       "shouldTranslate" : false
     },
@@ -20,9 +14,6 @@
       "shouldTranslate" : false
     },
     "40" : {
-      "shouldTranslate" : false
-    },
-    "100" : {
       "shouldTranslate" : false
     },
     "AboutDesktopVideo" : {
@@ -64,19 +55,34 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : { "state" : "translated", "value" : "Auto pause and power modes." }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto pause and power modes."
+          }
         },
         "es" : {
-          "stringUnit" : { "state" : "translated", "value" : "Pausa automática y modos de energía." }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausa automática y modos de energía."
+          }
         },
         "fr" : {
-          "stringUnit" : { "state" : "translated", "value" : "Pause automatique et modes d'énergie." }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause automatique et modes d'énergie."
+          }
         },
         "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "自动暂停和电源模式。" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动暂停和电源模式。"
+          }
         },
         "zh-Hant" : {
-          "stringUnit" : { "state" : "translated", "value" : "自動暫停和電源模式。" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動暫停和電源模式。"
+          }
         }
       }
     },
@@ -84,19 +90,34 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : { "state" : "translated", "value" : "Auto sync new screens" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto sync new screens"
+          }
         },
         "es" : {
-          "stringUnit" : { "state" : "translated", "value" : "Sincronizar pantallas nuevas automáticamente" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizar pantallas nuevas automáticamente"
+          }
         },
         "fr" : {
-          "stringUnit" : { "state" : "translated", "value" : "Synchroniser automatiquement les nouveaux écrans" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchroniser automatiquement les nouveaux écrans"
+          }
         },
         "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "自动同步新插入的显示器" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动同步新插入的显示器"
+          }
         },
         "zh-Hant" : {
-          "stringUnit" : { "state" : "translated", "value" : "自動同步新插入的顯示器" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動同步新插入的顯示器"
+          }
         }
       }
     },
@@ -278,11 +299,36 @@
     "Common preferences." : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Common preferences." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Preferencias comunes." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Préférences générales." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通用偏好设置。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "通用偏好設定。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Common preferences."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preferencias comunes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Préférences générales."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通用偏好设置。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通用偏好設定。"
+          }
+        }
       }
     },
     "Confirm" : {
@@ -571,11 +617,36 @@
     "help" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "help" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "ayuda" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "aide" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "帮助" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "幫助" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "help"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ayuda"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aide"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帮助"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "幫助"
+          }
+        }
       }
     },
     "idlePauseSensitivity" : {
@@ -651,11 +722,36 @@
     "Launch at login" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Launch at login" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar al iniciar sesión" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lancer à l'ouverture de session" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录时启动" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "登入時啟動" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launch at login"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar al iniciar sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer à l'ouverture de session"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录时启动"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入時啟動"
+          }
+        }
       }
     },
     "LaunchAtLogin" : {
@@ -731,21 +827,71 @@
     "Manage video wallpapers per display." : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Manage video wallpapers per display." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestiona fondos de video por pantalla." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérer les fonds d'écran vidéo par écran." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按显示器管理视频壁纸。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "按顯示器管理影片桌布。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage video wallpapers per display."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestiona fondos de video por pantalla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer les fonds d'écran vidéo par écran."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按显示器管理视频壁纸。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按顯示器管理影片桌布。"
+          }
+        }
       }
     },
     "Max video cache (GB)" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Max video cache (GB)" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Caché de video máxima (GB)" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cache vidéo max (Go)" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "视频缓存上限（GB）" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "影片快取上限（GB）" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max video cache (GB)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caché de video máxima (GB)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cache vidéo max (Go)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频缓存上限（GB）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影片快取上限（GB）"
+          }
+        }
       }
     },
     "MaxVideoFileSizeGB" : {
@@ -814,6 +960,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "分鐘"
+          }
+        }
+      }
+    },
+    "Mute" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "静音"
           }
         }
       }
@@ -1801,11 +1958,36 @@
     "Show only in menu bar" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show only in menu bar" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar solo en la barra de menús" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher uniquement dans la barre de menus" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "仅在菜单栏显示" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "僅在選單列顯示" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show only in menu bar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar solo en la barra de menús"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher uniquement dans la barre de menus"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在菜单栏显示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅在選單列顯示"
+          }
+        }
       }
     },
     "StartScreensaver" : {
@@ -1986,11 +2168,36 @@
     "Unknown" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desconocido" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Inconnu" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未知" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "未知" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconocido"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inconnu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知"
+          }
+        }
       }
     },
     "UnknownScreen" : {
