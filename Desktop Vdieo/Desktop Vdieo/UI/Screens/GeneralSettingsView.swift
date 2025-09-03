@@ -147,12 +147,14 @@ struct GeneralSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.top, 10)
+            .frame(width: 200)
             .onChange(of: appState.playbackMode) { newValue in
                 dlog("playbackMode changed to \(newValue)")
                 AppDelegate.shared?.updatePlaybackStateForAllScreens()
             }
 
             SliderInputRow(title: LocalizedStringKey(L("idlePauseSensitivity")), value: $appState.idlePauseSensitivity, range: 0...100)
+                .frame(width: 250)
                 .onChange(of: appState.idlePauseSensitivity) { newValue in
                     let clamped = min(max(newValue, 0), 100)
                     appState.idlePauseSensitivity = clamped
