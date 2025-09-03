@@ -4,6 +4,34 @@
 
 **Desktop Video Wallpaper** is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.0 Preview 0902 hot-fix 5 (2025-09-03)
+
+- 屏保运行时保持系统唤醒，确保视频持续播放
+- 所有视频均从内存加载，移除直接磁盘播放路径
+- Keep system awake during screensaver so videos keep running
+- Load all videos from memory and remove direct disk playback
+
+### Version 4.0 Preview 0902 hot-fix 4 (2025-09-03)
+
+- 使用 BookmarkStore 保存并恢复每个显示器的视频选择和音量
+- 清除壁纸时同时移除相关书签
+- Persist video selections and volume per display using BookmarkStore
+- Remove bookmark data when clearing wallpapers
+
+### Version 4.0 Preview 0902 hot-fix 3 (2025-09-03)
+
+- 自动检查 GitHub 新版本并提示更新
+- Automatically check GitHub releases for updates and prompt to upgrade
+
+### Version 4.0 Preview 0902 hot-fix 2 (2025-09-03)
+
+- 在多屏幕环境中添加选择框以指定连接的显示器
+- 下拉框中显示显示器名称
+- 记住上次选择的显示器并在启动时恢复
+- Add a selection box to choose the display when multiple screens are available
+- Show the display name inside the dropdown
+- Remember the last chosen display and restore it on launch
+
 ### Version 4.0 Preview 0902 hot-fix 1 (2025-09-02)
 
 - 本地化单屏幕与设置页面字符串

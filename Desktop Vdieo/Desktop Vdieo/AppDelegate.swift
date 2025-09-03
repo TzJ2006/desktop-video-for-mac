@@ -38,6 +38,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var isInScreensaver = false
    // Debounce work item for occlusion events
    private var occlusionDebounceWorkItem: DispatchWorkItem?
+   /// Token to keep the system awake while screensaver videos play
+   private var systemSleepActivity: NSObjectProtocol?
    // 屏保模式下的时钟标签
    private var clockDateLabels: [NSTextField] = []
    private var clockTimeLabels: [NSTextField] = []
@@ -136,6 +138,50 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // Ensure shouldPauseVideo is evaluated once when the app launches
        updatePlaybackStateForAllScreens()
+
+       // 检查 GitHub 更新
+       checkForUpdates()
+   }
+
+   // MARK: - Update Check
+
+   /// 检查 GitHub 上是否有新版本并提示用户更新
+   private func checkForUpdates() {
+       dlog("checkForUpdates")
+       guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+           return
+       }
+
+       let url = URL(string: "https://api.github.com/repos/TzJ2006/desktop-video-for-mac/releases/latest")!
+       let task = URLSession.shared.dataTask(with: url) { data, _, error in
+           if let error = error {
+               dlog("update check failed: \(error.localizedDescription)")
+               return
+           }
+           guard let data = data,
+                 let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                 let tag = json["tag_name"] as? String else {
+               dlog("update check parse failed")
+               return
+           }
+
+           dlog("latest tag \(tag) current \(currentVersion)")
+           guard tag != currentVersion else { return }
+
+           DispatchQueue.main.async {
+               let alert = NSAlert()
+               alert.messageText = L("UpdateAvailableTitle")
+               alert.informativeText = String(format: L("UpdateAvailableMessage"), tag)
+               alert.addButton(withTitle: L("UpdateNow"))
+               alert.addButton(withTitle: L("Later"))
+               if alert.runModal() == .alertFirstButtonReturn,
+                  let htmlURLString = json["html_url"] as? String,
+                  let htmlURL = URL(string: htmlURLString) {
+                   NSWorkspace.shared.open(htmlURL)
+               }
+           }
+       }
+       task.resume()
    }
 
    // MARK: - Screensaver Timer Methods
@@ -253,6 +299,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            assertionReason,
            &displaySleepAssertionID
        )
+       // Disable system sleep while the screensaver is running
+       systemSleepActivity = ProcessInfo.processInfo.beginActivity(options: [.idleSystemSleepDisabled, .idleDisplaySleepDisabled], reason: "DesktopVideo screensaver active")
+       dlog("beginActivity to keep system awake during screensaver")
 
        // 使用现有窗口列表的键值
        let keys = NSScreen.screens.compactMap { screen in
@@ -381,6 +430,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        if displaySleepAssertionID != 0 {
            IOPMAssertionRelease(displaySleepAssertionID)
            displaySleepAssertionID = 0
+       }
+       if let token = systemSleepActivity {
+           ProcessInfo.processInfo.endActivity(token)
+           systemSleepActivity = nil
+           dlog("endActivity restore system sleep settings")
        }
 
        // 清理时钟定时器和标签

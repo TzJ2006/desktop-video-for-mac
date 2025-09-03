@@ -322,23 +322,6 @@ class SharedWallpaperWindowManager {
     /// 为指定屏幕播放视频，始终从内存缓存读取数据。
     func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
         ensureWindowOnCorrectScreen(for: screen)
-        // Check file size and use AVPlayer directly if too large
-        let fileSizeLimit = desktop_videoApp.shared?.maxVideoFileSizeInGB ?? 1.0
-        if let fileSize = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64 {
-            let sizeInGB = Double(fileSize) / 1_073_741_824.0
-            if sizeInGB > fileSizeLimit {
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    alert.messageText = L("Filetoolarge")
-                    alert.informativeText = String(format: L("size%.2f GBover%.1f GBplayfromdisk"), sizeInGB, fileSizeLimit)
-                    alert.alertStyle = .warning
-                    alert.runModal()
-                }
-
-                showVideoDirectly(for: screen, url: url, stretch: stretch, volume: volume)
-                return
-            }
-        }
         dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume) UID=\(id(for: screen))")
         do {
             let data: Data
@@ -419,6 +402,7 @@ class SharedWallpaperWindowManager {
     func clear(for screen: NSScreen) {
         dlog("clear content for \(screen.dv_localizedName)")
         let sid = id(for: screen)
+        BookmarkStore.purge(id: sid)
 
         // ---------- 新增：释放缓存 ----------
         if let entry = screenContent[sid], entry.type == .video {
@@ -541,8 +525,8 @@ class SharedWallpaperWindowManager {
     func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen){
         dlog("update bookmark for \(screen.dv_localizedName) stretch=\(stretch) volume=\(String(describing: volume))")
         let uuid = screen.dv_displayUUID
-        UserDefaults.standard.set(stretch, forKey: "stretch-\(uuid)")
-        UserDefaults.standard.set(volume, forKey: "volume-\(uuid)")
+        BookmarkStore.set(stretch, prefix: "stretch", id: uuid)
+        BookmarkStore.set(volume, prefix: "volume", id: uuid)
     }
 
     private func saveBookmark(for url: URL, stretch: Bool, volume: Float?, screen: NSScreen) {
@@ -554,11 +538,11 @@ class SharedWallpaperWindowManager {
                 return
             }
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-            UserDefaults.standard.set(bookmarkData, forKey: "bookmark-\(uuid)")
-            UserDefaults.standard.set(stretch, forKey: "stretch-\(uuid)")
-            UserDefaults.standard.set(volume, forKey: "volume-\(uuid)")
+            BookmarkStore.set(bookmarkData, prefix: "bookmark", id: uuid)
+            BookmarkStore.set(stretch, prefix: "stretch", id: uuid)
+            BookmarkStore.set(volume, prefix: "volume", id: uuid)
             // 保存当前时间戳
-            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "savedAt-\(uuid)")
+            BookmarkStore.set(Date().timeIntervalSince1970, prefix: "savedAt", id: uuid)
             url.stopAccessingSecurityScopedResource()
         } catch {
             errorLog("Failed to save bookmark for \(url): \(error)")
@@ -570,7 +554,7 @@ class SharedWallpaperWindowManager {
         for screen in NSScreen.screens {
             dlog("Check screen: \(screen.dv_localizedName)")
             let uuid = screen.dv_displayUUID
-            guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(uuid)") else { continue }
+            guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else { continue }
 
             var isStale = false
             do {
@@ -581,8 +565,8 @@ class SharedWallpaperWindowManager {
                     continue
                 }
                 let ext = url.pathExtension.lowercased()
-                let stretch = UserDefaults.standard.bool(forKey: "stretch-\(uuid)")
-                let volume = UserDefaults.standard.object(forKey: "volume-\(uuid)") as? Float ?? 1.0
+                let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+                let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
 
                 if ["mp4", "mov", "m4v"].contains(ext) {
                     dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
@@ -595,16 +579,12 @@ class SharedWallpaperWindowManager {
             } catch {
                 errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
             }
-            
-            // 检查记录是否过期
-            let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(uuid)")
-            if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
+
+            if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: uuid),
+               Date().timeIntervalSince1970 - savedAt > 86400 {
                 // 超过 24 小时，删除记录
                 dlog("Outdated bookmark for screen \(uuid), removing...")
-                UserDefaults.standard.removeObject(forKey: "bookmark-\(uuid)")
-                UserDefaults.standard.removeObject(forKey: "stretch-\(uuid)")
-                UserDefaults.standard.removeObject(forKey: "volume-\(uuid)")
-                UserDefaults.standard.removeObject(forKey: "savedAt-\(uuid)")
+                BookmarkStore.purge(id: uuid)
                 continue
             }
         }
@@ -614,7 +594,7 @@ class SharedWallpaperWindowManager {
     func restoreFromBookmark(for screen: NSScreen) {
         dlog("restoreFromBookmark \(screen.dv_localizedName)")
         let uuid = screen.dv_displayUUID
-        guard let bookmarkData = UserDefaults.standard.data(forKey: "bookmark-\(uuid)") else {
+        guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else {
             return
         }
         var isStale = false
@@ -626,8 +606,8 @@ class SharedWallpaperWindowManager {
                 return
             }
             let ext = url.pathExtension.lowercased()
-            let stretch = UserDefaults.standard.bool(forKey: "stretch-\(uuid)")
-            let volume = UserDefaults.standard.object(forKey: "volume-\(uuid)") as? Float ?? 1.0
+            let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+            let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
 
             if ["mp4", "mov", "m4v"].contains(ext) {
                 dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
@@ -668,12 +648,9 @@ class SharedWallpaperWindowManager {
         let activeIDs = Set(NSScreen.screens.map { $0.dv_displayUUID })
         for sid in Array(windows.keys) {
             if !activeIDs.contains(sid) {
-                let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
-                if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
-                    UserDefaults.standard.removeObject(forKey: "bookmark-\(sid)")
-                    UserDefaults.standard.removeObject(forKey: "stretch-\(sid)")
-                    UserDefaults.standard.removeObject(forKey: "volume-\(sid)")
-                    UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
+                if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: sid),
+                   Date().timeIntervalSince1970 - savedAt > 86400 {
+                    BookmarkStore.purge(id: sid)
                 }
                 if let screen = NSScreen.screen(forUUID: sid) {
                     clear(for: screen)
@@ -786,12 +763,9 @@ class SharedWallpaperWindowManager {
                 screenContent.removeValue(forKey: sid)
 
                 // Clear bookmark and settings if expired
-                let savedAt = UserDefaults.standard.double(forKey: "savedAt-\(sid)")
-                if savedAt > 0, Date().timeIntervalSince1970 - savedAt > 86400 {
-                    UserDefaults.standard.removeObject(forKey: "bookmark-\(sid)")
-                    UserDefaults.standard.removeObject(forKey: "stretch-\(sid)")
-                    UserDefaults.standard.removeObject(forKey: "volume-\(sid)")
-                    UserDefaults.standard.removeObject(forKey: "savedAt-\(sid)")
+                if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: sid),
+                   Date().timeIntervalSince1970 - savedAt > 86400 {
+                    BookmarkStore.purge(id: sid)
                 }
             }
         }
@@ -847,7 +821,7 @@ class SharedWallpaperWindowManager {
         dlog("check black screens")
         for screen in NSScreen.screens {
             let sid = id(for: screen)
-            let hasBookmark = UserDefaults.standard.data(forKey: "bookmark-\(sid)") != nil
+            let hasBookmark = (BookmarkStore.get(prefix: "bookmark", id: sid) as Data?) != nil
             let viewMissing = currentViews[sid] == nil
             let playerMissing = screenContent[sid]?.type == .video && players[sid] == nil
             if hasBookmark && (viewMissing || playerMissing) {
@@ -991,38 +965,6 @@ class SharedWallpaperWindowManager {
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     }
     
-    /// 直接用 AVPlayer 播放本地大视频文件，避免加载进内存。
-    private func showVideoDirectly(for screen: NSScreen, url: URL, stretch: Bool, volume: Float) {
-        ensureWindowOnCorrectScreen(for: screen)
-        let sid = id(for: screen)
-        ensureWindow(for: screen)
-        stopVideoIfNeeded(for: screen)
-        guard let contentView = windows[sid]?.contentView else { return }
-
-        let item = AVPlayerItem(url: url)
-        let player = AVQueuePlayer(playerItem: item)
-        let looper = AVPlayerLooper(player: player, templateItem: item)
-        player.volume = volume
-
-        let playerView = AVPlayerView(frame: contentView.bounds)
-        playerView.player = player
-        playerView.controlsStyle = .none
-        playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
-        playerView.autoresizingMask = [.width, .height]
-
-        players[sid] = player
-        loopers[sid] = looper
-        screenContent[sid] = (.video, url, stretch, volume)
-
-        dlog("saveBookmark in showVideoDirectly for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
-        saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
-        switchContent(to: playerView, for: screen)
-        player.play()
-        // 视频开始播放时移除暂停标记
-        pausedScreens.remove(sid)
-        NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-    }
-
     /// 控制单个屏幕视频的暂停/播放
     func setPaused(_ paused: Bool, for screen: NSScreen) {
         let sid = id(for: screen)
