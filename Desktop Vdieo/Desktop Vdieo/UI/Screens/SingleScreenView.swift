@@ -25,22 +25,20 @@ struct SingleScreenView: View {
                         let clamped = min(max(newValue, 0), 100)
                         volume = clamped
                         guard !isMuted else { return }
-                        let sid = screen.dv_displayUUID
-                        SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
-                        dlog("set volume \(clamped) for \(screen.dv_localizedName)")
+                        SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
                     }
 
                 Toggle(LocalizedStringKey(L("Mute")), isOn: $isMuted)
                     .toggleStyle(.checkbox)
                     .onChange(of: isMuted) { muted in
-                        let sid = screen.dv_displayUUID
                         if muted {
                             lastVolumeBeforeMute = volume
-                            SharedWallpaperWindowManager.shared.players[sid]?.volume = 0
+                            SharedWallpaperWindowManager.shared.setVolume(0, for: screen)
                             dlog("muted volume for \(screen.dv_localizedName)")
                         } else {
                             let clamped = min(max(lastVolumeBeforeMute, 0), 100)
-                            SharedWallpaperWindowManager.shared.players[sid]?.volume = Float(clamped / 100.0)
+                            volume = clamped
+                            SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
                             dlog("unmuted; restore volume \(clamped) for \(screen.dv_localizedName)")
                         }
                     }

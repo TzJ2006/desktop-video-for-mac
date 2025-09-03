@@ -95,11 +95,31 @@ final class SpaceWallpaperManager {
         return w
     }
 
+    /// Attach a video player that loads data entirely into memory before playback.
     private func attachPlayer(to win: NSWindow, url: URL) -> AVPlayer {
-        let player = AVPlayer(url: url)
+        dlog("attachPlayer load video \(url.lastPathComponent) into memory")
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            errorLog("Failed to load video data: \(error)")
+            return AVPlayer()
+        }
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(url.pathExtension)
+        do {
+            try data.write(to: tempURL)
+        } catch {
+            errorLog("Failed to write temp video file: \(error)")
+        }
+        let asset = AVAsset(url: tempURL)
+        let item = AVPlayerItem(asset: asset)
+        let player = AVQueuePlayer()
+        let _ = AVPlayerLooper(player: player, templateItem: item)
         let playerView = AVPlayerView(frame: win.contentView!.bounds)
         playerView.player = player
-        playerView.controlsStyle = .none   // AVKit enum, now resolves after importing AVKit
+        playerView.controlsStyle = .none
         playerView.autoresizingMask = [.width, .height]
         win.contentView?.addSubview(playerView)
         player.play()

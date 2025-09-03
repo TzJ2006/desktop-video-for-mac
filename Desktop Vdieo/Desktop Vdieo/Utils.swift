@@ -59,22 +59,22 @@ extension NSScreen {
 struct BookmarkStore {
 
     /// 生成统一 key，如 “bookmark‑12345678”
-    private static func key(_ prefix: String, id: CGDirectDisplayID) -> String {
+    private static func key(_ prefix: String, id: CustomStringConvertible) -> String {
         "\(prefix)-\(id)"
     }
 
     /// 保存/更新
-    static func set<T>(_ value: T?, prefix: String, id: CGDirectDisplayID) {
+    static func set<T>(_ value: T?, prefix: String, id: CustomStringConvertible) {
         UserDefaults.standard.set(value, forKey: key(prefix, id: id))
     }
 
     /// 读取
-    static func get<T>(prefix: String, id: CGDirectDisplayID) -> T? {
+    static func get<T>(prefix: String, id: CustomStringConvertible) -> T? {
         UserDefaults.standard.object(forKey: key(prefix, id: id)) as? T
     }
 
     /// 删除指定显示器的所有数据
-    static func purge(id: CGDirectDisplayID) {
+    static func purge(id: CustomStringConvertible) {
         ["bookmark", "stretch", "volume", "savedAt"].forEach {
             UserDefaults.standard.removeObject(forKey: key($0, id: id))
         }
