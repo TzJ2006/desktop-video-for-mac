@@ -66,7 +66,7 @@ class SharedWallpaperWindowManager {
 
         // Wallpaper window
         if let win = windows[sid], win.screen !== screen {
-            clear(for: screen)
+            clear(for: screen, purgeBookmark: false, keepContent: true)
         }
 
         // Overlay window
@@ -399,10 +399,12 @@ class SharedWallpaperWindowManager {
         }
     }
 
-    func clear(for screen: NSScreen) {
-        dlog("clear content for \(screen.dv_localizedName)")
+    func clear(for screen: NSScreen, purgeBookmark: Bool = true, keepContent: Bool = false) {
+        dlog("clear content for \(screen.dv_localizedName) purge=\(purgeBookmark) keepContent=\(keepContent)")
         let sid = id(for: screen)
-        BookmarkStore.purge(id: sid)
+        if purgeBookmark {
+            BookmarkStore.purge(id: sid)
+        }
 
         // ---------- 新增：释放缓存 ----------
         if let entry = screenContent[sid], entry.type == .video {
@@ -421,8 +423,11 @@ class SharedWallpaperWindowManager {
                     try? FileManager.default.removeItem(at: file)
                 }
             }
+        } else {
+            // 非视频也要移除潜在的播放器引用
+            stopVideoIfNeeded(for: screen)
         }
-        
+
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
         if let overlay = overlayWindows[sid] {
@@ -439,7 +444,9 @@ class SharedWallpaperWindowManager {
         if let win = windows[sid] {
             win.orderOut(nil)
         }
-        screenContent.removeValue(forKey: sid)
+        if !keepContent {
+            screenContent.removeValue(forKey: sid)
+        }
         windows.removeValue(forKey: sid)
         overlayWindows.removeValue(forKey: sid)
         screensaverOverlayWindows.removeValue(forKey: sid)
@@ -653,7 +660,7 @@ class SharedWallpaperWindowManager {
                     BookmarkStore.purge(id: sid)
                 }
                 if let screen = NSScreen.screen(forUUID: sid) {
-                    clear(for: screen)
+                    clear(for: screen, purgeBookmark: false)
                 } else {
                     // 无对应屏幕对象时直接移除记录
                     players.removeValue(forKey: sid)
@@ -734,8 +741,11 @@ class SharedWallpaperWindowManager {
         for sid in knownIDs.subtracting(activeIDs) {
             dlog("removing UUID \(sid)")
 
-            // Only remove overlay and window if the screen truly no longer exists
-            if !NSScreen.screens.contains(where: { $0.dv_displayUUID == sid }) {
+            if let screen = NSScreen.screen(forUUID: sid) {
+                // 屏幕对象仍存在时，使用 clear 保留书签
+                clear(for: screen, purgeBookmark: false)
+            } else {
+                // 无对应屏幕对象时直接移除记录
                 if let overlay = overlayWindows[sid] {
                     NotificationCenter.default.removeObserver(AppDelegate.shared as Any,
                         name: NSWindow.didChangeOcclusionStateNotification,
@@ -747,13 +757,10 @@ class SharedWallpaperWindowManager {
                     overlay.orderOut(nil)
                     screensaverOverlayWindows.removeValue(forKey: sid)
                 }
-
                 if let win = windows[sid] {
                     win.orderOut(nil)
                     windows.removeValue(forKey: sid)
                 }
-
-                // Clean up content and player objects safely
                 currentViews[sid]?.removeFromSuperview()
                 currentViews.removeValue(forKey: sid)
                 players[sid]?.pause()
@@ -761,12 +768,12 @@ class SharedWallpaperWindowManager {
                 players.removeValue(forKey: sid)
                 loopers.removeValue(forKey: sid)
                 screenContent.removeValue(forKey: sid)
+            }
 
-                // Clear bookmark and settings if expired
-                if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: sid),
-                   Date().timeIntervalSince1970 - savedAt > 86400 {
-                    BookmarkStore.purge(id: sid)
-                }
+            // 清理过期书签，但保留有效书签
+            if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: sid),
+               Date().timeIntervalSince1970 - savedAt > 86400 {
+                BookmarkStore.purge(id: sid)
             }
         }
 
@@ -783,6 +790,9 @@ class SharedWallpaperWindowManager {
             guard !knownIDs.contains(sid) else { continue }
             dlog("add window for \(screen.dv_localizedName)")
 
+            // 新增屏幕时先清理窗口但保留书签与内容记录
+            clear(for: screen, purgeBookmark: false, keepContent: true)
+
             if let src = sourceScreen {
                 syncWindow(to: screen, from: src)
             } else if let entry = screenContent[sid] {
@@ -797,6 +807,9 @@ class SharedWallpaperWindowManager {
                         }
                     }
                 }
+            } else {
+                // 没有记录时尝试从书签恢复
+                restoreFromBookmark(for: screen)
             }
         }
 
@@ -826,7 +839,7 @@ class SharedWallpaperWindowManager {
             let playerMissing = screenContent[sid]?.type == .video && players[sid] == nil
             if hasBookmark && (viewMissing || playerMissing) {
                 dlog("black screen detected on \(screen.dv_localizedName)")
-                clear(for: screen)
+                clear(for: screen, purgeBookmark: false, keepContent: true)
                 restoreFromBookmark(for: screen)
             }
         }
@@ -990,7 +1003,9 @@ class SharedWallpaperWindowManager {
 
         // 记录内容描述后先清理
         let entry = screenContent[sid]
-        if let wrong = win.screen { clear(for: wrong) }
+        if let wrong = win.screen {
+            clear(for: wrong, purgeBookmark: false, keepContent: true)
+        }
 
         // 重新创建窗口并恢复内容
         if let entry = entry {
