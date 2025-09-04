@@ -187,11 +187,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    // MARK: - Screensaver Timer Methods
 
    func startScreensaverTimer() {
-       // 若计时器已在运行则直接返回
-       if screensaverTimer != nil && screensaverTimer?.isValid == true {
-//           dlog("startScreensaverTimer: timer already running, returning early")
+       // Ensure timer is always scheduled on the main thread
+       if !Thread.isMainThread {
+           DispatchQueue.main.async { [weak self] in self?.startScreensaverTimer() }
            return
        }
+       // Reset any existing timer before scheduling a new one
+       screensaverTimer?.invalidate()
+       screensaverTimer = nil
        dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")
        // 先检查是否被其他应用暂停
        guard !otherAppSuppressScreensaver else {
@@ -215,9 +218,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            dlog("Screensaver not started: a screensaver overlay fully covered")
            return
        }
-       screensaverTimer?.invalidate()
-       screensaverTimer = nil
-
        guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else {
            closeScreensaverWindows()
            return
@@ -662,11 +662,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    action: #selector(openPreferences),
                    keyEquivalent: ""
                )
-               menu.addItem(
+               let ssItem = menu.addItem(
                    withTitle: L("StartScreensaver"),          // 本地化键
                    action: #selector(manualRunScreensaver(_:)),
-                   keyEquivalent: ""                          // 可按需要指定快捷键
+                   keyEquivalent: KeyBindings.startScreensaverKey
                )
+               ssItem.keyEquivalentModifierMask = KeyBindings.startScreensaverModifiers
                menu.addItem(
                     withTitle: L("QuitDesktopVideo"),
                     action: #selector(NSApplication.terminate(_:)),
@@ -743,7 +744,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //    }
 
    /// 重新从内存加载并播放指定显示器上的视频。若读取失败则回退到直接播放。
-   private func reloadAndPlayVideoFromMemory(displayUUID sid: String) {
+   /// - Parameter sid: 显示器的唯一标识符
+   func reloadAndPlayVideoFromMemory(displayUUID sid: String) {
+       dlog("reloadAndPlayVideoFromMemory displayUUID=\(sid)")
        guard let screen = NSScreen.screen(forUUID: sid),
              let entry = SharedWallpaperWindowManager.shared.screenContent[sid] else {
            SharedWallpaperWindowManager.shared.players[sid]?.play()
