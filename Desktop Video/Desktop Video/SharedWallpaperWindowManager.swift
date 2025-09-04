@@ -479,8 +479,23 @@ class SharedWallpaperWindowManager {
     private func stopVideoIfNeeded(for screen: NSScreen) {
         dlog("stop video if needed on \(screen.dv_localizedName)")
         let sid = id(for: screen)
-        players[sid]?.pause()
-        players[sid]?.replaceCurrentItem(with: nil)
+        guard let player = players[sid] else {
+            players.removeValue(forKey: sid)
+            loopers.removeValue(forKey: sid)
+            return
+        }
+
+        let isShared = players.contains { key, value in
+            key != sid && value === player
+        }
+
+        if !isShared {
+            player.pause()
+            player.replaceCurrentItem(with: nil)
+        } else {
+            dlog("skip stopping shared player for \(screen.dv_localizedName)")
+        }
+
         players.removeValue(forKey: sid)
         loopers.removeValue(forKey: sid)
     }
