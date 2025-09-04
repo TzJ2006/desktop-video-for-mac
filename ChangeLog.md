@@ -3,6 +3,13 @@
 # Desktop Video 更新日志
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
+### Version 4.0 Preview 0904 hot-fix 3 (2025-09-04)
+
+- 修复重复加载或卸载视频导致无法播放的问题
+- 修复同步视频到其他屏幕后崩溃并出现内存溢出的错误
+- Fix failure when repeatedly loading or unloading videos
+- Fix OOM crash when syncing video to additional screens
+
 ### Version 4.0 Preview 0904 hot-fix 2 (2025-09-04)
 
 - 新增同步按钮，将当前屏幕的视频同步到所有屏幕
