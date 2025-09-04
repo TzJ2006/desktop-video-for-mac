@@ -141,6 +141,10 @@ class SharedWallpaperWindowManager {
         let currentTime = players[srcID]?.currentItem?.currentTime()
         let shouldPlay = players[srcID]?.rate != 0
 
+        // 先停止已有的同步关系
+        stopVideoIfNeeded(for: source)
+        stopVideoIfNeeded(for: screen)
+
         // 先清理目标屏幕内容
         clear(for: screen)
 
@@ -151,7 +155,7 @@ class SharedWallpaperWindowManager {
             saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: screen)
             saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: source)
         case .video:
-            showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
+            showVideo(for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume, allowReuse: false) {
                 if let time = currentTime {
                     self.players[destID]?.pause()
                     self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
@@ -162,7 +166,7 @@ class SharedWallpaperWindowManager {
                 }
                 self.saveBookmark(for: entry.url, stretch: isVideoStretch, volume: currentVolume, screen: screen)
             }
-            showVideo(for: source, url: entry.url, stretch: isVideoStretch, volume: currentVolume) {
+            showVideo(for: source, url: entry.url, stretch: isVideoStretch, volume: currentVolume, allowReuse: false) {
                 if let time = currentTime {
                     let srcSID = self.id(for: source)
                     self.players[srcSID]?.pause()
@@ -322,7 +326,7 @@ class SharedWallpaperWindowManager {
     }
 
     /// 为指定屏幕播放视频，始终从内存缓存读取数据。
-    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, onReady: (() -> Void)? = nil) {
+    func showVideo(for screen: NSScreen, url: URL, stretch: Bool, volume: Float, allowReuse: Bool = true, onReady: (() -> Void)? = nil) {
         ensureWindowOnCorrectScreen(for: screen)
         dlog("show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume) UID=\(id(for: screen))")
         do {
@@ -343,6 +347,7 @@ class SharedWallpaperWindowManager {
                                 stretch: stretch,
                                 volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
                                 originalURL: url,
+                                allowReuse: allowReuse,
                                 onReady: onReady)
         } catch {
             errorLog("Cannot load from memory!")
@@ -713,16 +718,38 @@ class SharedWallpaperWindowManager {
         }
         let isImageStretch = (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
         let currentTime = players[srcID]?.currentItem?.currentTime()
+        let shouldPlay = players[srcID]?.rate != 0
+
+        // 先停止源屏幕的播放以断开共享
+        stopVideoIfNeeded(for: sourceScreen)
+
+        // 重新为源屏幕加载内容，不复用播放器
+        switch currentEntry.type {
+        case .image:
+            showImage(for: sourceScreen, url: currentEntry.url, stretch: isImageStretch)
+            saveBookmark(for: currentEntry.url, stretch: isImageStretch, volume: nil, screen: sourceScreen)
+        case .video:
+            showVideo(for: sourceScreen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume, allowReuse: false) {
+                if let time = currentTime {
+                    let src = self.id(for: sourceScreen)
+                    self.players[src]?.pause()
+                    self.players[src]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                        if shouldPlay { self.players[src]?.play() }
+                    }
+                }
+                self.saveBookmark(for: currentEntry.url, stretch: isVideoStretch, volume: currentVolume, screen: sourceScreen)
+            }
+        }
 
         for screen in NSScreen.screens {
             if screen == sourceScreen { continue }
 
-            // 设置新内容前先清空该屏幕
+            // 设置新内容前先停止并清空该屏幕
+            stopVideoIfNeeded(for: screen)
             self.clear(for: screen)
 
             if currentEntry.type == .video {
-                let shouldPlay = players[srcID]?.rate != 0
-                showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume) {
+                showVideo(for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume, allowReuse: false) {
                     if let time = currentTime {
                         let destID = self.id(for: screen)
                         self.players[destID]?.pause()
@@ -877,14 +904,16 @@ class SharedWallpaperWindowManager {
     ///   - stretch: 是否铺满
     ///   - volume: 播放音量
     ///   - originalURL: 用户选择的视频源地址
+    ///   - allowReuse: 是否允许与其他屏幕复用播放器
     ///   - onReady: 准备完成回调
-    func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, onReady: (() -> Void)? = nil) {
+    func showVideoFromMemory(for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil, allowReuse: Bool = true, onReady: (() -> Void)? = nil) {
         dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
         ensureWindowOnCorrectScreen(for: screen)
         let sid = id(for: screen)
 
         // Fast path: same screen, same URL → just reuse the existing player / view.
-        if let existingContent = screenContent[sid],
+        if allowReuse,
+           let existingContent = screenContent[sid],
            existingContent.type == .video,
            existingContent.url == originalURL,
            let existingPlayer = players[sid] {
@@ -906,26 +935,28 @@ class SharedWallpaperWindowManager {
         }
 
         // 1. 优先尝试重用已存在的相同视频播放器
-        for (existingSID, content) in screenContent {
-            if existingSID != sid,
-               content.type == .video,
-               content.url == originalURL,
-               let existingPlayer = players[existingSID] {
-                _ = currentViews[existingSID] as? AVPlayerView
-                dlog("reuse existing video player from screen \(existingSID)")
-                ensureWindow(for: screen)
-                stopVideoIfNeeded(for: screen)
-                let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
-                clonePlayerView.player = existingPlayer
-                clonePlayerView.controlsStyle = .none
-                clonePlayerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
-                clonePlayerView.autoresizingMask = [.width, .height]
-                players[sid] = existingPlayer
-                loopers[sid] = loopers[existingSID]
-                screenContent[sid] = (.video, originalURL!, stretch, volume)
-                switchContent(to: clonePlayerView, for: screen)
-                NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-                return
+        if allowReuse {
+            for (existingSID, content) in screenContent {
+                if existingSID != sid,
+                   content.type == .video,
+                   content.url == originalURL,
+                   let existingPlayer = players[existingSID] {
+                    _ = currentViews[existingSID] as? AVPlayerView
+                    dlog("reuse existing video player from screen \(existingSID)")
+                    ensureWindow(for: screen)
+                    stopVideoIfNeeded(for: screen)
+                    let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
+                    clonePlayerView.player = existingPlayer
+                    clonePlayerView.controlsStyle = .none
+                    clonePlayerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+                    clonePlayerView.autoresizingMask = [.width, .height]
+                    players[sid] = existingPlayer
+                    loopers[sid] = loopers[existingSID]
+                    screenContent[sid] = (.video, originalURL!, stretch, volume)
+                    switchContent(to: clonePlayerView, for: screen)
+                    NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+                    return
+                }
             }
         }
 
