@@ -21,9 +21,12 @@ struct SingleScreenView: View {
                 Button(action: pause) { Text(L("Pause")) }
             }
             if !currentFileName.isEmpty {
-                Text("\(L(\"NowPlaying\")) \(currentFileName)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(LocalizedStringKey(L("NowPlaying")))
+                    Text(currentFileName)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
                 SliderInputRow(title: LocalizedStringKey(L("Volume")), value: $volume, range: 0...100)

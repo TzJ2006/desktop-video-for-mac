@@ -225,7 +225,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        let delayMinutes = UserDefaults.standard.double(forKey: screensaverDelayMinutesKey)
        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
        //debug settings
-//       let delaySeconds: TimeInterval = 3
+//      var delaySeconds = 10
 //       dlog("Warning! Debug settings on !!!")
 
        screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in

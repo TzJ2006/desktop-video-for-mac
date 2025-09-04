@@ -53,8 +53,8 @@ struct desktop_videoApp: App {
                 Button(L("StartScreensaver")) {
                     AppDelegate.shared?.manualRunScreensaver()
                 }
-                .keyboardShortcut(KeyEquivalent(KeyBindings.startScreensaverKey),
-                                   modifiers: KeyBindings.startScreensaverModifiers)
+                .keyboardShortcut(KeyEquivalent(KeyBindings.startScreensaverKey.first ?? "s"),
+                                   modifiers: eventModifiers(from: KeyBindings.startScreensaverModifiers))
             }
         }
     }
@@ -324,6 +324,16 @@ struct PreferencesView: View {
         }
     }
 
+}
+
+// Utility to convert NSEvent.ModifierFlags to SwiftUI EventModifiers
+func eventModifiers(from flags: NSEvent.ModifierFlags) -> EventModifiers {
+    var modifiers: EventModifiers = []
+    if flags.contains(.command) { modifiers.insert(.command) }
+    if flags.contains(.option) { modifiers.insert(.option) }
+    if flags.contains(.shift) { modifiers.insert(.shift) }
+    if flags.contains(.control) { modifiers.insert(.control) }
+    return modifiers
 }
 
 extension desktop_videoApp {
