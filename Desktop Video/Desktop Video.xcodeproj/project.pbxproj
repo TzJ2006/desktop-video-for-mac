@@ -12,37 +12,37 @@
 			containerPortal = 25818D722E4DBC1700422FA8 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 25818D792E4DBC1700422FA8;
-			remoteInfo = "Desktop Vdieo";
+			remoteInfo = "Desktop Video";
 		};
 		25818D932E4DBC1800422FA8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 25818D722E4DBC1700422FA8 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 25818D792E4DBC1700422FA8;
-			remoteInfo = "Desktop Vdieo";
+			remoteInfo = "Desktop Video";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		25818D7A2E4DBC1700422FA8 /* Desktop Vdieo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Desktop Vdieo.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		25818D882E4DBC1800422FA8 /* Desktop VdieoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop VdieoTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		25818D922E4DBC1800422FA8 /* Desktop VdieoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop VdieoUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		25818D7A2E4DBC1700422FA8 /* Desktop Video.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Desktop Video.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		25818D882E4DBC1800422FA8 /* Desktop VideoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop VideoTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		25818D922E4DBC1800422FA8 /* Desktop VideoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Desktop VideoUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		25818D7C2E4DBC1700422FA8 /* Desktop Vdieo */ = {
+		25818D7C2E4DBC1700422FA8 /* Desktop Video */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop Vdieo";
+			path = "Desktop Video";
 			sourceTree = "<group>";
 		};
-		25818D8B2E4DBC1800422FA8 /* Desktop VdieoTests */ = {
+		25818D8B2E4DBC1800422FA8 /* Desktop VideoTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop VdieoTests";
+			path = "Desktop VideoTests";
 			sourceTree = "<group>";
 		};
-		25818D952E4DBC1800422FA8 /* Desktop VdieoUITests */ = {
+		25818D952E4DBC1800422FA8 /* Desktop VideoUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop VdieoUITests";
+			path = "Desktop VideoUITests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 		25818D712E4DBC1700422FA8 = {
 			isa = PBXGroup;
 			children = (
-				25818D7C2E4DBC1700422FA8 /* Desktop Vdieo */,
-				25818D8B2E4DBC1800422FA8 /* Desktop VdieoTests */,
-				25818D952E4DBC1800422FA8 /* Desktop VdieoUITests */,
+				25818D7C2E4DBC1700422FA8 /* Desktop Video */,
+				25818D8B2E4DBC1800422FA8 /* Desktop VideoTests */,
+				25818D952E4DBC1800422FA8 /* Desktop VideoUITests */,
 				25818D7B2E4DBC1700422FA8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +85,9 @@
 		25818D7B2E4DBC1700422FA8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				25818D7A2E4DBC1700422FA8 /* Desktop Vdieo.app */,
-				25818D882E4DBC1800422FA8 /* Desktop VdieoTests.xctest */,
-				25818D922E4DBC1800422FA8 /* Desktop VdieoUITests.xctest */,
+				25818D7A2E4DBC1700422FA8 /* Desktop Video.app */,
+				25818D882E4DBC1800422FA8 /* Desktop VideoTests.xctest */,
+				25818D922E4DBC1800422FA8 /* Desktop VideoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		25818D792E4DBC1700422FA8 /* Desktop Vdieo */ = {
+		25818D792E4DBC1700422FA8 /* Desktop Video */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 25818D9C2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop Vdieo" */;
+			buildConfigurationList = 25818D9C2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop Video" */;
 			buildPhases = (
 				25818D762E4DBC1700422FA8 /* Sources */,
 				25818D772E4DBC1700422FA8 /* Frameworks */,
@@ -108,18 +108,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				25818D7C2E4DBC1700422FA8 /* Desktop Vdieo */,
+				25818D7C2E4DBC1700422FA8 /* Desktop Video */,
 			);
-			name = "Desktop Vdieo";
+			name = "Desktop Video";
 			packageProductDependencies = (
 			);
-			productName = "Desktop Vdieo";
-			productReference = 25818D7A2E4DBC1700422FA8 /* Desktop Vdieo.app */;
+			productName = "Desktop Video";
+			productReference = 25818D7A2E4DBC1700422FA8 /* Desktop Video.app */;
 			productType = "com.apple.product-type.application";
 		};
-		25818D872E4DBC1800422FA8 /* Desktop VdieoTests */ = {
+		25818D872E4DBC1800422FA8 /* Desktop VideoTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 25818D9F2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VdieoTests" */;
+			buildConfigurationList = 25818D9F2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VideoTests" */;
 			buildPhases = (
 				25818D842E4DBC1800422FA8 /* Sources */,
 				25818D852E4DBC1800422FA8 /* Frameworks */,
@@ -131,18 +131,18 @@
 				25818D8A2E4DBC1800422FA8 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				25818D8B2E4DBC1800422FA8 /* Desktop VdieoTests */,
+				25818D8B2E4DBC1800422FA8 /* Desktop VideoTests */,
 			);
-			name = "Desktop VdieoTests";
+			name = "Desktop VideoTests";
 			packageProductDependencies = (
 			);
-			productName = "Desktop VdieoTests";
-			productReference = 25818D882E4DBC1800422FA8 /* Desktop VdieoTests.xctest */;
+			productName = "Desktop VideoTests";
+			productReference = 25818D882E4DBC1800422FA8 /* Desktop VideoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		25818D912E4DBC1800422FA8 /* Desktop VdieoUITests */ = {
+		25818D912E4DBC1800422FA8 /* Desktop VideoUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 25818DA22E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VdieoUITests" */;
+			buildConfigurationList = 25818DA22E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VideoUITests" */;
 			buildPhases = (
 				25818D8E2E4DBC1800422FA8 /* Sources */,
 				25818D8F2E4DBC1800422FA8 /* Frameworks */,
@@ -154,13 +154,13 @@
 				25818D942E4DBC1800422FA8 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				25818D952E4DBC1800422FA8 /* Desktop VdieoUITests */,
+				25818D952E4DBC1800422FA8 /* Desktop VideoUITests */,
 			);
-			name = "Desktop VdieoUITests";
+			name = "Desktop VideoUITests";
 			packageProductDependencies = (
 			);
-			productName = "Desktop VdieoUITests";
-			productReference = 25818D922E4DBC1800422FA8 /* Desktop VdieoUITests.xctest */;
+			productName = "Desktop VideoUITests";
+			productReference = 25818D922E4DBC1800422FA8 /* Desktop VideoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 25818D752E4DBC1700422FA8 /* Build configuration list for PBXProject "Desktop Vdieo" */;
+			buildConfigurationList = 25818D752E4DBC1700422FA8 /* Build configuration list for PBXProject "Desktop Video" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				25818D792E4DBC1700422FA8 /* Desktop Vdieo */,
-				25818D872E4DBC1800422FA8 /* Desktop VdieoTests */,
-				25818D912E4DBC1800422FA8 /* Desktop VdieoUITests */,
+				25818D792E4DBC1700422FA8 /* Desktop Video */,
+				25818D872E4DBC1800422FA8 /* Desktop VideoTests */,
+				25818D912E4DBC1800422FA8 /* Desktop VideoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		25818D8A2E4DBC1800422FA8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 25818D792E4DBC1700422FA8 /* Desktop Vdieo */;
+			target = 25818D792E4DBC1700422FA8 /* Desktop Video */;
 			targetProxy = 25818D892E4DBC1800422FA8 /* PBXContainerItemProxy */;
 		};
 		25818D942E4DBC1800422FA8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 25818D792E4DBC1700422FA8 /* Desktop Vdieo */;
+			target = 25818D792E4DBC1700422FA8 /* Desktop Video */;
 			targetProxy = 25818D932E4DBC1800422FA8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -394,7 +394,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Desktop Vdieo/Desktop_Vdieo.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Desktop Video/Desktop_Video.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -412,7 +412,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.4;
 				MARKETING_VERSION = "4.0 Preview";
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Vdieo";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Video";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -425,7 +425,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Desktop Vdieo/Desktop_Vdieo.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Desktop Video/Desktop_Video.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -443,7 +443,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.4;
 				MARKETING_VERSION = "4.0 Preview";
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Vdieo";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-Video";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -461,11 +461,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VdieoTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Desktop Vdieo.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Desktop Vdieo";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Desktop Video.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Desktop Video";
 			};
 			name = Debug;
 		};
@@ -479,11 +479,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VdieoTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Desktop Vdieo.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Desktop Vdieo";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Desktop Video.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Desktop Video";
 			};
 			name = Release;
 		};
@@ -495,11 +495,11 @@
 				DEVELOPMENT_TEAM = 2R958J3YT6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VdieoUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = "Desktop Vdieo";
+				TEST_TARGET_NAME = "Desktop Video";
 			};
 			name = Debug;
 		};
@@ -511,18 +511,18 @@
 				DEVELOPMENT_TEAM = 2R958J3YT6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VdieoUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "TzJ.Desktop-VideoUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = "Desktop Vdieo";
+				TEST_TARGET_NAME = "Desktop Video";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		25818D752E4DBC1700422FA8 /* Build configuration list for PBXProject "Desktop Vdieo" */ = {
+		25818D752E4DBC1700422FA8 /* Build configuration list for PBXProject "Desktop Video" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				25818D9A2E4DBC1800422FA8 /* Debug */,
@@ -531,7 +531,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		25818D9C2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop Vdieo" */ = {
+		25818D9C2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop Video" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				25818D9D2E4DBC1800422FA8 /* Debug */,
@@ -540,7 +540,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		25818D9F2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VdieoTests" */ = {
+		25818D9F2E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VideoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				25818DA02E4DBC1800422FA8 /* Debug */,
@@ -549,7 +549,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		25818DA22E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VdieoUITests" */ = {
+		25818DA22E4DBC1800422FA8 /* Build configuration list for PBXNativeTarget "Desktop VideoUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				25818DA32E4DBC1800422FA8 /* Debug */,
