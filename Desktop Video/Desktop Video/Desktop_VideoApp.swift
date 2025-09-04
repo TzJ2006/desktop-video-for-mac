@@ -48,6 +48,14 @@ struct desktop_videoApp: App {
                 }
                 .keyboardShortcut(",", modifiers: [.command])
             }
+            // Screensaver command with centralised key binding
+            CommandGroup(after: .appSettings) {
+                Button(L("StartScreensaver")) {
+                    AppDelegate.shared?.manualRunScreensaver()
+                }
+                .keyboardShortcut(KeyEquivalent(KeyBindings.startScreensaverKey),
+                                   modifiers: KeyBindings.startScreensaverModifiers)
+            }
         }
     }
 

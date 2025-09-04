@@ -312,11 +312,13 @@ class SharedWallpaperWindowManager {
         imageView.autoresizingMask = [.width, .height]
 
         self.screenContent[sid] = (.image, url, stretch, nil)
+        AppState.shared.currentMediaURL = url.absoluteString
         dlog("saveBookmark in showImage for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
         saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
 
         switchContent(to: imageView, for: screen)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+        AppDelegate.shared?.startScreensaverTimer()
     }
 
     /// 为指定屏幕播放视频，始终从内存缓存读取数据。
@@ -334,6 +336,8 @@ class SharedWallpaperWindowManager {
             }
             dlog("saveBookmark in showVideo for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
             saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
+            AppState.shared.currentMediaURL = url.absoluteString
+            AppDelegate.shared?.startScreensaverTimer()
             showVideoFromMemory(for: screen,
                                 data: data,
                                 stretch: stretch,
@@ -446,11 +450,15 @@ class SharedWallpaperWindowManager {
         }
         if !keepContent {
             screenContent.removeValue(forKey: sid)
+            if screenContent.isEmpty {
+                AppState.shared.currentMediaURL = nil
+            }
         }
         windows.removeValue(forKey: sid)
         overlayWindows.removeValue(forKey: sid)
         screensaverOverlayWindows.removeValue(forKey: sid)
         NotificationCenter.default.post(name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+        AppDelegate.shared?.startScreensaverTimer()
 
         // 清除暂停状态
         pausedScreens.remove(sid)
@@ -837,9 +845,11 @@ class SharedWallpaperWindowManager {
             let hasBookmark = (BookmarkStore.get(prefix: "bookmark", id: sid) as Data?) != nil
             let viewMissing = currentViews[sid] == nil
             let playerMissing = screenContent[sid]?.type == .video && players[sid] == nil
-            if hasBookmark && (viewMissing || playerMissing) {
-                dlog("black screen detected on \(screen.dv_localizedName)")
-                clear(for: screen, purgeBookmark: false, keepContent: true)
+            guard hasBookmark && (viewMissing || playerMissing) else { continue }
+            dlog("black screen detected on \(screen.dv_localizedName) viewMissing=\(viewMissing) playerMissing=\(playerMissing)")
+            if playerMissing && !viewMissing {
+                AppDelegate.shared.reloadAndPlayVideoFromMemory(displayUUID: sid)
+            } else {
                 restoreFromBookmark(for: screen)
             }
         }

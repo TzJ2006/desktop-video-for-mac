@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import Combine
 
 /// Controls for a single screen's wallpaper.
 struct SingleScreenView: View {
@@ -9,6 +10,7 @@ struct SingleScreenView: View {
     @State private var stretchToFill: Bool = true
     @State private var isMuted: Bool = false
     @State private var lastVolumeBeforeMute: Double = 100
+    @State private var currentFileName: String = ""
     
     var body: some View {
         VStack(alignment: .center, spacing: 12) {
@@ -17,6 +19,11 @@ struct SingleScreenView: View {
                 Button(action: clear) { Text(L("Clear")) }
                 Button(action: play) { Text(L("Play")) }
                 Button(action: pause) { Text(L("Pause")) }
+            }
+            if !currentFileName.isEmpty {
+                Text("\(L(\"NowPlaying\")) \(currentFileName)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
                 SliderInputRow(title: LocalizedStringKey(L("Volume")), value: $volume, range: 0...100)
@@ -49,6 +56,9 @@ struct SingleScreenView: View {
                 }
         }
         .onAppear(perform: syncInitialState)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
+            updateNowPlaying()
+        }
     }
 
     // 打开媒体选择面板并设置壁纸
@@ -112,6 +122,17 @@ struct SingleScreenView: View {
         if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
             stretchToFill = entry.stretch
         }
+        updateNowPlaying()
         dlog("sync controls for \(screen.dv_localizedName)")
+    }
+
+    private func updateNowPlaying() {
+        let sid = screen.dv_displayUUID
+        if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
+            currentFileName = entry.url.lastPathComponent
+        } else {
+            currentFileName = ""
+        }
+        dlog("updateNowPlaying for \(screen.dv_localizedName) file=\(currentFileName)")
     }
 }
