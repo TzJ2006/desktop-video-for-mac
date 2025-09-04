@@ -19,6 +19,7 @@ struct SingleScreenView: View {
                 Button(action: clear) { Text(L("Clear")) }
                 Button(action: play) { Text(L("Play")) }
                 Button(action: pause) { Text(L("Pause")) }
+                Button(action: syncAll) { Text(L("Sync to all screens")) }
             }
             if !currentFileName.isEmpty {
                 HStack(spacing: 4) {
@@ -62,6 +63,10 @@ struct SingleScreenView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
             updateNowPlaying()
         }
+        .onChange(of: screen.dv_displayUUID) { _ in
+            dlog("screen changed; sync controls for \(screen.dv_localizedName)")
+            syncInitialState()
+        }
     }
 
     // 打开媒体选择面板并设置壁纸
@@ -100,6 +105,12 @@ struct SingleScreenView: View {
         let sid = screen.dv_displayUUID
         dlog("pause wallpaper for \(screen.dv_localizedName)")
         SharedWallpaperWindowManager.shared.players[sid]?.pause()
+    }
+
+    // 将当前屏幕的视频同步到所有屏幕
+    private func syncAll() {
+        dlog("sync to all screens from \(screen.dv_localizedName)")
+        SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
     }
 
     private func updateStretch(_ stretch: Bool) {
