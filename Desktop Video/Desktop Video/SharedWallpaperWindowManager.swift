@@ -20,6 +20,7 @@ class SharedWallpaperWindowManager {
 
   private var debounceWorkItem: DispatchWorkItem?
   private var blackScreensWorkItem: DispatchWorkItem?
+  private var windowScreenChangeWorkItem: DispatchWorkItem?
 
   private var playbackMode: AppState.PlaybackMode {
     AppState.shared.playbackMode
@@ -1078,6 +1079,10 @@ class SharedWallpaperWindowManager {
 
     switchContent(to: playerView, for: screen)
     queuePlayer.play()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+      dlog("delayed play state check for \(screen.dv_localizedName)")
+      self?.updatePlayState(for: screen)
+    }
     // 视频开始播放时移除暂停标记
     pausedScreens.remove(sid)
     NotificationCenter.default.post(
@@ -1139,14 +1144,20 @@ class SharedWallpaperWindowManager {
 
   /// 捕捉窗口被系统改屏事件
   @objc private func windowScreenDidChange(_ note: Notification) {
-    dlog("windowScreenDidChange")
     guard let win = note.object as? NSWindow else { return }
-    if let sid = windows.first(where: { $0.value == win })?.key {
-      reassignWindowIfNeeded(for: sid)
-    } else if let sid = overlayWindows.first(where: { $0.value == win })?.key {
-      reassignWindowIfNeeded(for: sid)
+    windowScreenChangeWorkItem?.cancel()
+    let workItem = DispatchWorkItem { [weak self] in
+      guard let self else { return }
+      dlog("windowScreenDidChange")
+      if let sid = self.windows.first(where: { $0.value == win })?.key {
+        self.reassignWindowIfNeeded(for: sid)
+      } else if let sid = self.overlayWindows.first(where: { $0.value == win })?.key {
+        self.reassignWindowIfNeeded(for: sid)
+      }
+      self.checkBlackScreens()
     }
-    checkBlackScreens()
+    windowScreenChangeWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
   }
   // MARK: - Overlay coverage helpers (CoreGraphics)
 
