@@ -3,57 +3,49 @@
 # Desktop Video 更新日志
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
-### Version 4.0 Preview 0909 hot-fix 3 (2025-09-09)
 
-- 当仅连接外接显示器时自动恢复上次壁纸，避免黑屏
-- Automatically restore last wallpaper when only external displays are connected to avoid black screen
-### Version 4.0 Preview 0909 hot-fix 2 (2025-09-09)
-
-- 使用 OSLog 将调试输出标记为 Debug 级别
-- Mark debug output using OSLog so it shows as Debug in console
-### Version 4.0 Preview 0909 hot-fix 1 (2025-09-09)
+### Version 4.0 Preview 0909 (2025-09-09)
 
 - 移除 GitHub 更新检查以避免沙盒环境下的网络错误
 - 避免对壁纸窗口调用 makeKeyWindow 以消除系统警告
+- 使用 OSLog 将调试输出标记为 Debug 级别
+- 当仅连接外接显示器时自动恢复上次壁纸，避免黑屏
 - Remove GitHub update check to prevent sandbox network errors
 - Avoid calling makeKeyWindow on wallpaper window to eliminate system warnings
-### Version 4.0 Preview 0905 hot-fix 1 (2025-09-05)
+- Mark debug output using OSLog so it shows as Debug in console
+- Automatically restore last wallpaper when only external displays are connected to avoid black screen
 
-- 限制 `windowScreenDidChange` 事件触发频率
-- 视频切换后延迟 1 秒重新评估是否需要暂停
-- Throttle `windowScreenDidChange` to avoid rapid triggering
-- Reevaluate pause state one second after switching videos
-### Version 4.0 Preview 0904 hot-fix 3 (2025-09-04)
+### Version 4.0 Preview 0905 (2025-09-05)
 
+- 修复命名问题
 - 修复重复加载或卸载视频导致无法播放的问题
 - 修复同步视频到其他屏幕后崩溃并出现内存溢出的错误
+- 限制 `windowScreenDidChange` 事件触发频率
+- 视频切换后延迟 1 秒重新评估是否需要暂停
+- Fix typo
 - Fix failure when repeatedly loading or unloading videos
 - Fix OOM crash when syncing video to additional screens
-
-### Version 4.0 Preview 0904 hot-fix 2 (2025-09-04)
-
-- 新增同步按钮，将当前屏幕的视频同步到所有屏幕
-- Add button to sync the current screen's video to all screens
-
-### Version 4.0 Preview 0904 hot-fix 1 (2025-09-04)
-
-- 修复多屏幕相同视频时切换其中一屏视频导致的死循环
-- Prevent dead loop when changing video on one screen when both screens share the same video
-- 修复同步屏幕时未正确移除旧视频的问题
-- Fix issue where synced screens kept the previous video when replacing it
-- 修复切换显示器时“正在播放”未正确更新的问题
-- Fix issue where the "Now Playing" label didn't update when switching screens
+- Throttle `windowScreenDidChange` to avoid rapid triggering
+- Reevaluate pause state one second after switching videos
 
 ### Version 4.0 Preview 0904 (2025-09-04)
 
 - 修复屏幕保护程序计时器不启动的问题
+- 修复同步屏幕时未正确移除旧视频的问题
+- 修复切换显示器时“正在播放”未正确更新的问题
+- 修复多屏幕相同视频时切换其中一屏视频导致的死循环
 - 新增 Control+Command+H 快捷键以启动屏幕保护程序，并预留统一管理位置
 - 在设置界面显示当前播放文件名
 - 尝试修复屏保播放时偶尔出现黑屏闪烁的问题
+- 新增同步按钮，将当前屏幕的视频同步到所有屏幕
 - Fix issue where screensaver timer failed to start
 - Add Control+Command+H shortcut to launch screensaver with centralized binding
 - Show now playing file name in settings UI
-Fix intermittent black flashes during screensaver by reloading media without clearing
+  Fix intermittent black flashes during screensaver by reloading media without clearing
+- Fix issue where the "Now Playing" label didn't update when switching screens
+- Fix issue where synced screens kept the previous video when replacing it
+- Prevent dead loop when changing video on one screen when both screens share the same video
+- Add button to sync the current screen's video to all screens
 
 ### Version 4.0 Preview 0903 (2025-09-03)
 
