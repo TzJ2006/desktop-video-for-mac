@@ -892,9 +892,21 @@ class SharedWallpaperWindowManager {
             }
           }
         }
-      } else {
+      } else if let _: Data = BookmarkStore.get(prefix: "bookmark", id: sid) {
         // 没有记录时尝试从书签恢复
         restoreFromBookmark(for: screen)
+      } else if let lastURL = AppState.shared.lastMediaURL {
+        dlog("apply last media for \(screen.dv_localizedName)")
+        let ext = lastURL.pathExtension.lowercased()
+        let stretch = AppState.shared.lastStretchToFill
+        let volume = AppState.shared.lastVolume
+        if ["mp4", "mov", "m4v"].contains(ext) {
+          showVideo(for: screen, url: lastURL, stretch: stretch, volume: volume)
+          saveBookmark(for: lastURL, stretch: stretch, volume: volume, screen: screen)
+        } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+          showImage(for: screen, url: lastURL, stretch: stretch)
+          saveBookmark(for: lastURL, stretch: stretch, volume: nil, screen: screen)
+        }
       }
     }
 
