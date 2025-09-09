@@ -139,49 +139,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // Ensure shouldPauseVideo is evaluated once when the app launches
        updatePlaybackStateForAllScreens()
 
-       // 检查 GitHub 更新
-       checkForUpdates()
-   }
-
-   // MARK: - Update Check
-
-   /// 检查 GitHub 上是否有新版本并提示用户更新
-   private func checkForUpdates() {
-       dlog("checkForUpdates")
-       guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
-           return
-       }
-
-       let url = URL(string: "https://api.github.com/repos/TzJ2006/desktop-video-for-mac/releases/latest")!
-       let task = URLSession.shared.dataTask(with: url) { data, _, error in
-           if let error = error {
-               dlog("update check failed: \(error.localizedDescription)")
-               return
-           }
-           guard let data = data,
-                 let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                 let tag = json["tag_name"] as? String else {
-               dlog("update check parse failed")
-               return
-           }
-
-           dlog("latest tag \(tag) current \(currentVersion)")
-           guard tag != currentVersion else { return }
-
-           DispatchQueue.main.async {
-               let alert = NSAlert()
-               alert.messageText = L("UpdateAvailableTitle")
-               alert.informativeText = String(format: L("UpdateAvailableMessage"), tag)
-               alert.addButton(withTitle: L("UpdateNow"))
-               alert.addButton(withTitle: L("Later"))
-               if alert.runModal() == .alertFirstButtonReturn,
-                  let htmlURLString = json["html_url"] as? String,
-                  let htmlURL = URL(string: htmlURLString) {
-                   NSWorkspace.shared.open(htmlURL)
-               }
-           }
-       }
-       task.resume()
+       // 应用运行于沙盒环境，不再检查 GitHub 更新以避免网络错误
    }
 
    // MARK: - Screensaver Timer Methods
@@ -331,7 +289,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                wallpaperWindow.ignoresMouseEvents = false
                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
                wallpaperWindow.alphaValue = 0 // 初始透明
-               wallpaperWindow.makeKeyAndOrderFront(nil)
+               // 仅将窗口置于最前，不请求键盘焦点以避免系统警告
+               wallpaperWindow.orderFront(nil)
 
                // 使用动画淡入
                NSAnimationContext.runAnimationGroup({ context in
