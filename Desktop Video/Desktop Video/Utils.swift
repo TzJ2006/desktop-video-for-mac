@@ -8,6 +8,7 @@
 import AppKit
 import Foundation
 import CoreGraphics
+import OSLog
 
 // MARK: - Notification 统一管理
 extension Notification.Name {
@@ -98,14 +99,25 @@ enum DVLogLevel: String {
     case error = "ERROR"
 }
 
+/// 统一日志记录器
+private let dvLogger = Logger(subsystem: "com.desktopvideo.wallpaper", category: "general")
+
 /// 调试日志，仅在 DEBUG 构建输出
 func dlog(_ message: String,
           level: DVLogLevel = .debug,
-          function: String = #function)
-{
-    // 1) 保留 Debug 模式下的控制台打印
+          function: String = #function) {
+    // 1) 使用统一日志系统输出到控制台
     #if DEBUG
-    print("[\(dvTimestamp())][\(level.rawValue)] \(function): \(message)")
+    switch level {
+    case .debug:
+        dvLogger.debug("\(function): \(message)")
+    case .info:
+        dvLogger.info("\(function): \(message)")
+    case .warn:
+        dvLogger.warning("\(function): \(message)")
+    case .error:
+        dvLogger.error("\(function): \(message)")
+    }
     #endif
 
     // 2) 委托给 LogFile 单例写入文件

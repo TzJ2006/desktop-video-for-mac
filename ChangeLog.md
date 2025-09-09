@@ -3,6 +3,16 @@
 # Desktop Video 更新日志
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
+### Version 4.0 Preview 0909 hot-fix 2 (2025-09-09)
+
+- 使用 OSLog 将调试输出标记为 Debug 级别
+- Mark debug output using OSLog so it shows as Debug in console
+### Version 4.0 Preview 0909 hot-fix 1 (2025-09-09)
+
+- 移除 GitHub 更新检查以避免沙盒环境下的网络错误
+- 避免对壁纸窗口调用 makeKeyWindow 以消除系统警告
+- Remove GitHub update check to prevent sandbox network errors
+- Avoid calling makeKeyWindow on wallpaper window to eliminate system warnings
 ### Version 4.0 Preview 0905 hot-fix 1 (2025-09-05)
 
 - 限制 `windowScreenDidChange` 事件触发频率
