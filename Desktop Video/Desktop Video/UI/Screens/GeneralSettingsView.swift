@@ -8,6 +8,7 @@ struct GeneralSettingsView: View {
     @AppStorage("selectedLanguage")  private var language:          String = "system"
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGB: Double = 1.0
     @AppStorage("globalMute") private var globalMute: Bool = false
+    @AppStorage("showMenuBarVideo") private var showMenuBarVideo: Bool = false
     @AppStorage("screensaverEnabled") private var screensaverEnabled: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutes: Double = 5.0
 
@@ -27,6 +28,11 @@ struct GeneralSettingsView: View {
             ToggleRow(title: LocalizedStringKey(L("GlobalMute")), value: $globalMute)
                 .onChange(of: globalMute) { newValue in
                     desktop_videoApp.applyGlobalMute(newValue)
+                }
+
+            ToggleRow(title: LocalizedStringKey(L("ShowVideoInMenuBar")), value: $showMenuBarVideo)
+                .onChange(of: showMenuBarVideo) { _ in
+                    SharedWallpaperWindowManager.shared.updateStatusBarVideoForAllScreens()
                 }
 
             ToggleRow(title: LocalizedStringKey(L("Auto sync new screens")), value: $autoSyncNewScreens)
