@@ -30,10 +30,7 @@ struct GeneralSettingsView: View {
                     desktop_videoApp.applyGlobalMute(newValue)
                 }
 
-            ToggleRow(title: LocalizedStringKey(L("ShowVideoInMenuBar")), value: $showMenuBarVideo)
-                .onChange(of: showMenuBarVideo) { _ in
-                    SharedWallpaperWindowManager.shared.updateStatusBarVideoForAllScreens()
-                }
+            MenuBarVideoToggle()
 
             ToggleRow(title: LocalizedStringKey(L("Auto sync new screens")), value: $autoSyncNewScreens)
                 .onChange(of: autoSyncNewScreens) { newValue in

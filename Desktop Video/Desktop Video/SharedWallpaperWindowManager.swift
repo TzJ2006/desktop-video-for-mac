@@ -587,29 +587,40 @@ class SharedWallpaperWindowManager {
     dlog("update status bar video on \(screen.dv_localizedName)")
     let barHeight = NSStatusBar.system.thickness
     let screenFrame = screen.frame
-    let frame = CGRect(x: screenFrame.minX, y: screenFrame.maxY - barHeight, width: screenFrame.width, height: barHeight)
+    let frame = CGRect(
+      x: screenFrame.minX, y: screenFrame.maxY - barHeight, width: screenFrame.width,
+      height: barHeight)
 
     let win: NSWindow
     if let existing = statusBarWindows[sid] {
       win = existing
       win.setFrame(frame, display: true)
     } else {
-      win = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.statusWindow)))
+      win = NSWindow(
+        contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
+      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.backstopMenu)))
       win.isOpaque = false
       win.backgroundColor = .clear
       win.ignoresMouseEvents = true
       win.collectionBehavior = [.canJoinAllSpaces, .stationary]
-      let view = AVPlayerView(frame: CGRect(origin: .zero, size: frame.size))
+      win.contentView?.wantsLayer = true
+      win.contentView?.layer?.masksToBounds = true
+      let viewFrame = CGRect(
+        x: 0, y: barHeight - screenFrame.height, width: screenFrame.width,
+        height: screenFrame.height)
+      let view = AVPlayerView(frame: viewFrame)
       view.controlsStyle = .none
       view.videoGravity = .resizeAspectFill
-      view.autoresizingMask = [.width, .height]
+      view.autoresizingMask = [.width]
       win.contentView?.addSubview(view)
       statusBarWindows[sid] = win
     }
 
     if let view = win.contentView?.subviews.first as? AVPlayerView {
       view.player = player
+      view.frame = CGRect(
+        x: 0, y: barHeight - screenFrame.height, width: screenFrame.width,
+        height: screenFrame.height)
     }
 
     win.orderFrontRegardless()
