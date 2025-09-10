@@ -8,6 +8,7 @@ struct GeneralSettingsView: View {
     @AppStorage("selectedLanguage")  private var language:          String = "system"
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGB: Double = 1.0
     @AppStorage("globalMute") private var globalMute: Bool = false
+    @AppStorage("showMenuBarVideo") private var showMenuBarVideo: Bool = false
     @AppStorage("screensaverEnabled") private var screensaverEnabled: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutes: Double = 5.0
 

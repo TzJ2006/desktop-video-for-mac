@@ -15,6 +15,7 @@
 - Added menu bar video toggle to wallpaper screen
 - Unified menu bar video toggle between settings and wallpaper views
 
+
 ### Version 4.0 Preview 0909 (2025-09-09)
 
 - 移除 GitHub 更新检查以避免沙盒环境下的网络错误
