@@ -8,12 +8,16 @@
 
 - 新增在状态栏显示视频的开关
 - 全屏时状态栏背景仅显示壁纸视频上缘且不遮挡菜单文字
-- 在壁纸界面新增状态栏视频开关
-- 统一设置与界面中的菜单栏视频开关
+- 修复无法清除视频的问题
+- 修复状态栏不显示视频的问题
+- 修复“拉伸以填充”设置无效的问题
+- 将“在状态栏显示视频”选项移动至通用设置
 - Added toggle to show video in status bar
 - Status bar background crops to the top edge of the wallpaper video and stays behind menu text in full screen
-- Added menu bar video toggle to wallpaper screen
-- Unified menu bar video toggle between settings and wallpaper views
+- Fix issue where clearing video failed
+- Fix issue where video did not appear in status bar
+- Fix stretch-to-fill setting not applying
+- Move “Show video in status bar” option to General settings
 
 
 ### Version 4.0 Preview 0909 (2025-09-09)

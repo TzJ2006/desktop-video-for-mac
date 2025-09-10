@@ -137,7 +137,7 @@ class SharedWallpaperWindowManager {
     let currentVolume = players[srcID]?.volume ?? 1.0
     let isVideoStretch: Bool
     if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
-      isVideoStretch = (gravity == .resizeAspectFill)
+      isVideoStretch = (gravity == .resize)
     } else {
       isVideoStretch = false
     }
@@ -393,7 +393,7 @@ class SharedWallpaperWindowManager {
     let sid = id(for: screen)
     players[sid]?.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
     if let playerView = currentViews[sid] as? AVPlayerView {
-      playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+      playerView.videoGravity = stretch ? .resize : .resizeAspect
     }
     updateBookmark(stretch: stretch, volume: volume, screen: screen)
   }
@@ -459,6 +459,7 @@ class SharedWallpaperWindowManager {
     }
     if let win = windows[sid] {
       win.orderOut(nil)
+      win.close()
     }
     if !keepContent {
       screenContent.removeValue(forKey: sid)
@@ -469,6 +470,10 @@ class SharedWallpaperWindowManager {
     windows.removeValue(forKey: sid)
     overlayWindows.removeValue(forKey: sid)
     screensaverOverlayWindows.removeValue(forKey: sid)
+    if let statusWin = statusBarWindows[sid] {
+      statusWin.orderOut(nil)
+      statusBarWindows.removeValue(forKey: sid)
+    }
     NotificationCenter.default.post(
       name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     AppDelegate.shared?.startScreensaverTimer()
@@ -476,8 +481,7 @@ class SharedWallpaperWindowManager {
     // 清除暂停状态
     pausedScreens.remove(sid)
 
-    // 移除状态栏视频
-    updateStatusBarVideo(for: screen)
+    // 状态栏视频已移除
   }
 
   func restoreContent(for screen: NSScreen) {
@@ -610,14 +614,17 @@ class SharedWallpaperWindowManager {
         height: screenFrame.height)
       let view = AVPlayerView(frame: viewFrame)
       view.controlsStyle = .none
-      view.videoGravity = .resizeAspectFill
+      let stretch = screenContent[sid]?.stretch ?? false
+      view.videoGravity = stretch ? .resize : .resizeAspect
       view.autoresizingMask = [.width]
       win.contentView?.addSubview(view)
       statusBarWindows[sid] = win
     }
 
     if let view = win.contentView?.subviews.first as? AVPlayerView {
+      let stretch = screenContent[sid]?.stretch ?? false
       view.player = player
+      view.videoGravity = stretch ? .resize : .resizeAspect
       view.frame = CGRect(
         x: 0, y: barHeight - screenFrame.height, width: screenFrame.width,
         height: screenFrame.height)
@@ -802,7 +809,7 @@ class SharedWallpaperWindowManager {
     let currentVolume = players[srcID]?.volume ?? 1.0
     let isVideoStretch: Bool
     if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
-      isVideoStretch = (gravity == .resizeAspectFill)
+      isVideoStretch = (gravity == .resize)
     } else {
       isVideoStretch = false
     }
@@ -1046,7 +1053,7 @@ class SharedWallpaperWindowManager {
       // Update stretch and volume only.
       existingPlayer.volume = volume
       if let playerView = currentViews[sid] as? AVPlayerView {
-        playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+      playerView.videoGravity = stretch ? .resize : .resizeAspect
       }
       // Ensure it is playing.
       if existingPlayer.timeControlStatus != .playing {
@@ -1074,7 +1081,7 @@ class SharedWallpaperWindowManager {
           let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
           clonePlayerView.player = existingPlayer
           clonePlayerView.controlsStyle = .none
-          clonePlayerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+          clonePlayerView.videoGravity = stretch ? .resize : .resizeAspect
           clonePlayerView.autoresizingMask = [.width, .height]
           players[sid] = existingPlayer
           loopers[sid] = loopers[existingSID]
@@ -1145,7 +1152,7 @@ class SharedWallpaperWindowManager {
     let playerView = AVPlayerView(frame: contentView.bounds)
     playerView.player = queuePlayer
     playerView.controlsStyle = .none
-    playerView.videoGravity = stretch ? .resizeAspectFill : .resizeAspect
+    playerView.videoGravity = stretch ? .resize : .resizeAspect
     playerView.autoresizingMask = [.width, .height]
 
     players[sid] = queuePlayer
