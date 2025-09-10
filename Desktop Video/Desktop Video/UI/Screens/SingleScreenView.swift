@@ -19,7 +19,7 @@ struct SingleScreenView: View {
                 Button(action: clear) { Text(L("Clear")) }
                 Button(action: play) { Text(L("Play")) }
                 Button(action: pause) { Text(L("Pause")) }
-                Button(action: syncAll) { Text(L("Sync to all screens")) }
+                Button(action: syncAll) { Text(L("Sync same videos")) }
             }
             if !currentFileName.isEmpty {
                 HStack(spacing: 4) {
@@ -109,8 +109,8 @@ struct SingleScreenView: View {
 
     // 将当前屏幕的视频同步到所有屏幕
     private func syncAll() {
-        dlog("sync to all screens from \(screen.dv_localizedName)")
-        SharedWallpaperWindowManager.shared.syncAllWindows(sourceScreen: screen)
+        dlog("sync same-name videos across screens")
+        SharedWallpaperWindowManager.shared.syncSameNamedVideos()
     }
 
     private func updateStretch(_ stretch: Bool) {

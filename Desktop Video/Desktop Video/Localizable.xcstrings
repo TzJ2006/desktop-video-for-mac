@@ -86,76 +86,6 @@
         }
       }
     },
-    "Auto sync new screens": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto sync new screens"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sincronizar pantallas nuevas automáticamente"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Synchroniser automatiquement les nouveaux écrans"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动同步新插入的显示器"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自動同步新插入的顯示器"
-          }
-        }
-      }
-    },
-    "AutoSyncNewScreens": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto sync to new displays"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sincronización automática con nuevas pantallas"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Synchroniser automatiquement les écrans nouvellement connectés"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动同步新插入的显示器"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自動同步新插入的顯示器"
-          }
-        }
-      }
-    },
     "ChangeFile": {
       "extractionState": "manual",
       "localizations": {
@@ -1185,37 +1115,37 @@
         }
       }
     },
-    "Sync to all screens": {
+    "Sync same videos": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sync to all screens"
+            "value": "Sync same videos"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sincronizar con todas las pantallas"
+            "value": "Sincronizar videos iguales"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Synchroniser sur tous les écrans"
+            "value": "Synchroniser les vidéos identiques"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "同步到所有屏幕"
+            "value": "同步相同视频"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "同步到所有螢幕"
+            "value": "同步相同影片"
           }
         }
       }

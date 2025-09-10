@@ -127,47 +127,31 @@ class SharedWallpaperWindowManager {
     cleanupDisconnectedScreens()
   }
 
-  func syncWindow(to screen: NSScreen, from source: NSScreen) {
-
-    dlog("syncing window from \(source.dv_localizedName) to \(screen.dv_localizedName)")
-    let srcID = id(for: source)
-    guard let entry = screenContent[srcID] else { return }
-
-    // 获取当前播放状态
-    let currentVolume = players[srcID]?.volume ?? 1.0
-    let isVideoStretch: Bool
-    if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
-      isVideoStretch = (gravity == .resize)
-    } else {
-      isVideoStretch = false
+  /// Sync playback time for videos that share the same file name across screens.
+  /// 同步所有屏幕上相同文件名视频的播放进度。
+  func syncSameNamedVideos() {
+    dlog("syncSameNamedVideos invoked")
+    // Group screen IDs by video file name
+    var groups: [String: [String]] = [:]
+    for (sid, entry) in screenContent where entry.type == .video {
+      let name = entry.url.lastPathComponent
+      groups[name, default: []].append(sid)
     }
-    let isImageStretch =
-      (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
-
-    // 仅清理目标屏幕内容，保留源播放器以复用
-    clear(for: screen)
-
-    switch entry.type {
-    case .image:
-      showImage(for: screen, url: entry.url, stretch: isImageStretch)
-      showImage(for: source, url: entry.url, stretch: isImageStretch)
-      saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: screen)
-      saveBookmark(for: entry.url, stretch: isImageStretch, volume: nil, screen: source)
-    case .video:
-      // 复用源屏幕的视频播放器以避免内存暴涨
-      showVideo(
-        for: screen, url: entry.url, stretch: isVideoStretch, volume: currentVolume,
-        allowReuse: true
-      ) {
-        dlog("synced video from \(source.dv_localizedName) to \(screen.dv_localizedName)")
+    // Align playback for groups with more than one screen
+    for (name, sids) in groups where sids.count > 1 {
+      guard let firstID = sids.first,
+            let referencePlayer = players[firstID],
+            let time = referencePlayer.currentItem?.currentTime() else { continue }
+      let shouldPlay = referencePlayer.rate != 0
+      dlog("syncing \(name) across \(sids.count) screens")
+      for sid in sids.dropFirst() {
+        if let player = players[sid] {
+          player.pause()
+          player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+            if shouldPlay { player.play() }
+          }
+        }
       }
-      saveBookmark(for: entry.url, stretch: isVideoStretch, volume: currentVolume, screen: screen)
-      saveBookmark(for: entry.url, stretch: isVideoStretch, volume: currentVolume, screen: source)
-    }
-
-    // 若源条目是视频，则更新 AppState 中记录的地址
-    if let sourceEntry = screenContent[srcID], sourceEntry.type != .image {
-      AppState.shared.lastMediaURL = sourceEntry.url
     }
   }
 
@@ -609,14 +593,11 @@ class SharedWallpaperWindowManager {
       win.collectionBehavior = [.canJoinAllSpaces, .stationary]
       win.contentView?.wantsLayer = true
       win.contentView?.layer?.masksToBounds = true
-      let viewFrame = CGRect(
-        x: 0, y: barHeight - screenFrame.height, width: screenFrame.width,
-        height: screenFrame.height)
-      let view = AVPlayerView(frame: viewFrame)
+      let view = AVPlayerView(frame: .zero)
       view.controlsStyle = .none
       let stretch = screenContent[sid]?.stretch ?? false
       view.videoGravity = stretch ? .resize : .resizeAspect
-      view.autoresizingMask = [.width]
+      view.autoresizingMask = [.minXMargin, .maxXMargin]
       win.contentView?.addSubview(view)
       statusBarWindows[sid] = win
     }
@@ -625,9 +606,15 @@ class SharedWallpaperWindowManager {
       let stretch = screenContent[sid]?.stretch ?? false
       view.player = player
       view.videoGravity = stretch ? .resize : .resizeAspect
-      view.frame = CGRect(
-        x: 0, y: barHeight - screenFrame.height, width: screenFrame.width,
-        height: screenFrame.height)
+
+      if let size = player.currentItem?.presentationSize, size != .zero {
+        let scale = barHeight / size.height
+        let width = size.width * scale
+        let x = (screenFrame.width - width) / 2
+        view.frame = CGRect(x: x, y: 0, width: width, height: barHeight)
+      } else {
+        view.frame = CGRect(x: 0, y: 0, width: screenFrame.width, height: barHeight)
+      }
     }
 
     win.orderFrontRegardless()
@@ -798,87 +785,6 @@ class SharedWallpaperWindowManager {
     }
   }
 
-  func syncAllWindows(sourceScreen: NSScreen) {
-    dlog("sync all windows from \(sourceScreen.dv_localizedName)")
-    cleanupDisconnectedScreens()
-    let srcID = id(for: sourceScreen)
-    guard let currentEntry = screenContent[srcID] else {
-      return
-    }
-
-    let currentVolume = players[srcID]?.volume ?? 1.0
-    let isVideoStretch: Bool
-    if let gravity = (currentViews[srcID] as? AVPlayerView)?.videoGravity {
-      isVideoStretch = (gravity == .resize)
-    } else {
-      isVideoStretch = false
-    }
-    let isImageStretch =
-      (currentViews[srcID] as? NSImageView)?.imageScaling == .scaleAxesIndependently
-    let currentTime = players[srcID]?.currentItem?.currentTime()
-    let shouldPlay = players[srcID]?.rate != 0
-
-    // 先停止源屏幕的播放以断开共享
-    stopVideoIfNeeded(for: sourceScreen)
-
-    // 重新为源屏幕加载内容，不复用播放器
-    switch currentEntry.type {
-    case .image:
-      showImage(for: sourceScreen, url: currentEntry.url, stretch: isImageStretch)
-      saveBookmark(
-        for: currentEntry.url, stretch: isImageStretch, volume: nil, screen: sourceScreen)
-    case .video:
-      showVideo(
-        for: sourceScreen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume,
-        allowReuse: false
-      ) {
-        if let time = currentTime {
-          let src = self.id(for: sourceScreen)
-          self.players[src]?.pause()
-          self.players[src]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-            if shouldPlay { self.players[src]?.play() }
-          }
-        }
-        self.saveBookmark(
-          for: currentEntry.url, stretch: isVideoStretch, volume: currentVolume,
-          screen: sourceScreen)
-      }
-    }
-
-    for screen in NSScreen.screens {
-      if screen == sourceScreen { continue }
-
-      // 设置新内容前先停止并清空该屏幕
-      stopVideoIfNeeded(for: screen)
-      self.clear(for: screen)
-
-      if currentEntry.type == .video {
-        showVideo(
-          for: screen, url: currentEntry.url, stretch: isVideoStretch, volume: currentVolume,
-          allowReuse: false
-        ) {
-          if let time = currentTime {
-            let destID = self.id(for: screen)
-            self.players[destID]?.pause()
-            self.players[destID]?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) {
-              _ in
-              if shouldPlay {
-                self.players[destID]?.play()
-              }
-            }
-          }
-          // Save bookmark for synced video
-          self.saveBookmark(
-            for: currentEntry.url, stretch: isVideoStretch, volume: currentVolume, screen: screen)
-        }
-      } else if currentEntry.type == .image {
-        showImage(for: screen, url: currentEntry.url, stretch: isImageStretch)
-        // Save bookmark for synced image
-        saveBookmark(for: currentEntry.url, stretch: isImageStretch, volume: nil, screen: screen)
-      }
-    }
-  }
-
   @objc private func handleScreenChange() {
 
     //        return;
@@ -938,14 +844,7 @@ class SharedWallpaperWindowManager {
       }
     }
 
-    // 为新连接的屏幕创建窗口
-    let autoSync = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
-    let existingID = knownIDs.first
-    var sourceScreen: NSScreen? = nil
-    if autoSync, let id = existingID {
-      sourceScreen = NSScreen.screen(forUUID: id)
-    }
-
+    // 为新连接的屏幕创建窗口（不自动同步）
     for screen in NSScreen.screens {
       let sid = screen.dv_displayUUID
       guard !knownIDs.contains(sid) else { continue }
@@ -953,10 +852,7 @@ class SharedWallpaperWindowManager {
 
       // 新增屏幕时先清理窗口但保留书签与内容记录
       clear(for: screen, purgeBookmark: false, keepContent: true)
-
-      if let src = sourceScreen {
-        syncWindow(to: screen, from: src)
-      } else if let entry = screenContent[sid] {
+      if let entry = screenContent[sid] {
         switch entry.type {
         case .image:
           showImage(for: screen, url: entry.url, stretch: entry.stretch)
@@ -969,7 +865,7 @@ class SharedWallpaperWindowManager {
             }
           }
         }
-      } else if let _: Data = BookmarkStore.get(prefix: "bookmark", id: sid) {
+      } else if BookmarkStore.get(prefix: "bookmark", id: sid) != nil {
         // 没有记录时尝试从书签恢复
         restoreFromBookmark(for: screen)
       } else if let lastURL = AppState.shared.lastMediaURL {
@@ -1053,7 +949,7 @@ class SharedWallpaperWindowManager {
       // Update stretch and volume only.
       existingPlayer.volume = volume
       if let playerView = currentViews[sid] as? AVPlayerView {
-      playerView.videoGravity = stretch ? .resize : .resizeAspect
+        playerView.videoGravity = stretch ? .resize : .resizeAspect
       }
       // Ensure it is playing.
       if existingPlayer.timeControlStatus != .playing {

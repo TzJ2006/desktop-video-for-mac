@@ -20,7 +20,6 @@ struct desktop_videoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // 这些 AppStorage 只在菜单命令里保持最新状态，不直接绑定到 PreferencesView
-    @AppStorage("autoSyncNewScreens") private var autoSyncNewScreens: Bool = true
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
     @AppStorage("globalMute")        var globalMute:        Bool = false
 
@@ -99,7 +98,6 @@ struct desktop_videoApp: App {
 /// **首选项面板**：在 Settings 窗口中显示，修改延迟到"确认"后才写入
 struct PreferencesView: View {
     // 真正存储的 AppStorage
-    @AppStorage("autoSyncNewScreens") private var autoSyncNewScreensStorage: Bool = true
     @AppStorage("launchAtLogin")     private var launchAtLoginStorage:     Bool = true
     @AppStorage("globalMute")        private var globalMuteStorage:        Bool = false
     @AppStorage("selectedLanguage")  private var languageStorage:          String = "system"
@@ -111,7 +109,6 @@ struct PreferencesView: View {
     @ObservedObject private var appState = AppState.shared
 
     // 本地 State，用于暂存用户在界面上的修改
-    @State private var autoSyncNewScreens: Bool = true
     @State private var launchAtLogin:     Bool = true
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
@@ -122,7 +119,6 @@ struct PreferencesView: View {
     @State private var playbackMode: AppState.PlaybackMode = .alwaysPlay
 
     // 原始值缓存，用于恢复
-    @State private var originalAutoSyncNewScreens: Bool = true
     @State private var originalLaunchAtLogin:     Bool = true
     @State private var originalGlobalMute:        Bool = false
     @State private var originalSelectedLanguage:  String = "system"
@@ -134,8 +130,7 @@ struct PreferencesView: View {
 
     /// 是否有未保存的更改
     private var hasChanges: Bool {
-        autoSyncNewScreens != autoSyncNewScreensStorage
-        || launchAtLogin != launchAtLoginStorage
+        launchAtLogin != launchAtLoginStorage
         || globalMute != globalMuteStorage
         || selectedLanguage != languageStorage
         || idlePauseSensitivity != appState.idlePauseSensitivity
@@ -148,8 +143,7 @@ struct PreferencesView: View {
     /// 是否需要重启应用才能完全生效
     private var requiresRestart: Bool {
         // 语言、屏幕同步等需要重建窗口；播放模式 / 静音等则可即时生效
-        autoSyncNewScreens != autoSyncNewScreensStorage
-        || launchAtLogin != launchAtLoginStorage
+        launchAtLogin != launchAtLoginStorage
         || selectedLanguage != languageStorage
         || screensaverEnabled != screensaverEnabledStorage
         || screensaverDelayMinutes != screensaverDelayMinutesStorage
@@ -164,7 +158,6 @@ struct PreferencesView: View {
             VStack(spacing: 12) {
                 Toggle(L("GlobalMute"), isOn: $globalMute)
                 Toggle(L("LaunchAtLogin"), isOn: $launchAtLogin)
-                Toggle(L("AutoSyncNewScreens"), isOn: $autoSyncNewScreens)
 
                 HStack {
                     Text(L("Language"))
@@ -242,7 +235,6 @@ struct PreferencesView: View {
         .padding(20)
         .onAppear {
             // 首次出现时缓存原始值
-            originalAutoSyncNewScreens = autoSyncNewScreensStorage
             originalLaunchAtLogin = launchAtLoginStorage
             originalGlobalMute = globalMuteStorage
             originalSelectedLanguage = languageStorage
@@ -260,7 +252,6 @@ struct PreferencesView: View {
 
     private func loadStoredValues() {
         dlog("loadStoredValues")
-        autoSyncNewScreens = originalAutoSyncNewScreens
         launchAtLogin = originalLaunchAtLogin
         globalMute = originalGlobalMute
         selectedLanguage = originalSelectedLanguage
@@ -274,7 +265,6 @@ struct PreferencesView: View {
     private func confirmChanges() {
         dlog("confirmChanges")
         // 只保存设置到 AppStorage，但不立即应用
-        autoSyncNewScreensStorage = autoSyncNewScreens
         launchAtLoginStorage = launchAtLogin
         globalMuteStorage = globalMute
         languageStorage = selectedLanguage
