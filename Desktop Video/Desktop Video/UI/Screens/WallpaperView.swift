@@ -26,6 +26,8 @@ struct WallpaperView: View {
                 SingleScreenView(screen: screen)
             }
 
+            MenuBarVideoToggle()
+
             ToggleRow(title: LocalizedStringKey(L("Show only in menu bar")), value: Binding(
                 get: { menuBarOnly },
                 set: {

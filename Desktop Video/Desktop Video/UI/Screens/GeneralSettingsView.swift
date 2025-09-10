@@ -29,6 +29,8 @@ struct GeneralSettingsView: View {
                     desktop_videoApp.applyGlobalMute(newValue)
                 }
 
+            MenuBarVideoToggle()
+
             ToggleRow(title: LocalizedStringKey(L("Auto sync new screens")), value: $autoSyncNewScreens)
                 .onChange(of: autoSyncNewScreens) { newValue in
                     guard !isReverting else { isReverting = false; return }
