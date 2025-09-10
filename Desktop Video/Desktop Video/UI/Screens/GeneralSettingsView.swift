@@ -3,7 +3,6 @@ import SwiftUI
 import ServiceManagement
 
 struct GeneralSettingsView: View {
-    @AppStorage("autoSyncNewScreens") private var autoSyncNewScreens: Bool = true
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
     @AppStorage("selectedLanguage")  private var language:          String = "system"
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGB: Double = 1.0
@@ -14,7 +13,6 @@ struct GeneralSettingsView: View {
 
     @ObservedObject private var appState = AppState.shared
 
-    @State private var originalAutoSyncNewScreens = UserDefaults.standard.bool(forKey: "autoSyncNewScreens")
     @State private var originalLaunchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
     @State private var originalLanguage = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "system"
     @State private var originalMaxVideoFileSizeInGB = UserDefaults.standard.double(forKey: "maxVideoFileSizeInGB")
@@ -32,18 +30,6 @@ struct GeneralSettingsView: View {
 
             MenuBarVideoToggle()
 
-            ToggleRow(title: LocalizedStringKey(L("Auto sync new screens")), value: $autoSyncNewScreens)
-                .onChange(of: autoSyncNewScreens) { newValue in
-                    guard !isReverting else { isReverting = false; return }
-                    dlog("autoSyncNewScreens changed to \(newValue), restart required")
-                    let previous = originalAutoSyncNewScreens
-                    desktop_videoApp.showRestartAlert {
-                        originalAutoSyncNewScreens = newValue
-                    } onDiscard: {
-                        isReverting = true
-                        autoSyncNewScreens = previous
-                    }
-                }
             ToggleRow(title: LocalizedStringKey(L("Launch at login")), value: Binding(
                 get: { launchAtLogin },
                 set: {
