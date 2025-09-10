@@ -199,6 +199,9 @@ class SharedWallpaperWindowManager {
       defer: false
     )
     win.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)))
+//    win.level = NSWindow.Level(Int(CGWindowLevelForKey(.cursorWindow)))
+//    win.level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)))
+      
     win.isOpaque = false
     win.backgroundColor = .clear
     win.ignoresMouseEvents = true
@@ -586,9 +589,11 @@ class SharedWallpaperWindowManager {
     } else {
       win = NSWindow(
         contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.backstopMenu)))
+//      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.backstopMenu)))
+//        win.level = NSWindow.Level(Int(CGWindowLevelForKey(.normalWindow)))
+        win.level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)))
       win.isOpaque = false
-      win.backgroundColor = .clear
+//      win.backgroundColor = .clear
       win.ignoresMouseEvents = true
       win.collectionBehavior = [.canJoinAllSpaces, .stationary]
       win.contentView?.wantsLayer = true
