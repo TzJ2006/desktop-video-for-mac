@@ -180,6 +180,8 @@ class SharedWallpaperWindowManager {
   var overlayWindows: [String: NSWindow] = [:]
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
   var screensaverOverlayWindows: [String: NSWindow] = [:]
+  /// 状态栏视频窗口
+  var statusBarWindows: [String: NSWindow] = [:]
   var players: [String: AVQueuePlayer] = [:]
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
@@ -473,6 +475,9 @@ class SharedWallpaperWindowManager {
 
     // 清除暂停状态
     pausedScreens.remove(sid)
+
+    // 移除状态栏视频
+    updateStatusBarVideo(for: screen)
   }
 
   func restoreContent(for screen: NSScreen) {
@@ -521,6 +526,8 @@ class SharedWallpaperWindowManager {
     currentViews[sid] = newView
     // 内容切换完成后，根据遮挡状态重新评估播放/暂停
     updatePlayState(for: screen)
+    // 根据设置更新状态栏视频
+    updateStatusBarVideo(for: screen)
   }
 
   /// 根据 overlay 遮挡状态立即决定播放或暂停该屏幕的视频
@@ -562,6 +569,58 @@ class SharedWallpaperWindowManager {
   /// 供外部在遮挡状态变更时调用，确保每屏独立刷新
   func refreshPlayState(for screen: NSScreen) {
     updatePlayState(for: screen)
+  }
+
+  /// 根据用户设置在状态栏显示或移除视频
+  func updateStatusBarVideo(for screen: NSScreen) {
+    let sid = id(for: screen)
+    let enabled = UserDefaults.standard.bool(forKey: "showMenuBarVideo")
+    guard enabled, let player = players[sid] else {
+      if let win = statusBarWindows[sid] {
+        dlog("remove status bar video on \(screen.dv_localizedName)")
+        win.orderOut(nil)
+        statusBarWindows.removeValue(forKey: sid)
+      }
+      return
+    }
+
+    dlog("update status bar video on \(screen.dv_localizedName)")
+    let barHeight = NSStatusBar.system.thickness
+    let screenFrame = screen.frame
+    let frame = CGRect(x: screenFrame.minX, y: screenFrame.maxY - barHeight, width: screenFrame.width, height: barHeight)
+
+    let win: NSWindow
+    if let existing = statusBarWindows[sid] {
+      win = existing
+      win.setFrame(frame, display: true)
+    } else {
+      win = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
+      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.statusWindow)))
+      win.isOpaque = false
+      win.backgroundColor = .clear
+      win.ignoresMouseEvents = true
+      win.collectionBehavior = [.canJoinAllSpaces, .stationary]
+      let view = AVPlayerView(frame: CGRect(origin: .zero, size: frame.size))
+      view.controlsStyle = .none
+      view.videoGravity = .resizeAspectFill
+      view.autoresizingMask = [.width, .height]
+      win.contentView?.addSubview(view)
+      statusBarWindows[sid] = win
+    }
+
+    if let view = win.contentView?.subviews.first as? AVPlayerView {
+      view.player = player
+    }
+
+    win.orderFrontRegardless()
+  }
+
+  /// 更新所有屏幕的状态栏视频
+  func updateStatusBarVideoForAllScreens() {
+    dlog("update status bar video for all screens")
+    for screen in NSScreen.screens {
+      updateStatusBarVideo(for: screen)
+    }
   }
 
   func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen) {
