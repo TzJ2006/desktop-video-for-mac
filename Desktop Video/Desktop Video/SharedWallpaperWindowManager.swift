@@ -562,20 +562,20 @@ class SharedWallpaperWindowManager {
     updatePlayState(for: screen)
   }
 
-  /// 根据用户设置在状态栏显示或移除视频
+  /// 根据用户设置在菜单栏显示或移除动态着色
   func updateStatusBarVideo(for screen: NSScreen) {
     let sid = id(for: screen)
     let enabled = UserDefaults.standard.bool(forKey: "showMenuBarVideo")
-    guard enabled, let player = players[sid] else {
+    guard enabled else {
       if let win = statusBarWindows[sid] {
-        dlog("remove status bar video on \(screen.dv_localizedName)")
+        dlog("remove status bar tint on \(screen.dv_localizedName)")
         win.orderOut(nil)
         statusBarWindows.removeValue(forKey: sid)
       }
       return
     }
 
-    dlog("update status bar video on \(screen.dv_localizedName)")
+    dlog("update status bar tint on \(screen.dv_localizedName)")
     let barHeight = NSStatusBar.system.thickness
     let screenFrame = screen.frame
     let frame = CGRect(
@@ -589,37 +589,18 @@ class SharedWallpaperWindowManager {
     } else {
       win = NSWindow(
         contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-//      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.backstopMenu)))
-//        win.level = NSWindow.Level(Int(CGWindowLevelForKey(.normalWindow)))
-        win.level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)))
+      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)))
       win.isOpaque = false
-//      win.backgroundColor = .clear
+      win.backgroundColor = .clear
       win.ignoresMouseEvents = true
       win.collectionBehavior = [.canJoinAllSpaces, .stationary]
-      win.contentView?.wantsLayer = true
-      win.contentView?.layer?.masksToBounds = true
-      let view = AVPlayerView(frame: .zero)
-      view.controlsStyle = .none
-      let stretch = screenContent[sid]?.stretch ?? false
-      view.videoGravity = stretch ? .resize : .resizeAspect
-      view.autoresizingMask = [.minXMargin, .maxXMargin]
-      win.contentView?.addSubview(view)
+      let effectView = NSVisualEffectView(frame: .zero)
+      effectView.material = .contentBackground
+      effectView.blendingMode = .behindWindow
+      effectView.state = .active
+      effectView.autoresizingMask = [.width, .height]
+      win.contentView = effectView
       statusBarWindows[sid] = win
-    }
-
-    if let view = win.contentView?.subviews.first as? AVPlayerView {
-      let stretch = screenContent[sid]?.stretch ?? false
-      view.player = player
-      view.videoGravity = stretch ? .resize : .resizeAspect
-
-      if let size = player.currentItem?.presentationSize, size != .zero {
-        let scale = barHeight / size.height
-        let width = size.width * scale
-        let x = (screenFrame.width - width) / 2
-        view.frame = CGRect(x: x, y: 0, width: width, height: barHeight)
-      } else {
-        view.frame = CGRect(x: 0, y: 0, width: screenFrame.width, height: barHeight)
-      }
     }
 
     win.orderFrontRegardless()
