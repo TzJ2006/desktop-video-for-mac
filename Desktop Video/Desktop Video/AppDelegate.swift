@@ -54,21 +54,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private let screensaverDelayMinutesKey = "screensaverDelayMinutes"
 
    private var cancellables = Set<AnyCancellable>()
-   
-   // 把视频缓存在内存中
-   private var videoCache = [URL: Data]()
-
-   func cachedVideoData(for url: URL) -> Data? {
-       videoCache[url]
-   }
-
-   func cacheVideoData(_ data: Data, for url: URL) {
-       videoCache[url] = data
-   }
-
-   func removeCachedVideoData(for url: URL) {
-       videoCache.removeValue(forKey: url)
-   }
 
 
    func applicationDidFinishLaunching(_ notification: Notification) {
@@ -345,7 +330,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // === 立即恢复各屏幕的视频播放 ===
        for pid in pendingResumeIDs {
-           reloadAndPlayVideoFromMemory(displayUUID: pid)
+           reloadAndPlayVideo(displayUUID: pid)
        }
 
        // 开始更新时钟标签
@@ -702,51 +687,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //        pausedScreens.remove(sid)
 //    }
 
-   /// 重新从内存加载并播放指定显示器上的视频。若读取失败则回退到直接播放。
+   /// 重新加载并播放指定显示器上的视频。
    /// - Parameter sid: 显示器的唯一标识符
-   func reloadAndPlayVideoFromMemory(displayUUID sid: String) {
-       dlog("reloadAndPlayVideoFromMemory displayUUID=\(sid)")
+   func reloadAndPlayVideo(displayUUID sid: String) {
+       dlog("reloadAndPlayVideo displayUUID=\(sid)")
        guard let screen = NSScreen.screen(forUUID: sid),
-             let entry = SharedWallpaperWindowManager.shared.screenContent[sid] else {
+             let entry = SharedWallpaperWindowManager.shared.screenContent[sid],
+             entry.type == .video else {
            SharedWallpaperWindowManager.shared.players[sid]?.play()
            return
        }
 
-       // 若已有播放器且已加载 item，直接继续播放，避免重复读盘/占用 IO
-       if let existingPlayer = SharedWallpaperWindowManager.shared.players[sid],
-          existingPlayer.currentItem != nil {
-           existingPlayer.play()
-           return
-       }
-
-       // 仅限视频
-       if entry.type == .video {
-           guard let data = self.cachedVideoData(for: entry.url) else {
-               do {
-                   let loaded = try Data(contentsOf: entry.url)
-                   self.cacheVideoData(loaded, for: entry.url)
-                   SharedWallpaperWindowManager.shared.showVideoFromMemory(
-                       for: screen,
-                       data: loaded,
-                       stretch: entry.stretch,
-                       volume: entry.volume ?? 1.0
-                   )
-               } catch {
-                   errorLog("Failed to read video data: \(error)")
-                   SharedWallpaperWindowManager.shared.players[sid]?.play()
-               }
-               return
-           }
-
-           SharedWallpaperWindowManager.shared.showVideoFromMemory(
-               for: screen,
-               data: data,
-               stretch: entry.stretch,
-               volume: entry.volume ?? 1.0
-           )
-       } else {
-           SharedWallpaperWindowManager.shared.players[sid]?.play()
-       }
+       SharedWallpaperWindowManager.shared.showVideo(
+           for: screen,
+           url: entry.url,
+           stretch: entry.stretch,
+           volume: entry.volume ?? 1.0,
+           allowReuse: false
+       )
    }
 
     func updatePlaybackStateForAllScreens() {
@@ -759,7 +717,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             } else {
                 if player.timeControlStatus != .playing {
-                    reloadAndPlayVideoFromMemory(displayUUID: sid)
+                    reloadAndPlayVideo(displayUUID: sid)
                 }
             }
         }
