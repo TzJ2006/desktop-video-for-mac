@@ -8,6 +8,7 @@
 import Cocoa
 import AVFoundation
 import AVKit
+import UniformTypeIdentifiers
 
 // Private CoreGraphics symbol to obtain the current connection ID
 @_silgen_name("_CGSDefaultConnection")
@@ -97,33 +98,25 @@ final class SpaceWallpaperManager {
 
     /// Attach a video player that loads data entirely into memory before playback.
     private func attachPlayer(to win: NSWindow, url: URL) -> AVPlayer {
-        dlog("attachPlayer load video \(url.lastPathComponent) into memory")
-        let data: Data
+        dlog("attachPlayer use memory-mapped video \(url.lastPathComponent)")
         do {
-            data = try Data(contentsOf: url)
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
+            let contentType = UTType(filenameExtension: url.pathExtension) ?? .video
+            let asset = AVDataAsset(data: data, contentType: contentType)
+            let item = AVPlayerItem(asset: asset)
+            let player = AVQueuePlayer(playerItem: item)
+            _ = AVPlayerLooper(player: player, templateItem: item)
+            let playerView = AVPlayerView(frame: win.contentView!.bounds)
+            playerView.player = player
+            playerView.controlsStyle = .none
+            playerView.autoresizingMask = [.width, .height]
+            win.contentView?.addSubview(playerView)
+            player.play()
+            return player
         } catch {
             errorLog("Failed to load video data: \(error)")
             return AVPlayer()
         }
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension(url.pathExtension)
-        do {
-            try data.write(to: tempURL)
-        } catch {
-            errorLog("Failed to write temp video file: \(error)")
-        }
-        let asset = AVAsset(url: tempURL)
-        let item = AVPlayerItem(asset: asset)
-        let player = AVQueuePlayer()
-        let _ = AVPlayerLooper(player: player, templateItem: item)
-        let playerView = AVPlayerView(frame: win.contentView!.bounds)
-        playerView.player = player
-        playerView.controlsStyle = .none
-        playerView.autoresizingMask = [.width, .height]
-        win.contentView?.addSubview(playerView)
-        player.play()
-        return player
     }
 
     private func pickMedia(for spaceID: UInt64) -> URL {

@@ -305,38 +305,112 @@ class SharedWallpaperWindowManager {
     AppDelegate.shared?.startScreensaverTimer()
   }
 
-  /// 为指定屏幕播放视频，始终从内存缓存读取数据。
+  /// 为指定屏幕播放视频，使用内存映射以减少磁盘读写。
   func showVideo(
     for screen: NSScreen, url: URL, stretch: Bool, volume: Float, allowReuse: Bool = true,
     onReady: (() -> Void)? = nil
   ) {
     ensureWindowOnCorrectScreen(for: screen)
+    let sid = id(for: screen)
     dlog(
-      "show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume) UID=\(id(for: screen))"
+      "show video \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume) UID=\(sid)"
     )
-    do {
-      let data: Data
-      if let cached = AppDelegate.shared.cachedVideoData(for: url) {
-        data = cached
-      } else {
-        let loaded = try Data(contentsOf: url)
-        AppDelegate.shared.cacheVideoData(loaded, for: url)
-        data = loaded
+
+    // Fast path: reuse existing player on the same screen
+    if allowReuse,
+       let existingContent = screenContent[sid],
+       existingContent.type == .video,
+       existingContent.url == url,
+       let existingPlayer = players[sid] {
+      dlog("reuse existing video player on same screen \(sid)")
+      existingPlayer.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
+      if let playerView = currentViews[sid] as? AVPlayerView {
+        playerView.videoGravity = stretch ? .resize : .resizeAspect
       }
-      dlog("saveBookmark in showVideo for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
+      if existingPlayer.timeControlStatus != .playing {
+        existingPlayer.play()
+      }
+      screenContent[sid] = (.video, url, stretch, volume)
+      NotificationCenter.default.post(
+        name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+      onReady?()
+      return
+    }
+
+    // Try to reuse player from other screens
+    if allowReuse {
+      for (existingSID, content) in screenContent {
+        if existingSID != sid,
+          content.type == .video,
+          content.url == url,
+          let existingPlayer = players[existingSID] {
+          dlog("reuse existing video player from screen \(existingSID)")
+          ensureWindow(for: screen)
+          stopVideoIfNeeded(for: screen)
+          let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
+          clonePlayerView.player = existingPlayer
+          clonePlayerView.controlsStyle = .none
+          clonePlayerView.videoGravity = stretch ? .resize : .resizeAspect
+          clonePlayerView.autoresizingMask = [.width, .height]
+          players[sid] = existingPlayer
+          loopers[sid] = loopers[existingSID]
+          screenContent[sid] = (.video, url, stretch, volume)
+          saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
+          AppState.shared.currentMediaURL = url.absoluteString
+          AppDelegate.shared?.startScreensaverTimer()
+          switchContent(to: clonePlayerView, for: screen)
+          NotificationCenter.default.post(
+            name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+          onReady?()
+          return
+        }
+      }
+    }
+
+    do {
+      let data = try Data(contentsOf: url, options: .mappedIfSafe)
+      guard let contentType = UTType(filenameExtension: url.pathExtension),
+            contentType.conforms(to: .movie) else {
+        errorLog("Unsupported video type")
+        return
+      }
+
+      ensureWindow(for: screen)
+      stopVideoIfNeeded(for: screen)
+      guard let contentView = windows[sid]?.contentView else { return }
+
+      let asset = AVDataAsset(data: data, contentType: contentType)
+      let item = AVPlayerItem(asset: asset)
+      let queuePlayer = AVQueuePlayer(playerItem: item)
+      queuePlayer.automaticallyWaitsToMinimizeStalling = false
+      let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
+
+      queuePlayer.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
+
+      let playerView = AVPlayerView(frame: contentView.bounds)
+      playerView.player = queuePlayer
+      playerView.controlsStyle = .none
+      playerView.videoGravity = stretch ? .resize : .resizeAspect
+      playerView.autoresizingMask = [.width, .height]
+
+      players[sid] = queuePlayer
+      loopers[sid] = looper
+      screenContent[sid] = (.video, url, stretch, volume)
       saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
       AppState.shared.currentMediaURL = url.absoluteString
       AppDelegate.shared?.startScreensaverTimer()
-      showVideoFromMemory(
-        for: screen,
-        data: data,
-        stretch: stretch,
-        volume: desktop_videoApp.shared!.globalMute ? 0.0 : volume,
-        originalURL: url,
-        allowReuse: allowReuse,
-        onReady: onReady)
+      switchContent(to: playerView, for: screen)
+      queuePlayer.play()
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        dlog("delayed play state check for \(screen.dv_localizedName)")
+        self?.updatePlayState(for: screen)
+      }
+      pausedScreens.remove(sid)
+      NotificationCenter.default.post(
+        name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+      onReady?()
     } catch {
-      errorLog("Cannot load from memory!")
+      errorLog("Failed to load video data: \(error)")
     }
   }
 
@@ -402,29 +476,9 @@ class SharedWallpaperWindowManager {
       BookmarkStore.purge(id: sid)
     }
 
-    // ---------- 新增：释放缓存 ----------
-    if let entry = screenContent[sid], entry.type == .video {
-      // 1️⃣ 先暂停并移除 player，确保没有引用
-      stopVideoIfNeeded(for: screen)
-      players[sid]?.replaceCurrentItem(with: nil)
-
-      // 2️⃣ 若别的屏幕没在用，移除 Data 缓存
-      let usedElsewhere = screenContent.contains { $0.key != sid && $0.value.url == entry.url }
-      if !usedElsewhere { AppDelegate.shared.removeCachedVideoData(for: entry.url) }
-
-      // 3️⃣ 无论如何，删除 **所有** 以 sid 为前缀的 temp 文件
-      let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
-      if let contents = try? FileManager.default.contentsOfDirectory(
-        at: tempDir, includingPropertiesForKeys: nil)
-      {
-        for file in contents where file.lastPathComponent.hasPrefix("cached-\(sid)-") {
-          try? FileManager.default.removeItem(at: file)
-        }
-      }
-    } else {
-      // 非视频也要移除潜在的播放器引用
-      stopVideoIfNeeded(for: screen)
-    }
+    // 移除播放器引用
+    stopVideoIfNeeded(for: screen)
+    players[sid]?.replaceCurrentItem(with: nil)
 
     if let pv = currentViews[sid] as? AVPlayerView {
       dlog("detach player view for \(screen.dv_localizedName)")
@@ -899,7 +953,7 @@ class SharedWallpaperWindowManager {
         "black screen detected on \(screen.dv_localizedName) viewMissing=\(viewMissing) playerMissing=\(playerMissing)"
       )
       if playerMissing && !viewMissing {
-        AppDelegate.shared.reloadAndPlayVideoFromMemory(displayUUID: sid)
+        AppDelegate.shared.reloadAndPlayVideo(displayUUID: sid)
       } else {
         restoreFromBookmark(for: screen)
       }
@@ -915,155 +969,6 @@ class SharedWallpaperWindowManager {
   ///   - originalURL: 用户选择的视频源地址
   ///   - allowReuse: 是否允许与其他屏幕复用播放器
   ///   - onReady: 准备完成回调
-  func showVideoFromMemory(
-    for screen: NSScreen, data: Data, stretch: Bool, volume: Float, originalURL: URL? = nil,
-    allowReuse: Bool = true, onReady: (() -> Void)? = nil
-  ) {
-    dlog("show video from memory on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
-    ensureWindowOnCorrectScreen(for: screen)
-    let sid = id(for: screen)
-
-    // Fast path: same screen, same URL → just reuse the existing player / view.
-    if allowReuse,
-      let existingContent = screenContent[sid],
-      existingContent.type == .video,
-      existingContent.url == originalURL,
-      let existingPlayer = players[sid]
-    {
-
-      dlog("reuse existing video player on same screen \(sid)")
-      // Update stretch and volume only.
-      existingPlayer.volume = volume
-      if let playerView = currentViews[sid] as? AVPlayerView {
-        playerView.videoGravity = stretch ? .resize : .resizeAspect
-      }
-      // Ensure it is playing.
-      if existingPlayer.timeControlStatus != .playing {
-        existingPlayer.play()
-      }
-      // Refresh cached meta.
-      screenContent[sid] = (.video, originalURL ?? existingContent.url, stretch, volume)
-      NotificationCenter.default.post(
-        name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-      return
-    }
-
-    // 1. 优先尝试重用已存在的相同视频播放器
-    if allowReuse {
-      for (existingSID, content) in screenContent {
-        if existingSID != sid,
-          content.type == .video,
-          content.url == originalURL,
-          let existingPlayer = players[existingSID]
-        {
-          _ = currentViews[existingSID] as? AVPlayerView
-          dlog("reuse existing video player from screen \(existingSID)")
-          ensureWindow(for: screen)
-          stopVideoIfNeeded(for: screen)
-          let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
-          clonePlayerView.player = existingPlayer
-          clonePlayerView.controlsStyle = .none
-          clonePlayerView.videoGravity = stretch ? .resize : .resizeAspect
-          clonePlayerView.autoresizingMask = [.width, .height]
-          players[sid] = existingPlayer
-          loopers[sid] = loopers[existingSID]
-          screenContent[sid] = (.video, originalURL!, stretch, volume)
-          switchContent(to: clonePlayerView, for: screen)
-          NotificationCenter.default.post(
-            name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-          return
-        }
-      }
-    }
-
-    // Cleanup *other* cached temp files for this screen (keep the current hashed one)
-    let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
-    // Use a stable file name derived from the original URL so we only write once.
-    let hashed = originalURL?.lastPathComponent.hashValue ?? 0
-    let fileName = "cached-\(sid)-\(hashed).\(originalURL?.pathExtension ?? "mov")"
-    if let contents = try? FileManager.default.contentsOfDirectory(
-      at: tempDir, includingPropertiesForKeys: nil, options: [])
-    {
-      for fileURL in contents
-      where fileURL.lastPathComponent.hasPrefix("cached-\(sid)-")
-        && fileURL.lastPathComponent != fileName
-      {
-        try? FileManager.default.removeItem(at: fileURL)
-      }
-    }
-
-    // Remove previous cached video data for this URL to free memory,
-    // 但如果其他屏幕还在使用该视频，则不移除
-    if let previousURL = screenContent[sid]?.url {
-      let stillInUse = screenContent.contains { $0.key != sid && $0.value.url == previousURL }
-      if !stillInUse {
-        AppDelegate.shared.removeCachedVideoData(for: previousURL)
-      }
-    }
-
-    ensureWindow(for: screen)
-    stopVideoIfNeeded(for: screen)
-    guard let contentView = windows[sid]?.contentView else { return }
-
-    guard let contentType = UTType(filenameExtension: originalURL?.pathExtension ?? "mov"),
-      contentType.conforms(to: .movie)
-    else {
-      errorLog("Unsupported video type")
-      return
-    }
-
-    let tempURL = tempDir.appendingPathComponent(fileName)
-
-    if !FileManager.default.fileExists(atPath: tempURL.path) {
-      do {
-        try data.write(to: tempURL)
-      } catch {
-        errorLog("Failed to write temp file for video: \(error)")
-        return
-      }
-    }
-
-    let asset = AVAsset(url: tempURL)
-    let item = AVPlayerItem(asset: asset)
-    let queuePlayer = AVQueuePlayer()
-    queuePlayer.automaticallyWaitsToMinimizeStalling = false
-    let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
-
-    queuePlayer.volume = volume
-
-    let playerView = AVPlayerView(frame: contentView.bounds)
-    playerView.player = queuePlayer
-    playerView.controlsStyle = .none
-    playerView.videoGravity = stretch ? .resize : .resizeAspect
-    playerView.autoresizingMask = [.width, .height]
-
-    players[sid] = queuePlayer
-    loopers[sid] = looper
-    // 记录原始视频地址而非临时文件，用于保留用户选择
-    let existingURL = screenContent[sid]?.url
-    let actualURL = originalURL ?? existingURL ?? URL(fileURLWithPath: L("UnknownPath"))
-    screenContent[sid] = (.video, actualURL, stretch, volume)
-
-    if let sourceURL = originalURL {
-      saveBookmark(for: sourceURL, stretch: stretch, volume: volume, screen: screen)
-    }
-
-    switchContent(to: playerView, for: screen)
-    queuePlayer.play()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-      dlog("delayed play state check for \(screen.dv_localizedName)")
-      self?.updatePlayState(for: screen)
-    }
-    // 视频开始播放时移除暂停标记
-    pausedScreens.remove(sid)
-    NotificationCenter.default.post(
-      name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-  }
-
-  /// 控制单个屏幕视频的暂停/播放
-  func setPaused(_ paused: Bool, for screen: NSScreen) {
-    let sid = id(for: screen)
-    guard let player = players[sid] else { return }
     if paused {
       pausedScreens.insert(sid)
       player.pause()
