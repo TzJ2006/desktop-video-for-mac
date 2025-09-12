@@ -352,6 +352,24 @@ class SharedWallpaperWindowManager {
       return
     }
 
+    // Stop existing playback before loading new data to avoid memory spikes
+    if let existing = screenContent[sid], existing.type == .video {
+      stopVideoIfNeeded(for: screen)
+      if existing.url != url {
+        let stillUsed = screenContent.contains { $0.key != sid && $0.value.url == existing.url }
+        if !stillUsed {
+          videoDataCache.removeObject(forKey: existing.url as NSURL)
+          dlog("purge cached data for \(existing.url.lastPathComponent)")
+        }
+      }
+      if let pv = currentViews[sid] as? AVPlayerView {
+        dlog("detach old player view for \(screen.dv_localizedName)")
+        pv.player = nil
+      }
+    } else {
+      stopVideoIfNeeded(for: screen)
+    }
+
     do {
       let data = try videoData(for: url)
       guard let contentType = UTType(filenameExtension: url.pathExtension),
@@ -361,7 +379,6 @@ class SharedWallpaperWindowManager {
       }
 
       ensureWindow(for: screen)
-      stopVideoIfNeeded(for: screen)
       guard let contentView = windows[sid]?.contentView else { return }
 
       let asset = AVDataAsset(data: data, contentType: contentType)
@@ -534,13 +551,15 @@ class SharedWallpaperWindowManager {
   private func stopVideoIfNeeded(for screen: NSScreen) {
     dlog("stop video for \(screen.dv_localizedName)")
     let sid = id(for: screen)
+    if let looper = loopers[sid] {
+      looper.disableLooping()
+      loopers.removeValue(forKey: sid)
+    }
     if let player = players[sid] {
       player.pause()
       player.replaceCurrentItem(with: nil)
+      players.removeValue(forKey: sid)
     }
-    loopers[sid]?.disableLooping()
-    players.removeValue(forKey: sid)
-    loopers.removeValue(forKey: sid)
   }
 
   private func switchContent(to newView: NSView, for screen: NSScreen) {

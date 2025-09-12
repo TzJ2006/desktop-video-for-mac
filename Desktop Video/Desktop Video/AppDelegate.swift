@@ -655,37 +655,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //       hasOpenedMainWindowOnce = true
    }
 
-    // MARK: - Per-Screen Pause / Resume
-    private var pausedScreens = Set<String>()
-
-//    private func pauseVideo(for sid: CGDirectDisplayID) {
-//        if let player = SharedWallpaperWindowManager.shared.players[sid],
-//           player.timeControlStatus != .paused {
-//            dlog("pauseVideo(for: \(sid))")
-//            player.pause()
-//            pausedScreens.insert(sid)
-//        }
-//    }
-
-//    private func resumeVideo(for sid: CGDirectDisplayID) {
-//
-//        dlog("resmeVideo(for: \(sid))")
-//        // 如果本屏幕的 player 已在 playing，直接 return
-//        if let player = SharedWallpaperWindowManager.shared.players[sid],
-//           player.timeControlStatus == .playing { return }
-//
-//        // 如果目前有别的屏幕仍处于 .paused，就不要把共享 playerItem 拉起来
-//        let otherPaused = pausedScreens.subtracting([sid])
-//        if !otherPaused.isEmpty {
-//            // 其他屏幕还在 pause，先只把自己的 player.play()，不重新 showVideo
-//            SharedWallpaperWindowManager.shared.players[sid]?.play()
-//            pausedScreens.remove(sid)
-//            return
-//        }
-//        // 所有屏幕都准备 resume，才 reload once
-//        reloadAndPlayVideoFromMemory(displayID: sid)
-//        pausedScreens.remove(sid)
-//    }
+   // MARK: - Video Control
 
    /// 重新加载并播放指定显示器上的视频。
    /// - Parameter sid: 显示器的唯一标识符
@@ -717,7 +687,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             } else {
                 if player.timeControlStatus != .playing {
-                    reloadAndPlayVideo(displayUUID: sid)
+                    if player.currentItem != nil {
+                        let time = player.currentItem!.currentTime()
+                        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                            player.play()
+                        }
+                    } else {
+                        reloadAndPlayVideo(displayUUID: sid)
+                    }
                 }
             }
         }
