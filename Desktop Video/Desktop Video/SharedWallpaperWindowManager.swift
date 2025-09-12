@@ -930,15 +930,24 @@ class SharedWallpaperWindowManager {
     return false
   }
 
-  // Placeholder for missing AVDataAsset type
-  // If you have a custom AVDataAsset, import or define it. Otherwise, fallback to AVURLAsset or similar.
-  // For now, this is a stub to avoid build errors.
+  // MARK: - AVDataAsset
+  // 将内存中的视频数据写入带扩展名的临时文件以供播放
   class AVDataAsset: AVURLAsset, @unchecked Sendable {
-    convenience init(data: Data, contentType: UTType) {
-      // This is a stub. Replace with actual implementation if needed.
-      let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+    private let tempURL: URL
+
+    init(data: Data, contentType: UTType) {
+      let ext = contentType.preferredFilenameExtension ?? "mov"
+      let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent(UUID().uuidString)
+        .appendingPathExtension(ext)
       try? data.write(to: tempURL)
-      self.init(url: tempURL, options: nil)
+      dlog("create AVDataAsset temp file \(tempURL.lastPathComponent)")
+      self.tempURL = tempURL
+      super.init(url: tempURL, options: nil)
+    }
+
+    deinit {
+      try? FileManager.default.removeItem(at: tempURL)
     }
   }
 }
