@@ -125,3 +125,14 @@ final class SpaceWallpaperManager {
         return all.randomElement()!
     }
 }
+
+// MARK: - AVDataAsset Extension
+// Custom AVDataAsset class for creating video assets from data
+class AVDataAsset: AVURLAsset, @unchecked Sendable {
+    convenience init(data: Data, contentType: UTType) {
+        // Create a temporary file from the data for video playback
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try? data.write(to: tempURL)
+        self.init(url: tempURL, options: nil)
+    }
+}
