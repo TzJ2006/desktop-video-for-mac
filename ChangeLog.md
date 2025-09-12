@@ -16,6 +16,14 @@
 - Use in-memory video data caching to reduce disk reads
 - 修复内存播放视频缺少扩展名导致黑屏的问题
 - Fix black screen when temporary video files missed extensions
+- 修复恢复播放从头开始的问题
+- Fix video restarting instead of resuming playback
+- 修复恢复播放时的黑屏闪烁
+- Fix black screen flash when resuming playback
+- 修复移除视频时的内存错误崩溃
+- Fix memory error crash when removing videos
+- 修复更换视频时的内存峰值问题，适配多屏场景
+- Fix memory spike when switching videos across multiple screens
 
 ### Version 4.0 Preview 0909 hot-fix 4 (2025-09-11)
 
