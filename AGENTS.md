@@ -11,21 +11,29 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 ## Project Structure
 
 ```
- desktop video/
-├── desktop video/
+Desktop Video/
+├── Desktop Video/
 │   ├── AppDelegate.swift
 │   ├── ContentView.swift
-│   ├── desktop_videoApp.swift
+│   ├── Desktop_VideoApp.swift
+│   ├── KeyBindings.swift
 │   ├── LanguageManager.swift
 │   ├── SharedWallpaperWindowManager.swift
+│   ├── SpaceWallPaperManager.swift
 │   ├── Utils.swift
 │   ├── WallpaperWindow.swift
-│   └── Localizable.xcstrings
+│   ├── Localizable.xcstrings
+│   ├── Theme/
+│   ├── ViewModels/
+│   └── UI/
+├── Desktop Video.xcodeproj
+├── Desktop VideoTests/
+├── Desktop VideoUITests/
 ├── ChangeLog.md
 ├── README-EN.md
 ├── README.md
 ├── SECURITY.md
-├── releases/
+├── archive/
 ├── statics/
 └── demos/
 ```
@@ -37,13 +45,13 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 - Read through the entire repo.
 - Use Xcode's default Swift formatting or swift-format.
 - Keep code clean and readable.
-- Reuse the methods that is already written.
-- Check whethere there are previous logic and methods that are no longer effective.
+- Reuse existing methods where possible.
+- Remove any obsolete logic or unused methods.
 - Add a clear, informative log statement for each new function to aid debugging.
 - Provide Chinese comments when adding command-line scripts.
-- For Change log, please write it in both English and Chinese; note that please put the later version on the top, above all previous methods
-- For the date of the Change log, do NOT infer, Check the current date through Internet or through your system;
-- For the version, do NOT infer, use "Version `<Previous-Version-number> `hot-fix `<index>`". There should be only one hot-fix each day.
+- Update `ChangeLog.md` in both English and Chinese, placing the newest version at the top.
+- Use the actual current date for change-log entries.
+- Use `Version <previous-version-number> hot-fix <index>` for versioning. Only one hot-fix is allowed per day.
 
 ### Naming Conventions
 
@@ -59,15 +67,15 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 
 ## Required Checks
 
-Please check the localizations and translations to find out whether there are changes or additions in code that needs to trasnlate.
-If translate is needed, please translate and put the result in the Localizable.xcstrings file.
+Check the localizations to see if code changes require translation.
+If translation is needed, update `Localizable.xcstrings` accordingly.
 
 Run the following command to verify the project compiles:
 
 ```bash
 xcodebuild \
-  -project "desktop video/desktop video.xcodeproj" \
-  -scheme "desktop video" \
+  -project "Desktop Video/Desktop Video.xcodeproj" \
+  -scheme "Desktop Video" \
   -destination "platform=macOS" \
   clean build
 ```
@@ -89,8 +97,8 @@ set -e  # 出错就退出
 
 git clone https://github.com/TzJ2006/desktop-video-for-mac.git
 
-PROJECT_NAME="desktop video"
-SCHEME_NAME="desktop video"
+PROJECT_DIR="Desktop Video"
+SCHEME_NAME="Desktop Video"
 DESTINATION="platform=macOS"
 
 echo "📦 检查 xcodebuild 是否可用..."
@@ -100,14 +108,14 @@ echo "📁 正在初始化项目环境..."
 
 echo "🚧 正在构建项目..."
 xcodebuild \
-  -project "${PROJECT_NAME}.xcodeproj" \
+  -project "${PROJECT_DIR}/${SCHEME_NAME}.xcodeproj" \
   -scheme "$SCHEME_NAME" \
   -destination "$DESTINATION" \
   clean build
 
 echo "🚀 正在启动 App..."
-open "build/Release/${PROJECT_NAME}.app" || \
-open "$HOME/Library/Developer/Xcode/DerivedData"/*/Build/Products/Debug/${PROJECT_NAME}.app
+open "build/Release/${SCHEME_NAME}.app" || \
+open "$HOME/Library/Developer/Xcode/DerivedData"/*/Build/Products/Debug/${SCHEME_NAME}.app
 
 echo "✅ 启动完成"
 ```

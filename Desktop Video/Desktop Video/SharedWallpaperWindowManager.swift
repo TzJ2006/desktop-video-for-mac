@@ -167,11 +167,23 @@ class SharedWallpaperWindowManager {
   /// 状态栏视频窗口
   var statusBarWindows: [String: NSWindow] = [:]
   var players: [String: AVQueuePlayer] = [:]
+  private let videoDataCache = NSCache<NSURL, NSData>()
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
 
   enum ContentType {
     case image
     case video
+  }
+
+  private func videoData(for url: URL) throws -> Data {
+    if let cached = videoDataCache.object(forKey: url as NSURL) {
+      dlog("reuse cached data for \(url.lastPathComponent)")
+      return cached as Data
+    }
+    let data = try Data(contentsOf: url, options: .mappedIfSafe)
+    videoDataCache.setObject(data as NSData, forKey: url as NSURL)
+    dlog("cache video data for \(url.lastPathComponent)")
+    return data
   }
 
   private func ensureWindow(for screen: NSScreen) {
@@ -300,6 +312,9 @@ class SharedWallpaperWindowManager {
     saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
 
     switchContent(to: imageView, for: screen)
+    DispatchQueue.main.async { [weak self] in
+      self?.updatePlayState(for: screen)
+    }
     NotificationCenter.default.post(
       name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     AppDelegate.shared?.startScreensaverTimer()
@@ -337,38 +352,8 @@ class SharedWallpaperWindowManager {
       return
     }
 
-    // Try to reuse player from other screens
-    if allowReuse {
-      for (existingSID, content) in screenContent {
-        if existingSID != sid,
-          content.type == .video,
-          content.url == url,
-          let existingPlayer = players[existingSID] {
-          dlog("reuse existing video player from screen \(existingSID)")
-          ensureWindow(for: screen)
-          stopVideoIfNeeded(for: screen)
-          let clonePlayerView = AVPlayerView(frame: windows[sid]!.contentView!.bounds)
-          clonePlayerView.player = existingPlayer
-          clonePlayerView.controlsStyle = .none
-          clonePlayerView.videoGravity = stretch ? .resize : .resizeAspect
-          clonePlayerView.autoresizingMask = [.width, .height]
-          players[sid] = existingPlayer
-          loopers[sid] = loopers[existingSID]
-          screenContent[sid] = (.video, url, stretch, volume)
-          saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
-          AppState.shared.currentMediaURL = url.absoluteString
-          AppDelegate.shared?.startScreensaverTimer()
-          switchContent(to: clonePlayerView, for: screen)
-          NotificationCenter.default.post(
-            name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
-          onReady?()
-          return
-        }
-      }
-    }
-
     do {
-      let data = try Data(contentsOf: url, options: .mappedIfSafe)
+      let data = try videoData(for: url)
       guard let contentType = UTType(filenameExtension: url.pathExtension),
             contentType.conforms(to: .movie) else {
         errorLog("Unsupported video type")
@@ -401,6 +386,9 @@ class SharedWallpaperWindowManager {
       AppDelegate.shared?.startScreensaverTimer()
       switchContent(to: playerView, for: screen)
       queuePlayer.play()
+      DispatchQueue.main.async { [weak self] in
+        self?.updatePlayState(for: screen)
+      }
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
         dlog("delayed play state check for \(screen.dv_localizedName)")
         self?.updatePlayState(for: screen)
@@ -478,7 +466,6 @@ class SharedWallpaperWindowManager {
 
     // 移除播放器引用
     stopVideoIfNeeded(for: screen)
-    players[sid]?.replaceCurrentItem(with: nil)
 
     if let pv = currentViews[sid] as? AVPlayerView {
       dlog("detach player view for \(screen.dv_localizedName)")
@@ -501,6 +488,13 @@ class SharedWallpaperWindowManager {
     if let win = windows[sid] {
       win.orderOut(nil)
       win.close()
+    }
+    if let entry = screenContent[sid], entry.type == .video {
+      let stillUsed = screenContent.contains { $0.key != sid && $0.value.url == entry.url }
+      if !stillUsed {
+        videoDataCache.removeObject(forKey: entry.url as NSURL)
+        dlog("purge cached data for \(entry.url.lastPathComponent)")
+      }
     }
     if !keepContent {
       screenContent.removeValue(forKey: sid)
@@ -538,26 +532,13 @@ class SharedWallpaperWindowManager {
   }
 
   private func stopVideoIfNeeded(for screen: NSScreen) {
-    dlog("stop video if needed on \(screen.dv_localizedName)")
+    dlog("stop video for \(screen.dv_localizedName)")
     let sid = id(for: screen)
-    guard let player = players[sid] else {
-      players.removeValue(forKey: sid)
-      loopers.removeValue(forKey: sid)
-      return
-    }
-
-    let isShared = players.contains { key, value in
-      key != sid && value === player
-    }
-
-    if !isShared {
+    if let player = players[sid] {
       player.pause()
       player.replaceCurrentItem(with: nil)
-      loopers[sid]?.disableLooping()
-    } else {
-      dlog("skip stopping shared player for \(screen.dv_localizedName)")
     }
-
+    loopers[sid]?.disableLooping()
     players.removeValue(forKey: sid)
     loopers.removeValue(forKey: sid)
   }
@@ -569,8 +550,6 @@ class SharedWallpaperWindowManager {
     currentViews[sid]?.removeFromSuperview()
     contentView.addSubview(newView)
     currentViews[sid] = newView
-    // 内容切换完成后，根据遮挡状态重新评估播放/暂停
-    updatePlayState(for: screen)
     // 根据设置更新状态栏视频
     updateStatusBarVideo(for: screen)
   }
