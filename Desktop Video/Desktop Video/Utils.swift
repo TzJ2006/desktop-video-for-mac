@@ -194,3 +194,10 @@ final class LogFile {
         try? fileHandle?.close()                // 关闭句柄
     }
 }
+
+extension NSObject {
+    /// 断言当前线程为主线程，避免在后台释放 UI 对象
+    func assertMainThread(_ msg: String = "") {
+        precondition(Thread.isMainThread, msg.isEmpty ? "UI must be on main thread" : msg)
+    }
+}
