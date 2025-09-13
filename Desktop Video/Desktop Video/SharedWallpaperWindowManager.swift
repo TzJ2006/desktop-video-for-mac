@@ -165,7 +165,7 @@ class SharedWallpaperWindowManager {
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
   var screensaverOverlayWindows: [String: NSWindow] = [:]
   /// 状态栏视频窗口
-  var statusBarWindows: [String: NSWindow] = [:]
+  var statusBarWindows: [String: StatusBarVideoWindow] = [:]
   var players: [String: AVQueuePlayer] = [:]
   private let videoDataCache = NSCache<NSURL, NSData>()
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
@@ -618,43 +618,38 @@ class SharedWallpaperWindowManager {
   func updateStatusBarVideo(for screen: NSScreen) {
     let sid = id(for: screen)
     let enabled = UserDefaults.standard.bool(forKey: "showMenuBarVideo")
-    guard enabled else {
+    guard enabled, let player = players[sid] else {
       if let win = statusBarWindows[sid] {
-        dlog("remove status bar tint on \(screen.dv_localizedName)")
+        dlog("remove status bar video on \(screen.dv_localizedName)")
         win.orderOut(nil)
         statusBarWindows.removeValue(forKey: sid)
       }
       return
     }
 
-    dlog("update status bar tint on \(screen.dv_localizedName)")
+    dlog("update status bar video on \(screen.dv_localizedName)")
     let barHeight = NSStatusBar.system.thickness
     let screenFrame = screen.frame
     let frame = CGRect(
       x: screenFrame.minX, y: screenFrame.maxY - barHeight, width: screenFrame.width,
       height: barHeight)
 
-    let win: NSWindow
+    let win: StatusBarVideoWindow
     if let existing = statusBarWindows[sid] {
       win = existing
       win.setFrame(frame, display: true)
     } else {
-      win = NSWindow(
-        contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-      win.level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)))
-      win.isOpaque = false
-      win.backgroundColor = .clear
-      win.ignoresMouseEvents = true
-      win.collectionBehavior = [.canJoinAllSpaces, .stationary]
-      let effectView = NSVisualEffectView(frame: .zero)
-      effectView.material = .contentBackground
-      effectView.blendingMode = .behindWindow
-      effectView.state = .active
-      effectView.autoresizingMask = [.width, .height]
-      win.contentView = effectView
+      win = StatusBarVideoWindow(frame: frame, player: player)
       statusBarWindows[sid] = win
     }
 
+    let gap: CGFloat
+    if #available(macOS 12.0, *) {
+      gap = screen.frame.width - screen.safeArea.width
+    } else {
+      gap = 0
+    }
+    win.applySplitMask(gap: gap)
     win.orderFrontRegardless()
   }
 
