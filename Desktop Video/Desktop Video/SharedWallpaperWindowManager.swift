@@ -66,7 +66,7 @@ class SharedWallpaperWindowManager {
     let sid = id(for: screen)
 
     // Wallpaper window
-    if let win = windows[sid], win.screen !== screen {
+    if let win = windowControllers[sid]?.window, win.screen !== screen {
       clear(for: screen, purgeBookmark: false, keepContent: true)
     }
 
@@ -159,7 +159,7 @@ class SharedWallpaperWindowManager {
   private var savedVolumes: [String: Float] = [:]
   private var currentViews: [String: NSView] = [:]
   private var loopers: [String: AVPlayerLooper] = [:]
-  var windows: [String: WallpaperWindow] = [:]
+  @MainActor private var windowControllers: [String: WallpaperWindowController] = [:]
   /// 用于检测遮挡状态的小窗口（每个屏幕四个）
   var overlayWindows: [String: NSWindow] = [:]
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
@@ -186,11 +186,11 @@ class SharedWallpaperWindowManager {
     return data
   }
 
-  private func ensureWindow(for screen: NSScreen) {
+  @MainActor private func setupWindow(for screen: NSScreen) {
     dlog("ensure window for \(screen.dv_localizedName)")
     let sid = id(for: screen)
-    if windows[sid] != nil {
-      windows[sid]?.orderFrontRegardless()
+    if windowControllers[sid] != nil {
+      windowControllers[sid]?.window?.orderFrontRegardless()
       return
     }
 
@@ -282,7 +282,9 @@ class SharedWallpaperWindowManager {
     screensaverOverlay.collectionBehavior = [.canJoinAllSpaces, .stationary]
     screensaverOverlay.orderFrontRegardless()
 
-    self.windows[sid] = win
+    let controller = WallpaperWindowController(window: win)
+    controller.start(on: screen)
+    self.windowControllers[sid] = controller
     self.overlayWindows[sid] = overlay
     self.screensaverOverlayWindows[sid] = screensaverOverlay
 
@@ -290,15 +292,22 @@ class SharedWallpaperWindowManager {
     updatePlayState(for: screen)
   }
 
+  @MainActor private func tearDownWindow(for screen: NSScreen) {
+    let sid = id(for: screen)
+    if let controller = windowControllers.removeValue(forKey: sid) {
+      controller.stop()
+    }
+  }
+
   func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
     dlog("show image \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch)")
     ensureWindowOnCorrectScreen(for: screen)
     let sid = id(for: screen)
-    ensureWindow(for: screen)
+    setupWindow(for: screen)
     stopVideoIfNeeded(for: screen)
 
     guard let image = NSImage(contentsOf: url),
-      let contentView = windows[sid]?.contentView
+      let contentView = windowControllers[sid]?.window?.contentView
     else { return }
 
     let imageView = NSImageView(frame: contentView.bounds)
@@ -378,8 +387,8 @@ class SharedWallpaperWindowManager {
         return
       }
 
-      ensureWindow(for: screen)
-      guard let contentView = windows[sid]?.contentView else { return }
+      setupWindow(for: screen)
+      guard let contentView = windowControllers[sid]?.window?.contentView else { return }
 
       let asset = AVDataAsset(data: data, contentType: contentType)
       let item = AVPlayerItem(asset: asset)
@@ -502,10 +511,7 @@ class SharedWallpaperWindowManager {
       overlay.orderOut(nil)
       screensaverOverlayWindows.removeValue(forKey: sid)
     }
-    if let win = windows[sid] {
-      win.orderOut(nil)
-      win.close()
-    }
+    tearDownWindow(for: screen)
     if let entry = screenContent[sid], entry.type == .video {
       let stillUsed = screenContent.contains { $0.key != sid && $0.value.url == entry.url }
       if !stillUsed {
@@ -519,7 +525,6 @@ class SharedWallpaperWindowManager {
         AppState.shared.currentMediaURL = nil
       }
     }
-    windows.removeValue(forKey: sid)
     overlayWindows.removeValue(forKey: sid)
     screensaverOverlayWindows.removeValue(forKey: sid)
     if let statusWin = statusBarWindows[sid] {
@@ -565,7 +570,7 @@ class SharedWallpaperWindowManager {
   private func switchContent(to newView: NSView, for screen: NSScreen) {
     dlog("switch content on \(screen.dv_localizedName)")
     let sid = id(for: screen)
-    guard let contentView = windows[sid]?.contentView else { return }
+    guard let contentView = windowControllers[sid]?.window?.contentView else { return }
     currentViews[sid]?.removeFromSuperview()
     contentView.addSubview(newView)
     currentViews[sid] = newView
@@ -797,7 +802,7 @@ class SharedWallpaperWindowManager {
   private func cleanupDisconnectedScreens() {
     dlog("cleanup disconnected screens")
     let activeIDs = Set(NSScreen.screens.map { $0.dv_displayUUID })
-    for sid in Array(windows.keys) {
+    for sid in Array(windowControllers.keys) {
       if !activeIDs.contains(sid) {
         if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: sid),
           Date().timeIntervalSince1970 - savedAt > 86400
@@ -811,7 +816,7 @@ class SharedWallpaperWindowManager {
           players.removeValue(forKey: sid)
           loopers.removeValue(forKey: sid)
           currentViews.removeValue(forKey: sid)
-          windows.removeValue(forKey: sid)
+          windowControllers.removeValue(forKey: sid)?.stop()
           screenContent.removeValue(forKey: sid)
         }
       }
@@ -864,7 +869,7 @@ class SharedWallpaperWindowManager {
   private func reloadScreens() {
     dlog("reload screens")
     let activeIDs = Set(NSScreen.screens.map { $0.dv_displayUUID })
-    let knownIDs = Set(windows.keys)
+    let knownIDs = Set(windowControllers.keys)
 
     // Remove disconnected screen windows
     for sid in knownIDs.subtracting(activeIDs) {
@@ -886,10 +891,7 @@ class SharedWallpaperWindowManager {
           overlay.orderOut(nil)
           screensaverOverlayWindows.removeValue(forKey: sid)
         }
-        if let win = windows[sid] {
-          win.orderOut(nil)
-          windows.removeValue(forKey: sid)
-        }
+        windowControllers.removeValue(forKey: sid)?.stop()
         currentViews[sid]?.removeFromSuperview()
         currentViews.removeValue(forKey: sid)
         players[sid]?.pause()
