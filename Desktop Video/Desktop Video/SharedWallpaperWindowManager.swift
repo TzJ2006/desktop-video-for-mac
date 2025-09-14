@@ -12,6 +12,7 @@ import CoreGraphics  // for CGWindowListCopyWindowInfo
 import Foundation
 import UniformTypeIdentifiers
 
+@MainActor
 class SharedWallpaperWindowManager {
   static let shared = SharedWallpaperWindowManager()
 
@@ -159,7 +160,7 @@ class SharedWallpaperWindowManager {
   private var savedVolumes: [String: Float] = [:]
   private var currentViews: [String: NSView] = [:]
   private var loopers: [String: AVPlayerLooper] = [:]
-  @MainActor private var windowControllers: [String: WallpaperWindowController] = [:]
+  private var windowControllers: [String: WallpaperWindowController] = [:]
   /// 用于检测遮挡状态的小窗口（每个屏幕四个）
   var overlayWindows: [String: NSWindow] = [:]
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
@@ -186,7 +187,7 @@ class SharedWallpaperWindowManager {
     return data
   }
 
-  @MainActor private func setupWindow(for screen: NSScreen) {
+  private func setupWindow(for screen: NSScreen) {
     dlog("ensure window for \(screen.dv_localizedName)")
     let sid = id(for: screen)
     if windowControllers[sid] != nil {
@@ -292,7 +293,7 @@ class SharedWallpaperWindowManager {
     updatePlayState(for: screen)
   }
 
-  @MainActor private func tearDownWindow(for screen: NSScreen) {
+  private func tearDownWindow(for screen: NSScreen) {
     let sid = id(for: screen)
     if let controller = windowControllers.removeValue(forKey: sid) {
       controller.stop()
@@ -525,8 +526,6 @@ class SharedWallpaperWindowManager {
         AppState.shared.currentMediaURL = nil
       }
     }
-    overlayWindows.removeValue(forKey: sid)
-    screensaverOverlayWindows.removeValue(forKey: sid)
     if let statusWin = statusBarWindows[sid] {
       statusWin.orderOut(nil)
       statusBarWindows.removeValue(forKey: sid)
