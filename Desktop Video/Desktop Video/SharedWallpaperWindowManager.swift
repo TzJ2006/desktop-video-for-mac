@@ -160,7 +160,7 @@ class SharedWallpaperWindowManager {
   private var savedVolumes: [String: Float] = [:]
   private var currentViews: [String: NSView] = [:]
   private var loopers: [String: AVPlayerLooper] = [:]
-  private var windowControllers: [String: WallpaperWindowController] = [:]
+  var windowControllers: [String: WallpaperWindowController] = [:]
   /// 用于检测遮挡状态的小窗口（每个屏幕四个）
   var overlayWindows: [String: NSWindow] = [:]
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
@@ -649,7 +649,8 @@ class SharedWallpaperWindowManager {
 
     let gap: CGFloat
     if #available(macOS 12.0, *) {
-      gap = screen.frame.width - screen.safeArea.width
+      // On macOS, use visibleFrame to account for menu bar, dock, etc.
+      gap = screen.frame.width - screen.visibleFrame.width
     } else {
       gap = 0
     }

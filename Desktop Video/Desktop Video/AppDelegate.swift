@@ -17,6 +17,7 @@ import Foundation
 
 
 // AppDelegate: APP 启动项管理，启动 APP 的时候会先运行 AppDelegate
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
    static var shared: AppDelegate!
@@ -249,9 +250,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // 使用现有窗口列表的键值
        let keys = NSScreen.screens.compactMap { screen in
            let id = screen.dv_displayUUID
-           return SharedWallpaperWindowManager.shared.windows.keys.contains(id) ? id : nil
+           return SharedWallpaperWindowManager.shared.windowControllers.keys.contains(id) ? id : nil
        }
-       dlog("windows.keys = \(keys)")
+       dlog("windowControllers.keys = \(keys)")
 
        // 隐藏检测窗口，避免屏保模式下触发自动暂停
        for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
@@ -269,7 +270,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            dlog("looping id = \(id)")
            if let screen = NSScreen.screen(forUUID: id) {
                dlog("found screen: \(screen)")
-               guard let wallpaperWindow = SharedWallpaperWindowManager.shared.windows[id] else { continue }
+               guard let wallpaperWindow = SharedWallpaperWindowManager.shared.windowControllers[id]?.window else { continue }
                wallpaperWindow.level = .screenSaver
                wallpaperWindow.ignoresMouseEvents = false
                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -394,7 +395,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        clockTimeLabels.removeAll()
 
        // 1. 对每个窗口执行淡出动画后再恢复
-       for (_, wallpaperWindow) in SharedWallpaperWindowManager.shared.windows {
+       for (_, wallpaperWindowController) in SharedWallpaperWindowManager.shared.windowControllers {
+           guard let wallpaperWindow = wallpaperWindowController.window else { continue }
            NSAnimationContext.runAnimationGroup({ context in
                context.duration = 0.5
                wallpaperWindow.animator().alphaValue = 0
@@ -800,7 +802,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            let screen = NSScreen.screens[index]
            // 找到对应屏幕的 WallpaperWindow
            let sid = screen.dv_displayUUID
-           if let window = SharedWallpaperWindowManager.shared.windows[sid],
+           if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
               let contentBounds = window.contentView?.bounds {
 
                // 更新日期标签
