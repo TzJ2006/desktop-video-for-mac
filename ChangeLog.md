@@ -10,6 +10,10 @@
 - Resolve Swift 6 concurrency warnings by isolating main-actor property access inside tasks
 - 移除冗余的 `try?` 调用并使用 `@unknown default` 补全 `switch` 语句
 - Remove unnecessary `try?` usage and add `@unknown default` to cover future `switch` cases
+- 引入主线程几何遮罩菜单栏覆盖层，覆盖 Ice 背景同时保持系统菜单与状态图标可见
+- Add a main-actor geometry-masked menu bar overlay that sits above Ice's background without obscuring system menu titles or status icons
+- 在菜单栏顶部仅显示视频上缘，禁用默认居中行为以保证对齐
+- Reveal only the top strip of the wallpaper video within the menu bar to avoid AVLayer centering drift
 
 ### Version 4.0 Preview 0909 hot-fix 8 (2025-09-14)
 

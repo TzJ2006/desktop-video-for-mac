@@ -78,6 +78,11 @@ class SharedWallpaperWindowManager {
       dlog("overlay level = \(overlay.level.rawValue)")
     }
 
+    if let menuOverlay = menuBarOverlays[sid], menuOverlay.screen !== screen {
+      dlog("menu bar overlay moved off \(screen.dv_localizedName); tearing down")
+      tearDownMenuBarOverlay(for: screen)
+    }
+
     // Screensaver‑overlay window
     if let saverOverlay = screensaverOverlayWindows[sid], saverOverlay.screen !== screen {
       saverOverlay.orderOut(nil)
@@ -165,8 +170,10 @@ class SharedWallpaperWindowManager {
   var overlayWindows: [String: NSWindow] = [:]
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
   var screensaverOverlayWindows: [String: NSWindow] = [:]
-  /// 状态栏视频窗口
-  var statusBarWindows: [String: StatusBarVideoWindow] = [:]
+  /// 菜单栏遮罩控制器
+  var menuBarOverlays: [String: MenuBarOverlayController] = [:]
+  /// 菜单栏顶部裁剪视频视图
+  var menuBarVideoViews: [String: TopCroppedVideoStripView] = [:]
   var players: [String: AVQueuePlayer] = [:]
   private let videoDataCache = NSCache<NSURL, NSData>()
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
@@ -526,10 +533,7 @@ class SharedWallpaperWindowManager {
         AppState.shared.currentMediaURL = nil
       }
     }
-    if let statusWin = statusBarWindows[sid] {
-      statusWin.orderOut(nil)
-      statusBarWindows.removeValue(forKey: sid)
-    }
+    tearDownMenuBarOverlay(for: screen)
     NotificationCenter.default.post(
       name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     AppDelegate.shared?.startScreensaverTimer()
@@ -622,40 +626,34 @@ class SharedWallpaperWindowManager {
   func updateStatusBarVideo(for screen: NSScreen) {
     let sid = id(for: screen)
     let enabled = UserDefaults.standard.bool(forKey: "showMenuBarVideo")
+    dlog("updateStatusBarVideo enabled=\(enabled) for \(screen.dv_localizedName)")
     guard enabled, let player = players[sid] else {
-      if let win = statusBarWindows[sid] {
-        dlog("remove status bar video on \(screen.dv_localizedName)")
-        win.orderOut(nil)
-        statusBarWindows.removeValue(forKey: sid)
-      }
+      tearDownMenuBarOverlay(for: screen)
       return
     }
 
-    dlog("update status bar video on \(screen.dv_localizedName)")
-    let barHeight = NSStatusBar.system.thickness
-    let screenFrame = screen.frame
-    let frame = CGRect(
-      x: screenFrame.minX, y: screenFrame.maxY - barHeight, width: screenFrame.width,
-      height: barHeight)
-
-    let win: StatusBarVideoWindow
-    if let existing = statusBarWindows[sid] {
-      win = existing
-      win.setFrame(frame, display: true)
+    let overlay: MenuBarOverlayController
+    if let existing = menuBarOverlays[sid] {
+      overlay = existing
     } else {
-      win = StatusBarVideoWindow(frame: frame, player: player)
-      statusBarWindows[sid] = win
+      overlay = makeMenuBarOverlay(for: screen)
+      menuBarOverlays[sid] = overlay
     }
 
-    let gap: CGFloat
-    if #available(macOS 12.0, *) {
-      // On macOS, use visibleFrame to account for menu bar, dock, etc.
-      gap = screen.frame.width - screen.visibleFrame.width
+    overlay.updateGeometry()
+
+    let videoView: TopCroppedVideoStripView
+    if let existingView = menuBarVideoViews[sid] {
+      videoView = existingView
     } else {
-      gap = 0
+      videoView = TopCroppedVideoStripView(frame: overlay.contentView.bounds)
+      overlay.contentView.addSubview(videoView)
+      menuBarVideoViews[sid] = videoView
     }
-    win.applySplitMask(gap: gap)
-    win.orderFrontRegardless()
+
+    videoView.attach(player: player)
+    videoView.updateLayout(for: screen)
+    overlay.show()
   }
 
   /// 更新所有屏幕的状态栏视频
@@ -663,6 +661,37 @@ class SharedWallpaperWindowManager {
     dlog("update status bar video for all screens")
     for screen in NSScreen.screens {
       updateStatusBarVideo(for: screen)
+    }
+  }
+
+  private func makeMenuBarOverlay(for screen: NSScreen) -> MenuBarOverlayController {
+    dlog("makeMenuBarOverlay for \(screen.dv_localizedName)")
+    let overlay = MenuBarOverlayController(screen: screen, style: .split)
+    overlay.drawBackground = { [weak self] context, rect in
+      self?.drawMenuBarBackground(in: context, rect: rect, screen: screen)
+    }
+    return overlay
+  }
+
+  private func drawMenuBarBackground(in context: CGContext, rect: CGRect, screen: NSScreen) {
+    dlog(
+      "drawMenuBarBackground for \(screen.dv_localizedName) rect=\(NSStringFromRect(NSRectFromCGRect(rect)))"
+    )
+    // TODO: 未来可根据当前视频帧或壁纸计算动态渐变。
+    context.setFillColor(NSColor.clear.cgColor)
+    context.fill(rect)
+  }
+
+  private func tearDownMenuBarOverlay(for screen: NSScreen) {
+    let sid = id(for: screen)
+    if let strip = menuBarVideoViews.removeValue(forKey: sid) {
+      dlog("tearDownMenuBarOverlay remove strip for \(screen.dv_localizedName)")
+      strip.removeFromSuperview()
+    }
+    if let overlay = menuBarOverlays.removeValue(forKey: sid) {
+      dlog("tearDownMenuBarOverlay hide overlay for \(screen.dv_localizedName)")
+      overlay.contentView.subviews.forEach { $0.removeFromSuperview() }
+      overlay.hide()
     }
   }
 
@@ -818,6 +847,14 @@ class SharedWallpaperWindowManager {
           currentViews.removeValue(forKey: sid)
           windowControllers.removeValue(forKey: sid)?.stop()
           screenContent.removeValue(forKey: sid)
+          if let overlay = menuBarOverlays.removeValue(forKey: sid) {
+            dlog("cleanupDisconnectedScreens hide overlay for id=\(sid)")
+            overlay.hide()
+          }
+          if let strip = menuBarVideoViews.removeValue(forKey: sid) {
+            dlog("cleanupDisconnectedScreens remove strip for id=\(sid)")
+            strip.removeFromSuperview()
+          }
         }
       }
     }
