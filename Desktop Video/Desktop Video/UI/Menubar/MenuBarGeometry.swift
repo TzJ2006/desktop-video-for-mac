@@ -9,6 +9,7 @@ import ApplicationServices
 enum MenuBarGeometry {
     private static let selfPID: pid_t = pid_t(ProcessInfo.processInfo.processIdentifier)
     private static let menuLevel = Int(CGWindowLevelForKey(.mainMenuWindow))
+//    private static let menuLevel = 0
     private static let statusLevel = Int(CGWindowLevelForKey(.statusWindow))
     private static let carveInset: CGFloat = 4
 
