@@ -55,18 +55,6 @@ class SharedWallpaperWindowManager {
       object: nil
     )
 
-    Settings.shared.$showInMenuBar
-      .receive(on: RunLoop.main)
-      .sink { [weak self] enabled in
-        guard let self else { return }
-        dlog("Settings.showInMenuBar sink received \(enabled)")
-        if enabled {
-          self.updateStatusBarVideoForAllScreens()
-        } else {
-          self.tearDownAllMenuBarMirrors()
-        }
-      }
-      .store(in: &cancellables)
   }
 
   private func id(for screen: NSScreen) -> String {
@@ -210,12 +198,14 @@ class SharedWallpaperWindowManager {
     return data
   }
 
-  private func setupWindow(for screen: NSScreen) {
+  @discardableResult
+  func ensureWallpaperController(for screen: NSScreen) -> WallpaperWindowController {
     dlog("ensure window for \(screen.dv_localizedName)")
+    ensureWindowOnCorrectScreen(for: screen)
     let sid = id(for: screen)
-    if windowControllers[sid] != nil {
-      windowControllers[sid]?.window?.orderFrontRegardless()
-      return
+    if let existing = windowControllers[sid] {
+      existing.start(on: screen)
+      return existing
     }
 
     // Remove old overlay occlusion observer before creating new overlay
@@ -314,6 +304,7 @@ class SharedWallpaperWindowManager {
 
     // 创建 / 恢复窗口后立即根据遮挡状态调整播放
     updatePlayState(for: screen)
+    return controller
   }
 
   private func tearDownWindow(for screen: NSScreen) {
@@ -327,11 +318,11 @@ class SharedWallpaperWindowManager {
     dlog("show image \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch)")
     ensureWindowOnCorrectScreen(for: screen)
     let sid = id(for: screen)
-    setupWindow(for: screen)
+    let controller = ensureWallpaperController(for: screen)
     stopVideoIfNeeded(for: screen)
 
     guard let image = NSImage(contentsOf: url),
-      let contentView = windowControllers[sid]?.window?.contentView
+      let contentView = controller.window?.contentView
     else { return }
 
     let imageView = NSImageView(frame: contentView.bounds)
@@ -411,8 +402,8 @@ class SharedWallpaperWindowManager {
         return
       }
 
-      setupWindow(for: screen)
-      guard let contentView = windowControllers[sid]?.window?.contentView else { return }
+      let controller = ensureWallpaperController(for: screen)
+      guard let contentView = controller.window?.contentView else { return }
 
       let asset = AVDataAsset(data: data, contentType: contentType)
       let item = AVPlayerItem(asset: asset)
@@ -497,6 +488,7 @@ class SharedWallpaperWindowManager {
     updateBookmark(stretch: stretch, volume: volume, screen: screen)
   }
 
+  // periphery:ignore - reserved for future
   func updateImageStretch(for screen: NSScreen, stretch: Bool) {
     dlog("update image stretch on \(screen.dv_localizedName) stretch=\(stretch)")
     let sid = id(for: screen)
@@ -560,6 +552,7 @@ class SharedWallpaperWindowManager {
     // 状态栏视频已移除
   }
 
+  // periphery:ignore - reserved for future
   func restoreContent(for screen: NSScreen) {
     dlog("restore content for \(screen.dv_localizedName)")
     let sid = id(for: screen)
@@ -634,23 +627,25 @@ class SharedWallpaperWindowManager {
   }
 
   /// 供外部在遮挡状态变更时调用，确保每屏独立刷新
+  // periphery:ignore - reserved for future
   func refreshPlayState(for screen: NSScreen) {
     updatePlayState(for: screen)
   }
 
   /// 根据用户设置在菜单栏显示或移除动态着色
-  func updateStatusBarVideo(for screen: NSScreen) {
+  @discardableResult
+  func updateStatusBarVideo(for screen: NSScreen) -> ForeignMenuBarMirrorController? {
     let sid = id(for: screen)
     let enabled = Settings.shared.showInMenuBar
     dlog("updateStatusBarVideo (mirror) enabled=\(enabled) for \(screen.dv_localizedName)")
     guard enabled else {
       tearDownMenuBarMirror(for: screen)
-      return
+      return nil
     }
     guard let player = players[sid] else {
       dlog("updateStatusBarVideo missing player for \(screen.dv_localizedName)", level: .warn)
       tearDownMenuBarMirror(for: screen)
-      return
+      return nil
     }
 
     let controller: ForeignMenuBarMirrorController
@@ -687,13 +682,16 @@ class SharedWallpaperWindowManager {
       videoView.updateLayout(for: screen)
     }
     controller.start()
+    controller.refresh()
+    return controller
   }
 
   /// 更新所有屏幕的状态栏视频
+  // periphery:ignore - reserved for future
   func updateStatusBarVideoForAllScreens() {
     dlog("update status bar mirror for all screens")
     for screen in NSScreen.screens {
-      updateStatusBarVideo(for: screen)
+      _ = updateStatusBarVideo(for: screen)
     }
   }
 
@@ -714,7 +712,7 @@ class SharedWallpaperWindowManager {
     context.fill(rect)
   }
 
-  private func tearDownMenuBarMirror(for screen: NSScreen) {
+  func tearDownMenuBarMirror(for screen: NSScreen) {
     let sid = id(for: screen)
     if let strip = menuBarVideoViews.removeValue(forKey: sid) {
       dlog("tearDownMenuBarMirror remove strip for \(screen.dv_localizedName)")
@@ -727,7 +725,7 @@ class SharedWallpaperWindowManager {
     }
   }
 
-  private func tearDownAllMenuBarMirrors() {
+  func tearDownAllMenuBarMirrors() {
     dlog("tearDownAllMenuBarMirrors")
     for (sid, controller) in menuBarMirrors {
       dlog("tearDownAllMenuBarMirrors stop controller id=\(sid)")
@@ -740,6 +738,22 @@ class SharedWallpaperWindowManager {
       view.removeFromSuperview()
     }
     menuBarVideoViews.removeAll()
+  }
+
+  func tearDownMenuBarMirror(forID id: String) {
+    if let screen = NSScreen.screen(forUUID: id) {
+      tearDownMenuBarMirror(for: screen)
+      return
+    }
+    if let controller = menuBarMirrors.removeValue(forKey: id) {
+      dlog("tearDownMenuBarMirror stop controller for missing screen id=\(id)")
+      controller.removeHostedView()
+      controller.stop()
+    }
+    if let strip = menuBarVideoViews.removeValue(forKey: id) {
+      dlog("tearDownMenuBarMirror remove strip for missing screen id=\(id)")
+      strip.removeFromSuperview()
+    }
   }
 
   func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen) {
@@ -1013,7 +1027,7 @@ class SharedWallpaperWindowManager {
   }
 
   // Placeholder for missing selector method: windowScreenDidChange
-  @objc func windowScreenDidChange(_ notification: Notification) {
+  @objc func windowScreenDidChange(_: Notification) {
     // TODO: Implement window screen change handling if needed
     dlog("windowScreenDidChange called (stub)")
   }

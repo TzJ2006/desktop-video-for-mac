@@ -1,3 +1,4 @@
+// periphery:ignore:all - parked for future use
 import SwiftUI
 
 /// Global theme configuration.

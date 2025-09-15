@@ -14,12 +14,14 @@ struct desktop_videoApp: App {
     static var shared: desktop_videoApp?
 
     /// 缓存视频文件的最大大小限制（单位 GB）
+    // periphery:ignore - reserved for future
     @AppStorage("maxVideoFileSizeInGB") var maxVideoFileSizeInGB: Double = 1.0
 
     // 关联 AppDelegate，所有"打开主窗口"或"打开偏好窗口"逻辑都在 AppDelegate 中处理
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // 这些 AppStorage 只在菜单命令里保持最新状态，不直接绑定到 PreferencesView
+    // periphery:ignore - reserved for future
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
     @AppStorage("globalMute")        var globalMute:        Bool = false
 
@@ -154,6 +156,7 @@ struct PreferencesView: View {
     }
 
     // 注入 LanguageManager
+    // periphery:ignore - reserved for future
     @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {

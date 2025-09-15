@@ -8,7 +8,9 @@ struct MenuBarVideoToggle: View {
             .onChange(of: showMenuBarVideo) { newValue in
                 dlog("showMenuBarVideo changed to \(newValue)")
                 Settings.shared.showInMenuBar = newValue
-                SharedWallpaperWindowManager.shared.updateStatusBarVideoForAllScreens()
+                Task { @MainActor in
+                    WindowManager.shared.startForAllScreens()
+                }
             }
             .onAppear {
                 Settings.shared.showInMenuBar = showMenuBarVideo
