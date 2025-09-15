@@ -35,6 +35,10 @@ final class TopCroppedVideoStripView: NSView {
 
     func updateLayout(for screen: NSScreen) {
         let band = MenuBarGeometry.menuBarBandFrame(on: screen)
+        updateLayout(for: screen, band: band)
+    }
+
+    func updateLayout(for screen: NSScreen, band: CGRect) {
         cachedBand = band
         dlog(
             "updateLayout for \(screen.dv_localizedName) band=\(NSStringFromRect(band)) naturalSize=\(naturalVideoSize)"
