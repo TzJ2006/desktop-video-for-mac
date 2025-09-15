@@ -28,7 +28,7 @@ public enum CGWindowScanner {
                 let windowID = entry[kCGWindowNumber as String] as? UInt32,
                 let ownerName = entry[kCGWindowOwnerName as String] as? String,
                 let layer = entry[kCGWindowLayer as String] as? Int,
-                let bounds = rect(from: entry[kCGWindowBounds as String] as! [String : Any])
+                let bounds = rect(from: entry[kCGWindowBounds as String] as? [String : Any])
             else {
                 continue
             }
