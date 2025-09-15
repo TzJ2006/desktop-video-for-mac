@@ -26,7 +26,7 @@ final class WallpaperWindowController: NSWindowController {
 
     func stop() {
         if let stream {
-            try? stream.stopCapture()
+            stream.stopCapture()
             self.stream = nil
         }
         if let link = displayLink {
