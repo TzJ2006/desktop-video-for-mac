@@ -13,8 +13,11 @@ class AppState: ObservableObject {
     static let shared = AppState()
 
     // Last selected media information
+    // periphery:ignore - reserved for future
     @Published var lastMediaURL: URL?
+    // periphery:ignore - reserved for future
     @Published var lastVolume: Float = 1.0
+    // periphery:ignore - reserved for future
     @Published var lastStretchToFill: Bool = true
     @Published var currentMediaURL: String?
 

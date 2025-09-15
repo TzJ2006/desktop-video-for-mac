@@ -15,8 +15,8 @@ final class ForeignMenuBarMirrorController {
 
     private let screen: NSScreen
     private var panel: NSPanel?
-    private var refreshTimer: Timer?
     private var observers: [NSObjectProtocol] = []
+    private var frontmostObservation: NSKeyValueObservation?
     private(set) var currentOverlayFrame: CGRect?
 
     var style: Style = .split {
@@ -50,18 +50,17 @@ final class ForeignMenuBarMirrorController {
         }
         ensurePanel()
         installObserversIfNeeded()
-        scheduleRefreshTimer()
         refresh()
     }
 
     func stop() {
         dlog("ForeignMenuBarMirrorController.stop on \(screen.dv_localizedName)")
-        refreshTimer?.invalidate()
-        refreshTimer = nil
         for token in observers {
             NotificationCenter.default.removeObserver(token)
         }
         observers.removeAll()
+        frontmostObservation?.invalidate()
+        frontmostObservation = nil
         if let panel {
             panel.orderOut(nil)
             panel.close()
@@ -123,13 +122,16 @@ final class ForeignMenuBarMirrorController {
             backing: .buffered,
             defer: false
         )
+        // Elevate one level above the status bar so we always stay above other
+        // menu bar panels. Reference: https://developer.apple.com/documentation/appkit/nswindow/level
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenNone, .stationary]
+        // Keep the panel present in every space and slide with the active space.
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenNone, .moveToActiveSpace]
         panel.isReleasedWhenClosed = false
         let view = MirrorOverlayView(frame: .zero)
         view.drawBackground = drawBackground
@@ -137,6 +139,8 @@ final class ForeignMenuBarMirrorController {
         view.isInsetForNotch = screen.hasNotch
         panel.contentView = view
         self.panel = panel
+        // Bring the panel to the front even when the app is inactive.
+        // Reference: https://developer.apple.com/documentation/appkit/nswindow/1419654-orderfrontregardless
         panel.orderFrontRegardless()
     }
 
@@ -149,38 +153,26 @@ final class ForeignMenuBarMirrorController {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.throttledRefresh() }
+            Task { @MainActor in self?.refresh() }
         })
         observers.append(workspace.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.throttledRefresh() }
+            Task { @MainActor in self?.refresh() }
         })
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.throttledRefresh() }
-        })
-    }
-
-    private func scheduleRefreshTimer() {
-        refreshTimer?.invalidate()
-        dlog("ForeignMenuBarMirrorController.scheduleRefreshTimer for \(screen.dv_localizedName)")
-        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
-        }
-        timer.tolerance = 0.1
-        RunLoop.main.add(timer, forMode: .common)
-        refreshTimer = timer
-    }
-
-    private func throttledRefresh() {
-        dlog("ForeignMenuBarMirrorController.throttledRefresh for \(screen.dv_localizedName)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        })
+        frontmostObservation = workspace.observe(
+            \.frontmostApplication,
+            options: [.new]
+        ) { [weak self] _, _ in
             Task { @MainActor in self?.refresh() }
         }
     }

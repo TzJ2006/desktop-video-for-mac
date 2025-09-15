@@ -1,3 +1,4 @@
+// periphery:ignore:all - parked for future use
 import AppKit
 
 /// Controls a transparent overlay panel that sits above Ice's menu bar

@@ -57,7 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var cancellables = Set<AnyCancellable>()
 
 
-   func applicationDidFinishLaunching(_ notification: Notification) {
+   func applicationDidFinishLaunching(_: Notification) {
        dlog("applicationDidFinishLaunching")
        AppDelegate.shared = self
 
@@ -66,6 +66,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // 从书签中恢复窗口
        SharedWallpaperWindowManager.shared.restoreFromBookmark()
+
+       Task { @MainActor in
+           WindowManager.shared.startForAllScreens()
+       }
        
        // Observe occlusion changes on overlay windows to auto-pause/play
        for window in SharedWallpaperWindowManager.shared.overlayWindows.values {
@@ -657,7 +661,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    }
     
     /// Manually trigger the screensaver from UI.
-    @objc func manualRunScreensaver(_ sender: Any? = nil) {
+   @objc func manualRunScreensaver(_: Any? = nil) {
         dlog("manualRunScreensaver")
         // 若用户在偏好里关闭了屏保，也顺便帮他打开
         if !UserDefaults.standard.bool(forKey: screensaverEnabledKey) {
@@ -764,7 +768,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
         
         @objc
-    func wallpaperWindowOcclusionDidChange(_ notification: Notification) {
+    func wallpaperWindowOcclusionDidChange(_: Notification) {
         // 防抖：短时间内只评估一次
         occlusionDebounceWorkItem?.cancel()
         occlusionDebounceWorkItem = DispatchWorkItem { [weak self] in
@@ -780,7 +784,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// Called when a screensaver overlay window's occlusion changes.
     @objc
-    private func screensaverOverlayOcclusionChanged(_ notification: Notification) {
+    private func screensaverOverlayOcclusionChanged(_: Notification) {
         // If no overlay is fully occluded, restart the screensaver timer
         let suppressed = SharedWallpaperWindowManager.shared.screensaverOverlayWindows.values.contains {
             !$0.occlusionState.contains(.visible)
@@ -792,7 +796,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
    // MARK: - NSApplicationDelegate Idle Pause
-   func applicationDidBecomeActive(_ notification: Notification) {
+   func applicationDidBecomeActive(_: Notification) {
        dlog("applicationDidBecomeActive")
        updatePlaybackStateForAllScreens()
    }
@@ -841,7 +845,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
    }
    // MARK: - External Screensaver Suppression
-   @objc private func handleExternalScreensaverActive(_ notification: Notification) {
+   @objc private func handleExternalScreensaverActive(_: Notification) {
        dlog("handleExternalScreensaverActive")
        otherAppSuppressScreensaver = true
        // 若计时器存在则取消
@@ -849,7 +853,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        screensaverTimer = nil
    }
 
-   @objc private func handleExternalScreensaverInactive(_ notification: Notification) {
+   @objc private func handleExternalScreensaverInactive(_: Notification) {
        dlog("handleExternalScreensaverInactive")
        otherAppSuppressScreensaver = false
        // 如有必要重新启动计时器

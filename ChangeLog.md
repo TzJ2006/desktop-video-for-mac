@@ -4,6 +4,15 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.0 Preview 0915 hot-fix 11 (2025-09-15)
+
+- 统一窗口管理入口，确保每块屏幕仅创建一次壁纸窗口与菜单栏覆盖层
+- Centralize window orchestration so each display keeps a single wallpaper and menu bar overlay window
+- 提升菜单栏镜像面板层级并改为事件驱动刷新，移除 500 ms 轮询
+- Raise the mirrored menu bar panel above the status bar and refresh it through space/screen/app events, removing the 500 ms polling timer
+- 清理未使用代码并为后续保留项添加 periphery 标记
+- Remove unused sources and annotate reserved declarations with periphery directives
+
 ### Version 4.0 Preview 0915 hot-fix 10 (2025-09-15)
 
 - 尝试识别第三方菜单栏遮罩，并自动匹配菜单栏高度
