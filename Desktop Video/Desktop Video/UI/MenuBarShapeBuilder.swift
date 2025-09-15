@@ -30,13 +30,13 @@ enum MenuBarShapeBuilder {
         dlog(
             "MenuBarShapeBuilder.splitPath screen=\(screen.dv_localizedName) rect=\(NSStringFromRect(NSRectFromCGRect(rect)))"
         )
-        var workingRect = inset(rect: rect, with: info.notchInsets, applyInset: isInset)
+        let workingRect = inset(rect: rect, with: info.notchInsets, applyInset: isInset)
         let radius = workingRect.height / 2
         let minimumWidth = max(workingRect.height, 1)
 
         var leftWidth = max(info.applicationMenuRect.width, minimumWidth)
         leftWidth = min(leftWidth, workingRect.width)
-        var leftRect = CGRect(
+        let leftRect = CGRect(
             x: workingRect.minX,
             y: workingRect.minY,
             width: leftWidth,
@@ -48,7 +48,7 @@ enum MenuBarShapeBuilder {
         var rightOriginX = workingRect.maxX - info.statusItemsRect.width
         if rightWidth > info.statusItemsRect.width { rightOriginX = workingRect.maxX - rightWidth }
         rightOriginX = max(rightOriginX, workingRect.minX)
-        var rightRect = CGRect(
+        let rightRect = CGRect(
             x: rightOriginX,
             y: workingRect.minY,
             width: rightWidth,

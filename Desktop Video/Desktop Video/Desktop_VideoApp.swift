@@ -56,7 +56,7 @@ struct desktop_videoApp: App {
             }
         }
 
-        Settings {
+        SwiftUI.Settings {
             PreferencesView()
         }
     }
