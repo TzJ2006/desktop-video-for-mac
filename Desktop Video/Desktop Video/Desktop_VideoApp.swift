@@ -28,9 +28,8 @@ struct desktop_videoApp: App {
     }
 
     var body: some Scene {
-        // Add the Settings scene to provide native Settings menu item
-        Settings {
-            PreferencesView()
+        WindowGroup {
+            ContentView() // Main app window
         }
         .commands {
             // Replace the About menu item
@@ -55,6 +54,10 @@ struct desktop_videoApp: App {
                 .keyboardShortcut(KeyEquivalent(KeyBindings.startScreensaverKey.first ?? "s"),
                                    modifiers: eventModifiers(from: KeyBindings.startScreensaverModifiers))
             }
+        }
+
+        Settings {
+            PreferencesView()
         }
     }
 

@@ -159,13 +159,6 @@ final class ForeignMenuBarMirrorController {
             Task { @MainActor in self?.throttledRefresh() }
         })
         observers.append(NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeEffectiveAppearanceNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.throttledRefresh() }
-        })
-        observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
             queue: .main
@@ -313,6 +306,8 @@ private final class MirrorOverlayView: NSView {
             path = MenuBarShapeBuilder.fullPath(in: bounds, info: info, isInset: isInsetForNotch, screen: screen)
         case .split:
             path = MenuBarShapeBuilder.splitPath(in: bounds, info: info, isInset: isInsetForNotch, screen: screen)
+        @unknown default:
+            path = NSBezierPath()
         }
         cachedPath = path
         maskLayer.frame = bounds
@@ -338,15 +333,19 @@ private final class MirrorOverlayView: NSView {
     private func resolveNotchInsets(for screen: NSScreen) -> NSEdgeInsets {
         guard isInsetForNotch else { return NSEdgeInsets() }
         guard screen.hasNotch else { return NSEdgeInsets() }
-        if #available(macOS 12.0, *) {
-            let frame = screen.frame
-            let safe = screen.safeAreaRect
-            let left = max(safe.minX - frame.minX, 0)
-            let right = max(frame.maxX - safe.maxX, 0)
-            return NSEdgeInsets(top: 0, left: left, bottom: 0, right: right)
-        } else {
-            return NSEdgeInsets()
-        }
+        // Use visibleFrame instead of safeAreaRect for macOS
+        let frame = screen.frame
+        let safe = screen.visibleFrame
+        let left = max(safe.minX - frame.minX, 0)
+        let right = max(frame.maxX - safe.maxX, 0)
+        return NSEdgeInsets(top: 0, left: left, bottom: 0, right: right)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        dlog("MirrorOverlayView.viewDidChangeEffectiveAppearance")
+        // Notify controller or refresh as needed
+        setNeedsDisplay(bounds)
     }
 }
 
@@ -375,12 +374,9 @@ private extension NSBezierPath {
 
 private extension NSScreen {
     var hasNotch: Bool {
-        if #available(macOS 12.0, *) {
-            let frame = frame
-            let safe = safeAreaRect
-            return safe.width < frame.width - 1 || safe.minY > frame.minY
-        } else {
-            return false
-        }
+        // Use visibleFrame instead of safeAreaRect for macOS
+        let frame = self.frame
+        let safe = self.visibleFrame
+        return safe.width < frame.width - 1 || safe.minY > frame.minY
     }
 }
