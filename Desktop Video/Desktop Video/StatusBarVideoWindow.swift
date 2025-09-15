@@ -8,7 +8,7 @@ class StatusBarVideoWindow: NSWindow {
     init(frame: CGRect, player: AVPlayer) {
         dlog("init StatusBarVideoWindow")
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-        level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)))
+        level = NSWindow.Level(Int(CGWindowLevelForKey(.mainMenuWindow)) + 1)
         isOpaque = false
         backgroundColor = .clear
         ignoresMouseEvents = true
