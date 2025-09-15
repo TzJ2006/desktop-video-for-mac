@@ -38,7 +38,9 @@ final class WallpaperWindow: NSWindow {
             object: self,
             queue: .main
         ) { [weak self] _ in
-            self?.playerLayer?.frame = self?.contentView?.bounds ?? .zero
+            Task { @MainActor [weak self] in
+                self?.playerLayer?.frame = self?.contentView?.bounds ?? .zero
+            }
         }
     }
 

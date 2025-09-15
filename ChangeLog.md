@@ -4,6 +4,13 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.0 Preview 0909 hot-fix 9 (2025-09-15)
+
+- 修复 Swift 6 并发警告，避免在 Sendable 闭包中直接访问主线程属性
+- Resolve Swift 6 concurrency warnings by isolating main-actor property access inside tasks
+- 移除冗余的 `try?` 调用并使用 `@unknown default` 补全 `switch` 语句
+- Remove unnecessary `try?` usage and add `@unknown default` to cover future `switch` cases
+
 ### Version 4.0 Preview 0909 hot-fix 8 (2025-09-14)
 
 - 使用 `@MainActor` 注解 `SharedWallpaperWindowManager`，修复 `tearDownWindow` 并发编译错误

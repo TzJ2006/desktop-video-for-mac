@@ -88,22 +88,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
 
        // 切换 Dock 图标或仅菜单栏模式
-       DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-           let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
-           self.setDockIconVisible(true)
-           if showOnlyInMenuBar {
-               self.setDockIconVisible(!showOnlyInMenuBar)
-           }
-           // Always open the main window if not already open
-           if self.window == nil {
-               self.openMainWindow()
-           }
-       }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let showOnlyInMenuBar = UserDefaults.standard.bool(forKey: "isMenuBarOnly")
+                self.setDockIconVisible(true)
+                if showOnlyInMenuBar {
+                    self.setDockIconVisible(!showOnlyInMenuBar)
+                }
+                // Always open the main window if not already open
+                if self.window == nil {
+                    self.openMainWindow()
+                }
+            }
+        }
 
        // 监听屏保设置变化并启动计时器
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .sink { [weak self] _ in
-                self?.startScreensaverTimer()
+                Task { @MainActor [weak self] in
+                    self?.startScreensaverTimer()
+                }
             }
             .store(in: &cancellables)
 
@@ -173,22 +178,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 //       dlog("Warning! Debug settings on !!!")
 
        screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
-           guard let self = self else { return }
-           guard AppState.shared.currentMediaURL != nil else {
-               dlog("Screensaver not started: no valid media selected or playable.")
-               self.screensaverTimer?.invalidate()
-               self.screensaverTimer = nil
-               return
-           }
-           let idleTime = self.getSystemIdleTime()
-           dlog("idleTime=\(idleTime) delaySeconds=\(delaySeconds)")
-           if idleTime >= delaySeconds {
-               self.screensaverTimer?.invalidate()
-               self.screensaverTimer = nil
-               dlog("idleTime >= delaySeconds (\(idleTime) >= \(delaySeconds)), scheduling runScreenSaver() after 3 s grace period")
-               
-               DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                   self?.runScreenSaver()
+           Task { @MainActor [weak self] in
+               guard let self else { return }
+               guard AppState.shared.currentMediaURL != nil else {
+                   dlog("Screensaver not started: no valid media selected or playable.")
+                   self.screensaverTimer?.invalidate()
+                   self.screensaverTimer = nil
+                   return
+               }
+               let idleTime = self.getSystemIdleTime()
+               dlog("idleTime=\(idleTime) delaySeconds=\(delaySeconds)")
+               if idleTime >= delaySeconds {
+                   self.screensaverTimer?.invalidate()
+                   self.screensaverTimer = nil
+                   dlog("idleTime >= delaySeconds (\(idleTime) >= \(delaySeconds)), scheduling runScreenSaver() after 3 s grace period")
+
+                   Task { @MainActor [weak self] in
+                       try? await Task.sleep(nanoseconds: 3_000_000_000)
+                       self?.runScreenSaver()
+                   }
                }
            }
        }
@@ -337,7 +345,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // 开始更新时钟标签
        updateClockLabels() // initial update
        clockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-           self?.updateClockLabels()
+           Task { @MainActor [weak self] in
+               self?.updateClockLabels()
+           }
        }
        dlog("updateClockLabels")
 
@@ -345,22 +355,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        eventMonitors.forEach { NSEvent.removeMonitor($0) }
        eventMonitors.removeAll()
 
-       DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-           let eventTypes: [NSEvent.EventTypeMask] = [.any]
-           for eventType in eventTypes {
-               let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType) { [weak self] _ in
+       DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+           Task { @MainActor [weak self] in
+               guard let self else { return }
+               let eventTypes: [NSEvent.EventTypeMask] = [.any]
+               for eventType in eventTypes {
+                   let monitor = NSEvent.addGlobalMonitorForEvents(matching: eventType) { [weak self] _ in
+                       self?.closeScreensaverWindows()
+                   }
+                   if let monitor = monitor {
+                       self.eventMonitors.append(monitor)
+                   }
+               }
+               let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
                    self?.closeScreensaverWindows()
+                   return event
                }
-               if let monitor = monitor {
-                   self.eventMonitors.append(monitor)
+               if let localMonitor = localMonitor {
+                   self.eventMonitors.append(localMonitor)
                }
-           }
-           let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .any) { [weak self] event in
-               self?.closeScreensaverWindows()
-               return event
-           }
-           if let localMonitor = localMonitor {
-               self.eventMonitors.append(localMonitor)
            }
        }
    }
@@ -507,11 +520,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    @objc func openMainWindow() {
        // Only delay on the very first open
        if !hasOpenedMainWindowOnce {
-           dlog("OpenMainWindow for the first time")
-           DispatchQueue.main.asyncAfter(deadline: .now() + 1.25) { [weak self] in
-               guard let self = self else { return }
-               self.performOpenMainWindow()  // call helper to do the actual open
-           }
+            dlog("OpenMainWindow for the first time")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.25) { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.performOpenMainWindow()  // call helper to do the actual open
+                }
+            }
        } else {
            dlog("OpenMainWindow immediately")
            // Subsequent opens happen immediately
@@ -564,20 +579,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        dlog("applyAppAppearanceSetting onlyShowInMenuBar=\(onlyShowInMenuBar)")
        appearanceChangeWorkItem?.cancel()
 
-       let workItem = DispatchWorkItem { [weak self] in
-           guard let self = self else { return }
-           self.lastAppearanceChangeTime = Date()
-           if onlyShowInMenuBar {
-               NSApp.setActivationPolicy(.accessory)
-               self.setupStatusBarIcon()
-           } else {
-               NSApp.setActivationPolicy(.regular)
-               self.removeStatusBarIcon()
-           }
-           self.toggleMainWindow()
-           hasOpenedMainWindowOnce = true
-//           self.statusBarIconClicked()
-       }
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.lastAppearanceChangeTime = Date()
+                if onlyShowInMenuBar {
+                    NSApp.setActivationPolicy(.accessory)
+                    self.setupStatusBarIcon()
+                } else {
+                    NSApp.setActivationPolicy(.regular)
+                    self.removeStatusBarIcon()
+                }
+                self.toggleMainWindow()
+                hasOpenedMainWindowOnce = true
+ //           self.statusBarIconClicked()
+            }
+        }
 
        appearanceChangeWorkItem = workItem
        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
@@ -751,7 +768,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 防抖：短时间内只评估一次
         occlusionDebounceWorkItem?.cancel()
         occlusionDebounceWorkItem = DispatchWorkItem { [weak self] in
-            self?.updatePlaybackStateForAllScreens()
+            Task { @MainActor [weak self] in
+                self?.updatePlaybackStateForAllScreens()
+            }
         }
         // Give the system a longer grace period (0.5 s) before re‑evaluating playback,
         // so that transient occlusion states don't cause premature pauses.
