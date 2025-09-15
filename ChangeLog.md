@@ -4,6 +4,15 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.0 Preview 0909 hot-fix 10 (2025-09-15)
+
+- 通过 CGWindowScanner 精确识别第三方菜单栏遮罩，并自动匹配菜单栏高度
+- Use CGWindowScanner to precisely identify third-party menu bar overlays and refine the detected band height
+- 新增 ForeignMenuBarMirrorController，镜像 Ice 菜单栏窗口并以几何蒙版限制视频绘制区域
+- Add ForeignMenuBarMirrorController to mirror Ice's menu bar window while masking the video to the correct capsule geometry
+- 引入 showInMenuBar 设置开关，SharedWallpaperWindowManager 支持按屏幕启动/清理镜像面板
+- Introduce a showInMenuBar setting and teach SharedWallpaperWindowManager to start or tear down mirrored panels per display
+
 ### Version 4.0 Preview 0909 hot-fix 9 (2025-09-15)
 
 - 修复 Swift 6 并发警告，避免在 Sendable 闭包中直接访问主线程属性
