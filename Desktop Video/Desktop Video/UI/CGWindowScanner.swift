@@ -11,7 +11,7 @@ public struct ForeignOverlay {
 @MainActor
 public enum CGWindowScanner {
     private static let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-    private static let mainMenuLevel = Int(CGWindowLevelForKey(.mainMenuWindow))
+    private static let mainMenuLevel = Int(CGWindowLevelForKey(.mainMenuWindow)) + 5
 
     /// Enumerates visible windows using `CGWindowListCopyWindowInfo`.
     /// See Apple Developer Documentation: https://developer.apple.com/documentation/coregraphics/1454737-cgwindowlistcopywindowinfo

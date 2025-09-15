@@ -4,53 +4,26 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
-### Version 4.0 Preview 0909 hot-fix 11 (2025-09-15)
+### Version 4.0 Preview 0915 hot-fix 10 (2025-09-15)
 
-- 修复 SwiftUI `Settings` 场景与应用内 `Settings` 单例的命名冲突，恢复偏好设置窗口
-- Resolve the naming clash between the SwiftUI `Settings` scene and the in-app `Settings` singleton so the preferences window opens correctly
-- 使用可选类型转换解析 `CGWindowBounds`，避免无效的强制类型转换警告
-- Switch `CGWindowBounds` parsing to optional casting to silence the invalid forced downcast warning
-- 将菜单栏形状计算中的中间矩形改为常量，清理未使用的变量警告
-- Promote intermediate menu bar geometry rectangles to constants to clear unused variable warnings
-
-### Version 4.0 Preview 0909 hot-fix 10 (2025-09-15)
-
-- 通过 CGWindowScanner 精确识别第三方菜单栏遮罩，并自动匹配菜单栏高度
+- 尝试识别第三方菜单栏遮罩，并自动匹配菜单栏高度
 - Use CGWindowScanner to precisely identify third-party menu bar overlays and refine the detected band height
-- 新增 ForeignMenuBarMirrorController，镜像 Ice 菜单栏窗口并以几何蒙版限制视频绘制区域
-- Add ForeignMenuBarMirrorController to mirror Ice's menu bar window while masking the video to the correct capsule geometry
-- 引入 showInMenuBar 设置开关，SharedWallpaperWindowManager 支持按屏幕启动/清理镜像面板
-- Introduce a showInMenuBar setting and teach SharedWallpaperWindowManager to start or tear down mirrored panels per display
 
-### Version 4.0 Preview 0909 hot-fix 9 (2025-09-15)
-
-- 修复 Swift 6 并发警告，避免在 Sendable 闭包中直接访问主线程属性
-- Resolve Swift 6 concurrency warnings by isolating main-actor property access inside tasks
-- 移除冗余的 `try?` 调用并使用 `@unknown default` 补全 `switch` 语句
-- Remove unnecessary `try?` usage and add `@unknown default` to cover future `switch` cases
-- 引入主线程几何遮罩菜单栏覆盖层，覆盖 Ice 背景同时保持系统菜单与状态图标可见
-- Add a main-actor geometry-masked menu bar overlay that sits above Ice's background without obscuring system menu titles or status icons
-- 在菜单栏顶部仅显示视频上缘，禁用默认居中行为以保证对齐
-- Reveal only the top strip of the wallpaper video within the menu bar to avoid AVLayer centering drift
-
-### Version 4.0 Preview 0909 hot-fix 8 (2025-09-14)
+### Version 4.0 Preview 0914 (2025-09-14)
 
 - 使用 `@MainActor` 注解 `SharedWallpaperWindowManager`，修复 `tearDownWindow` 并发编译错误
 - Annotate `SharedWallpaperWindowManager` with `@MainActor` to fix `tearDownWindow` concurrency build errors
 - 清理重复的覆盖层移除逻辑，防止窗口状态不一致
 - Remove duplicate overlay cleanup to avoid inconsistent window state
 
-### Version 4.0 Preview 0909 hot-fix 7 (2025-09-13)
-
-- 强化 WallpaperWindow 生命周期管理，防止 Zombie 崩溃
-- Stabilize WallpaperWindow lifetime to avoid zombie crashes
-
-### Version 4.0 Preview 0909 hot-fix 6 (2025-09-13)
+### Version 4.0 Preview 0913 (2025-09-13)
 
 - 在菜单栏显示视频并支持 Split 形状
+- 强化 WallpaperWindow 生命周期管理，防止 Zombie 崩溃
 - Show wallpaper video in menu bar with split shape overlay
+- Stabilize WallpaperWindow lifetime to avoid zombie crashes
 
-### Version 4.0 Preview 0909 hot-fix 5 (2025-09-12)
+### Version 4.0 Preview 0912 (2025-09-12)
 
 - 修复添加或移除视频时出现的死循环崩溃
 - Fix crash caused by infinite loop when adding or removing videos
@@ -71,28 +44,14 @@
 - 修复更换视频时的内存峰值问题，适配多屏场景
 - Fix memory spike when switching videos across multiple screens
 
-### Version 4.0 Preview 0909 hot-fix 4 (2025-09-11)
+### Version 4.0 Preview 0911 (2025-09-11)
 
 - 改用内存映射加载视频以降低磁盘读写
 - 移除临时文件写入与内存视频缓存
 - Use memory-mapped video loading to reduce disk I/O
 - Remove temporary file writes and in-memory video cache
 
-### Version 4.0 Preview 0909 hot-fix 3 (2025-09-10)
-
-- 改用 NSVisualEffectView 使菜单栏随壁纸动态着色
-- 删除旧的状态栏视频播放逻辑
-- Replace status bar video overlay with NSVisualEffectView tinting
-- Remove obsolete status bar video playback code
-
-### Version 4.0 Preview 0909 hot-fix 2 (2025-09-10)
-
-- 移除屏幕自动同步以修复死循环问题
-- 新增按钮以手动同步同名视频的播放进度
-- Remove automatic screen sync to prevent dead loop
-- Add button to manually sync same-name videos to the same pace
-
-### Version 4.0 Preview 0909 hot-fix 1 (2025-09-10)
+### Version 4.0 Preview 0910 (2025-09-10)
 
 - 新增在状态栏显示视频的开关
 - 全屏时状态栏背景仅显示壁纸视频上缘且不遮挡菜单文字
@@ -108,7 +67,6 @@
 - Fix stretch-to-fill setting not applying
 - Move “Show video in status bar” option to General settings
 - Keep status bar video at correct aspect ratio
-
 
 ### Version 4.0 Preview 0909 (2025-09-09)
 

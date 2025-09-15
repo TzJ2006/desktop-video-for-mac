@@ -35,16 +35,6 @@
 			path = "Desktop Video";
 			sourceTree = "<group>";
 		};
-		25818D8B2E4DBC1800422FA8 /* Desktop VideoTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop VideoTests";
-			sourceTree = "<group>";
-		};
-		25818D952E4DBC1800422FA8 /* Desktop VideoUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Desktop VideoUITests";
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,8 +66,6 @@
 			isa = PBXGroup;
 			children = (
 				25818D7C2E4DBC1700422FA8 /* Desktop Video */,
-				25818D8B2E4DBC1800422FA8 /* Desktop VideoTests */,
-				25818D952E4DBC1800422FA8 /* Desktop VideoUITests */,
 				25818D7B2E4DBC1700422FA8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -130,9 +118,6 @@
 			dependencies = (
 				25818D8A2E4DBC1800422FA8 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				25818D8B2E4DBC1800422FA8 /* Desktop VideoTests */,
-			);
 			name = "Desktop VideoTests";
 			packageProductDependencies = (
 			);
@@ -152,9 +137,6 @@
 			);
 			dependencies = (
 				25818D942E4DBC1800422FA8 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				25818D952E4DBC1800422FA8 /* Desktop VideoUITests */,
 			);
 			name = "Desktop VideoUITests";
 			packageProductDependencies = (
