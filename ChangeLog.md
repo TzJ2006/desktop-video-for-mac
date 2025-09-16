@@ -4,23 +4,18 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
-### Version 4.0 Preview 0915 hot-fix 13 (2025-09-16)
+### Version 4.0 (2025-09-16)
 
-- 本地化设置中显示的 GB 单位并补齐多语言翻译
-- Localize the GB unit label and fill in all language variants
+- 修改了UI设计，现在的UI设计更加好看
+- 修复了因为UI修改带来的bug
 - 添加了 macOS 26 Tahoe 支持
+- 更多修改请见 Preview 版本
+- Much Better UI
+- Fix bug because of the new UI.
 - Added support for macOS 26 Tahoe
+- For more changes, please look at the Preview versions in the changelog.
 
-### Version 4.0 Preview 0915 hot-fix 12 (2025-09-16)
-
-- 修复应用启动时会弹出两个主窗口的问题，统一复用 SwiftUI 创建的主控制窗口
-- Fix the duplicate main window shown at launch by reusing the SwiftUI-hosted controller window
-- 移除菜单栏覆盖层实现与相关窗口调度逻辑，简化多屏幕管理
-- Remove the menu bar overlay implementation and related window orchestration logic to simplify multi-display management
-- 删除状态栏视频设置与界面组件，同时保留视频拉伸覆盖菜单栏的能力
-- Delete the status bar video setting and UI components while keeping the video stretch-to-menu-bar capability intact
-
-### Version 4.0 Preview 0915 hot-fix 11 (2025-09-15)
+### Version 4.0 Preview 0915 (2025-09-15)
 
 - 统一窗口管理入口，确保每块屏幕仅创建一次壁纸窗口与菜单栏覆盖层
 - Centralize window orchestration so each display keeps a single wallpaper and menu bar overlay window
@@ -28,16 +23,12 @@
 - Raise the mirrored menu bar panel above the status bar and refresh it through space/screen/app events, removing the 500 ms polling timer
 - 清理未使用代码并为后续保留项添加 periphery 标记
 - Remove unused sources and annotate reserved declarations with periphery directives
-
-### Version 4.0 Preview 0915 hot-fix 10 (2025-09-15)
-
-- 尝试识别第三方菜单栏遮罩，并自动匹配菜单栏| col1 | col2 | col3 |
-  | ---- | ---- | ---- |
-  |      |      |      |
-  |      |      |      |
-
-  高度
-- Use CGWindowScanner to precisely identify third-party menu bar overlays and refine the detected band height
+- 修复应用启动时会弹出两个主窗口的问题，统一复用 SwiftUI 创建的主控制窗口
+- Fix the duplicate main window shown at launch by reusing the SwiftUI-hosted controller window
+- 移除菜单栏覆盖层实现与相关窗口调度逻辑，简化多屏幕管理
+- Remove the menu bar overlay implementation and related window orchestration logic to simplify multi-display management
+- 删除状态栏视频设置与界面组件，同时保留视频拉伸覆盖菜单栏的能力
+- Delete the status bar video setting and UI components while keeping the video stretch-to-menu-bar capability intact
 
 ### Version 4.0 Preview 0914 (2025-09-14)
 
