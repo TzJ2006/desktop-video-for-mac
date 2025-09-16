@@ -213,7 +213,7 @@ struct PreferencesView: View {
                     Text(L("MaxVideoFileSizeGB"))
                     TextField("1.0", value: $maxVideoFileSizeInGB, formatter: NumberFormatter())
                         .frame(width: 50)
-                    Text("GB").font(.system(size: 14)) // 小字体
+                    Text(L("GB")).font(.system(size: 14)) // 小字体
                 }
                 .padding(.top, 10)
                 

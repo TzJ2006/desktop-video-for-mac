@@ -4,6 +4,13 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.0 Preview 0915 hot-fix 13 (2025-09-16)
+
+- 本地化设置中显示的 GB 单位并补齐多语言翻译
+- Localize the GB unit label and fill in all language variants
+- 添加了 macOS 26 Tahoe 支持
+- Added support for macOS 26 Tahoe
+
 ### Version 4.0 Preview 0915 hot-fix 12 (2025-09-16)
 
 - 修复应用启动时会弹出两个主窗口的问题，统一复用 SwiftUI 创建的主控制窗口

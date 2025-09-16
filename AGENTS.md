@@ -14,21 +14,33 @@ This repository contains **Desktop Video Wallpaper**, a lightweight dynamic wall
 Desktop Video/
 ├── Desktop Video/
 │   ├── AppDelegate.swift
+│   ├── Assets.xcassets/
 │   ├── ContentView.swift
+│   ├── Core/
+│   │   └── WindowManager.swift
+│   ├── Desktop_Video.entitlements
 │   ├── Desktop_VideoApp.swift
 │   ├── KeyBindings.swift
 │   ├── LanguageManager.swift
+│   ├── Localizable.xcstrings
 │   ├── SharedWallpaperWindowManager.swift
 │   ├── SpaceWallPaperManager.swift
+│   ├── UI/
+│   │   ├── AppMainWindow.swift
+│   │   ├── Components/
+│   │   ├── Screens/
+│   │   └── Sidebar/
 │   ├── Utils.swift
-│   ├── WallpaperWindow.swift
-│   ├── Localizable.xcstrings
-│   ├── Theme/
 │   ├── ViewModels/
-│   └── UI/
-├── Desktop Video.xcodeproj
+│   │   ├── AppState.swift
+│   │   ├── AppViewModel.swift
+│   │   └── ScreenObserver.swift
+│   ├── WallpaperWindow.swift
+│   └── WallpaperWindowController.swift
+├── Desktop Video.xcodeproj/
 ├── Desktop VideoTests/
 ├── Desktop VideoUITests/
+├── DesktopVideoforMACTempleate.dmg
 ├── ChangeLog.md
 ├── README-EN.md
 ├── README.md
