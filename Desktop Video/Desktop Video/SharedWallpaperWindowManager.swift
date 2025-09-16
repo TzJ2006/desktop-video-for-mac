@@ -682,7 +682,7 @@ class SharedWallpaperWindowManager {
       videoView.updateLayout(for: screen)
     }
     controller.start()
-    controller.refresh()
+//    controller.refresh()
     return controller
   }
 

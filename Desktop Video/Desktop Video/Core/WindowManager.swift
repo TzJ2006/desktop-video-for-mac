@@ -9,7 +9,7 @@ final class WindowManager {
     static let shared = WindowManager()
 
     private var wallpaperControllers: [String: WallpaperWindowController] = [:]
-//    private var overlayControllers: [String: ForeignMenuBarMirrorController] = [:]
+    private var overlayControllers: [String: ForeignMenuBarMirrorController] = [:]
     private var cancellables: Set<AnyCancellable> = []
     private var notificationObservers: [NSObjectProtocol] = []
 
@@ -50,7 +50,7 @@ final class WindowManager {
         }
         let sid = screen.dv_displayUUID
         if let existing = overlayControllers[sid] {
-            existing.refresh()
+//            existing.refresh()
             return existing
         }
         guard let controller = SharedWallpaperWindowManager.shared.updateStatusBarVideo(for: screen) else {
@@ -58,7 +58,7 @@ final class WindowManager {
             return nil
         }
         overlayControllers[sid] = controller
-        controller.refresh()
+//        controller.refresh()
         return controller
     }
 
@@ -146,8 +146,8 @@ final class WindowManager {
 
     private func refreshVisibleOverlays() {
         guard Settings.shared.showInMenuBar else { return }
-        for screen in NSScreen.screens {
-            overlayControllers[screen.dv_displayUUID]?.refresh()
-        }
+//        for screen in NSScreen.screens {
+//            overlayControllers[screen.dv_displayUUID]?.refresh()
+//        }
     }
 }
