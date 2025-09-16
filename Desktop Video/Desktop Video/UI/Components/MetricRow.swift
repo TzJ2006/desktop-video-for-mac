@@ -9,12 +9,12 @@ struct MetricRow: View {
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
-                Text(title)
+                Text(title).font(.system(size: 15))
                 Spacer()
-                Text(value).foregroundStyle(.secondary)
+                Text(value).font(.system(size: 15)).foregroundStyle(.secondary)
             }
             if let footnote {
-                Text(footnote).font(.footnote).foregroundStyle(.secondary)
+                Text(footnote).font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
         .accessibilityElement(children: .combine)

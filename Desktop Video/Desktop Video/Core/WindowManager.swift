@@ -43,7 +43,9 @@ final class WindowManager {
             queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            self.syncScreens()
+            Task { @MainActor in
+                self.syncScreens()
+            }
         }
         notificationObservers.append(token)
     }

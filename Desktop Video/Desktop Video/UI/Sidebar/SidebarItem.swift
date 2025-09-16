@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct SidebarItem: View {
@@ -10,7 +9,8 @@ struct SidebarItem: View {
     var body: some View {
         Button(action: { current = selection }) {
             Label(name, systemImage: icon)
-                .padding(.vertical, 4)
+                .font(.system(size: 16))
+                .padding(.vertical, 5)
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
         }

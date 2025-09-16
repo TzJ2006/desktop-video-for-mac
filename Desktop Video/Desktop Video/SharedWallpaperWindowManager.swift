@@ -22,7 +22,7 @@ class SharedWallpaperWindowManager {
 
   private var debounceWorkItem: DispatchWorkItem?
   private var blackScreensWorkItem: DispatchWorkItem?
-  private var windowScreenChangeWorkItem: DispatchWorkItem?
+//  private var windowScreenChangeWorkItem: DispatchWorkItem?
 
   private var playbackMode: AppState.PlaybackMode {
     AppState.shared.playbackMode
@@ -158,7 +158,7 @@ class SharedWallpaperWindowManager {
     }
   }
 
-  private var cancellables: Set<AnyCancellable> = []
+//  private var cancellables: Set<AnyCancellable> = []
 
   /// 全局静音前记录各屏幕的音量
   private var savedVolumes: [String: Float] = [:]

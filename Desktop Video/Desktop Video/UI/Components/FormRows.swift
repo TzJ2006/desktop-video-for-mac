@@ -7,6 +7,7 @@ struct ToggleRow: View {
     @Binding var value: Bool
     var body: some View {
         Toggle(title, isOn: $value)
+            .font(.system(size: 15))
             .frame(maxWidth: .infinity, alignment: .center)
     }
 }
@@ -17,7 +18,7 @@ struct SliderRow: View {
     var range: ClosedRange<Double>
     var body: some View {
         VStack(alignment: .center) {
-            Text(title)
+            Text(title).font(.system(size: 15))
             Slider(value: $value, in: range)
         }
         .frame(maxWidth: .infinity)
@@ -39,10 +40,11 @@ struct SliderInputRow: View {
     var body: some View {
         VStack(alignment: .center) {
             HStack {
-                Text(title)
-                Slider(value: $value, in: range)
+                Text(title).font(.system(size: 15))
+                Slider(value: $value, in: range).font(.system(size: 15))
                 TextField("", value: $value, formatter: numberFormatter)
                     .frame(width: 40)
+                    .font(.system(size: 12))
             }
         }
         .frame(maxWidth: .infinity)
@@ -53,7 +55,7 @@ struct StepperRow: View {
     let title: LocalizedStringKey
     @Binding var value: Int
     var body: some View {
-        Stepper(value: $value) { Text(title) }
+        Stepper(value: $value) { Text(title).font(.system(size: 15)) }
             .frame(maxWidth: .infinity, alignment: .center)
     }
 }
@@ -69,6 +71,7 @@ struct PickerRow<Content: View>: View {
     }
     var body: some View {
         Picker(title, selection: $selection) { content }
+            .font(.system(size: 15))
             .frame(maxWidth: .infinity, alignment: .center)
     }
 }

@@ -161,7 +161,7 @@ struct PreferencesView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 12) {
+            VStack(spacing: 18) { // 增大行间距
                 Toggle(L("GlobalMute"), isOn: $globalMute)
                 Toggle(L("LaunchAtLogin"), isOn: $launchAtLogin)
 
@@ -173,10 +173,9 @@ struct PreferencesView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .frame(width: 100)
+                    .frame(width: 120)
                 }
                 .padding(.top, 10)
-
 
                 Toggle(L("EnableScreenSaver"), isOn: $screensaverEnabled)
                     .padding(.top, 10)
@@ -184,12 +183,12 @@ struct PreferencesView: View {
                 HStack {
                     Text(L("ScreenSaverDelay"))
                     TextField("5", value: $screensaverDelayMinutes, formatter: NumberFormatter())
-                        .frame(width: 30)
-                    Text(L("MinutetoSaver"))
+                        .frame(width: 40)
+                    Text(L("MinutetoSaver")).font(.system(size: 14)) // 小字体
                 }
                 .disabled(!screensaverEnabled)
 
-                // 播放模式：总是播放 / 自动 / 省电 / 省电+ / 静止
+                // 播放模式
                 VStack {
                     Text(L("PlaybackMode"))
                     Picker(selection: $playbackMode, label: EmptyView()) {
@@ -206,15 +205,15 @@ struct PreferencesView: View {
                 HStack {
                     Text(L("idlePauseSensitivity"))
                     TextField("40", value: $idlePauseSensitivity, formatter: NumberFormatter())
-                        .frame(width: 30)
+                        .frame(width: 40)
                 }
                 .disabled(!screensaverEnabled)
 
                 HStack {
                     Text(L("MaxVideoFileSizeGB"))
                     TextField("1.0", value: $maxVideoFileSizeInGB, formatter: NumberFormatter())
-                        .frame(width: 40)
-                    Text("GB")
+                        .frame(width: 50)
+                    Text("GB").font(.system(size: 14)) // 小字体
                 }
                 .padding(.top, 10)
                 
@@ -222,12 +221,12 @@ struct PreferencesView: View {
                     Button(L("Confirm")) {
                         if requiresRestart {
                             desktop_videoApp.showRestartAlert {
-                                confirmChanges()          // 保存设置
+                                confirmChanges()
                             } onDiscard: {
                                 loadStoredValues()
                             }
                         } else {
-                            confirmChanges()          // 直接保存并即时生效
+                            confirmChanges()
                         }
                     }
                     .buttonStyle(.bordered)
@@ -235,10 +234,11 @@ struct PreferencesView: View {
                 }
                 .padding(.top, 10)
             }
+            .font(.system(size: 18)) // 将所有子视图的字体统一设置为18pt
         }
         .fixedSize()
-        .frame(minWidth: 270, maxWidth: .infinity, minHeight: 360, maxHeight: .infinity)
-        .padding(20)
+        .frame(minWidth: 360, maxWidth: .infinity, minHeight: 480, maxHeight: .infinity) // 增大窗口最小尺寸
+        .padding(24)
         .onAppear {
             // 首次出现时缓存原始值
             originalLaunchAtLogin = launchAtLoginStorage

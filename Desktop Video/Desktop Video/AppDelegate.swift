@@ -679,10 +679,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    }
 
    // 如果点击菜单栏按钮就打开主控制器界面
-   @objc func statusBarIconClicked() {
-       dlog("statusBarIconClicked")
-       toggleMainWindow()
-   }
+//   @objc func statusBarIconClicked() {
+//       dlog("statusBarIconClicked")
+//       toggleMainWindow()
+//   }
     
     /// Manually trigger the screensaver from UI.
    @objc func manualRunScreensaver(_: Any? = nil) {

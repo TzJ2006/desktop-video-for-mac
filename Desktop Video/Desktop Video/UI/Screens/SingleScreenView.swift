@@ -13,20 +13,20 @@ struct SingleScreenView: View {
     @State private var currentFileName: String = ""
     
     var body: some View {
-        VStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .center, spacing: 16) {  // 增加垂直间距
             HStack(spacing: 8) {
-                Button(action: chooseMedia) { Text(L("Choose Video…")) }
-                Button(action: clear) { Text(L("Clear")) }
-                Button(action: play) { Text(L("Play")) }
-                Button(action: pause) { Text(L("Pause")) }
-                Button(action: syncAll) { Text(L("Sync same videos")) }
+                Button(action: chooseMedia) { Text(L("Choose Video…")).font(.system(size: 15)) }
+                Button(action: clear) { Text(L("Clear")).font(.system(size: 15)) }
+                Button(action: play) { Text(L("Play")).font(.system(size: 15)) }
+                Button(action: pause) { Text(L("Pause")).font(.system(size: 15)) }
+                Button(action: syncAll) { Text(L("Sync same videos")).font(.system(size: 15)) }
             }
+            .frame(minWidth: 400) // 保证按钮文字完整显示
             if !currentFileName.isEmpty {
                 HStack(spacing: 4) {
-                    Text(LocalizedStringKey(L("NowPlaying")))
-                    Text(currentFileName)
+                    Text(LocalizedStringKey(L("NowPlaying"))).font(.system(size: 12))
+                    Text(currentFileName).font(.system(size: 12))
                 }
-                .font(.footnote)
                 .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
@@ -54,11 +54,14 @@ struct SingleScreenView: View {
                         }
                     }
             }
+            .font(.system(size: 15))
             ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
                 .onChange(of: stretchToFill) { newValue in
                     updateStretch(newValue)
                 }
+                .font(.system(size: 15))
         }
+        .frame(minWidth: 440, maxWidth: 600) // 外层VStack宽度限制，防止内容被压缩
         .onAppear(perform: syncInitialState)
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
             updateNowPlaying()

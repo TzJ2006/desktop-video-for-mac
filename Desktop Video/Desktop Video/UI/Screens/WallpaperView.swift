@@ -14,10 +14,12 @@ struct WallpaperView: View {
             if screenObserver.screens.count > 1 {
                 Picker(LocalizedStringKey(L("Screen")), selection: $selectedScreenID) {
                     ForEach(screenObserver.screens, id: \.dv_displayUUID) { screen in
-                        Text(screen.dv_localizedName).tag(screen.dv_displayUUID)
+                        Text(screen.dv_localizedName).tag(screen.dv_displayUUID).font(.system(size: 15))
                     }
                 }
                 .pickerStyle(.menu)
+                .font(.system(size: 15))
+                .padding(.bottom, 4)
 
                 if let screen = screenObserver.screens.first(where: { $0.dv_displayUUID == selectedScreenID }) {
                     SingleScreenView(screen: screen)
@@ -33,6 +35,7 @@ struct WallpaperView: View {
                     AppDelegate.shared.setDockIconVisible(!$0)
                 }
             ))
+            .font(.system(size: 15))
         }
         .onChange(of: screenObserver.screens) { screens in
             if !screens.contains(where: { $0.dv_displayUUID == selectedScreenID }) {

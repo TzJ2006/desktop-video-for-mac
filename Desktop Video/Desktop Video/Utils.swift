@@ -11,10 +11,10 @@ import CoreGraphics
 import OSLog
 
 // MARK: - Notification 统一管理
-extension Notification.Name {
-    /// 壁纸内容变更后发送，用于刷新 UI
-    static let wallpaperContentDidChange = Notification.Name("WallpaperContentDidChange")
-}
+//extension Notification.Name {
+//    /// 壁纸内容变更后发送，用于刷新 UI
+//    static let wallpaperContentDidChange = Notification.Name("WallpaperContentDidChange")
+//}
 
 // MARK: - NSScreen 帮助函数
 extension NSScreen {
@@ -47,9 +47,9 @@ extension NSScreen {
         return "\(dv_localizedName)-\(res)"
     }
 
-    static func screen(forDisplayID id: CGDirectDisplayID) -> NSScreen? {
-        NSScreen.screens.first { $0.dv_displayID == id }
-    }
+//    static func screen(forDisplayID id: CGDirectDisplayID) -> NSScreen? {
+//        NSScreen.screens.first { $0.dv_displayID == id }
+//    }
 
     static func screen(forUUID uuid: String) -> NSScreen? {
         NSScreen.screens.first { $0.dv_displayUUID == uuid }

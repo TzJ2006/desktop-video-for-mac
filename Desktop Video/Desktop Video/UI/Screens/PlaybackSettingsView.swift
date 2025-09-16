@@ -1,4 +1,3 @@
-
 import SwiftUI
 import AppKit
 
@@ -16,20 +15,20 @@ struct PlaybackSettingsView: View {
 
     var body: some View {
         CardSection(title: LocalizedStringKey(L("Playback")), systemImage: "bolt.circle", help: LocalizedStringKey(L("Auto pause and power modes."))) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L("PlaybackMode")).font(.subheadline)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L("PlaybackMode")).font(.system(size: 15))
                 Picker("", selection: Binding(
                     get: { appState.playbackMode.rawValue },
                     set: { appState.playbackMode = AppState.PlaybackMode(rawValue: $0) ?? .automatic }
                 )) {
                     ForEach(AppState.PlaybackMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.description).tag(mode.rawValue)
+                        Text(mode.description).tag(mode.rawValue).font(.system(size: 15))
                     }
                 }
                 .labelsHidden()
 
                 Text(appState.playbackMode.detail)
-                    .font(.footnote)
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
 //                HStack {
@@ -64,6 +63,7 @@ struct PlaybackSettingsView: View {
 
                     TextField("", value: $appState.idlePauseSensitivity, formatter: numberFormatter)
                         .frame(width: 44)
+                        .font(.system(size: 15))
                 }
                 .onChange(of: appState.idlePauseSensitivity) { newValue in
                     let clamped = min(max(newValue, 0), 100)
@@ -71,6 +71,7 @@ struct PlaybackSettingsView: View {
                     dlog("set idle pause sensitivity \(clamped)")
                 }
             }
+            .font(.system(size: 15)) // 统一大字
         }
     }
 }

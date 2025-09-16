@@ -4,7 +4,7 @@ import AppKit
 
 struct SidebarView: View {
     @Binding var selection: SidebarSelection
-    @ObservedObject private var languageManager = LanguageManager.shared
+//    @ObservedObject private var languageManager = LanguageManager.shared
     var body: some View {
         VStack(spacing: 8) {
             VStack {

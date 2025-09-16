@@ -6,8 +6,7 @@ import AppKit
 struct ContentView: View {
     var body: some View {
         AppMainWindow()
-            // Set a more balanced default window size (about 30% smaller)
-            .frame(minWidth: 630, minHeight: 420)
+            .frame(minWidth: 720, minHeight: 480)
             .background(MainWindowBridge())
     }
 }
