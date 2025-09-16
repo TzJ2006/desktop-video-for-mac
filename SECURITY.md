@@ -2,11 +2,16 @@
 
 ## Supported Versions
 
-| Version | Supported |
-| ------- | --------- |
-| 3.1+    | ✅        |
-| 4.0+    | ✅        |
-| < 3.0   | ❌        |
+| App Version | Supported |
+| ----------- | --------- |
+| < 4.0       | ❌        |
+| 4.0+        | ✅        |
+
+| MacOS Version | Supported        |
+| ------------- | ---------------- |
+| > 12.0        | ❌               |
+| > 12.5        | ✅               |
+| > 26.0        | 👍🏻 Recommended |
 
 ## Reporting a Vulnerability
 
