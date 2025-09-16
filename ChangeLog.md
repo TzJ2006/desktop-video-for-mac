@@ -15,7 +15,12 @@
 
 ### Version 4.0 Preview 0915 hot-fix 10 (2025-09-15)
 
-- 尝试识别第三方菜单栏遮罩，并自动匹配菜单栏高度
+- 尝试识别第三方菜单栏遮罩，并自动匹配菜单栏| col1 | col2 | col3 |
+  | ---- | ---- | ---- |
+  |      |      |      |
+  |      |      |      |
+
+  高度
 - Use CGWindowScanner to precisely identify third-party menu bar overlays and refine the detected band height
 
 ### Version 4.0 Preview 0914 (2025-09-14)

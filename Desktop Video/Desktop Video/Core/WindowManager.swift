@@ -9,7 +9,7 @@ final class WindowManager {
     static let shared = WindowManager()
 
     private var wallpaperControllers: [String: WallpaperWindowController] = [:]
-    private var overlayControllers: [String: ForeignMenuBarMirrorController] = [:]
+//    private var overlayControllers: [String: ForeignMenuBarMirrorController] = [:]
     private var cancellables: Set<AnyCancellable> = []
     private var notificationObservers: [NSObjectProtocol] = []
 
