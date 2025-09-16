@@ -100,8 +100,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if showOnlyInMenuBar {
                     self.setDockIconVisible(!showOnlyInMenuBar)
                 }
-                // Always open the main window if not already open
-                if self.window == nil {
+                self.captureMainWindowFromSwiftUI()
+                if let trackedWindow = self.window {
+                    trackedWindow.makeKeyAndOrderFront(nil)
+                    NSRunningApplication.current.activate(options: [.activateAllWindows])
+                } else {
                     self.openMainWindow()
                 }
             }
@@ -466,20 +469,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
    // 打开主控制器界面
-   @objc func toggleMainWindow() {
-       dlog("toggleMainWindow")
-       NSApp.activate(ignoringOtherApps: true)
-       // 如果已经有窗口了就不新建窗口
-       if let win = self.window {
-           win.makeKeyAndOrderFront(nil)
-       } else {
-           openMainWindow()
-       }
-   }
+    @objc func toggleMainWindow() {
+        dlog("toggleMainWindow")
+        NSApp.activate(ignoringOtherApps: true)
+        // 如果已经有窗口了就不新建窗口
+        captureMainWindowFromSwiftUI()
+        if let win = self.window {
+            win.makeKeyAndOrderFront(nil)
+        } else {
+            openMainWindow()
+        }
+    }
 
-   static func openPreferencesWindow() {
-       dlog("openPreferencesWindow")
-       guard let delegate = shared else { return }
+    func adoptMainWindowIfNeeded(_ window: NSWindow) {
+        dlog("adoptMainWindowIfNeeded alreadyTracked=\(self.window === window)")
+        guard self.window !== window else { return }
+        self.window = window
+        hasOpenedMainWindowOnce = true
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+    }
+
+    private func captureMainWindowFromSwiftUI() {
+        dlog("captureMainWindowFromSwiftUI trackedExists=\(self.window != nil) windowCount=\(NSApp.windows.count)")
+        guard self.window == nil else { return }
+        if let swiftWindow = NSApp.windows.first(where: { $0.identifier?.rawValue == "MainWindow" }) {
+            adoptMainWindowIfNeeded(swiftWindow)
+        }
+    }
+
+    static func openPreferencesWindow() {
+        dlog("openPreferencesWindow")
+        guard let delegate = shared else { return }
 
        if let win = delegate.preferencesWindow {
            win.makeKeyAndOrderFront(nil)
@@ -522,8 +543,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
    // 打开窗口
    @objc func openMainWindow() {
-       // Only delay on the very first open
-       if !hasOpenedMainWindowOnce {
+        captureMainWindowFromSwiftUI()
+        // Only delay on the very first open
+        if !hasOpenedMainWindowOnce {
             dlog("OpenMainWindow for the first time")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.25) { [weak self] in
                 Task { @MainActor [weak self] in
@@ -538,13 +560,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
    }
 
-   /// Actual implementation to open or activate the main window
-   private func performOpenMainWindow() {
-       dlog("openMainWindow (delayed or immediate)")
-       if let win = self.window {
-           if win.isMiniaturized {
-               win.deminiaturize(nil)
-           }
+    /// Actual implementation to open or activate the main window
+    private func performOpenMainWindow() {
+        dlog("openMainWindow (delayed or immediate)")
+        captureMainWindowFromSwiftUI()
+        if let win = self.window {
+            if win.isMiniaturized {
+                win.deminiaturize(nil)
+            }
            win.makeKeyAndOrderFront(nil)
            NSRunningApplication.current.activate(options: [.activateAllWindows])
            return
@@ -565,6 +588,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        newWindow.delegate = self
        newWindow.makeKeyAndOrderFront(nil)
        self.window = newWindow
+        hasOpenedMainWindowOnce = true
        NSRunningApplication.current.activate(options: [.activateAllWindows])
    }
 
