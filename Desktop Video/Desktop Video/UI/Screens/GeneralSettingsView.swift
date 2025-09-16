@@ -7,7 +7,6 @@ struct GeneralSettingsView: View {
     @AppStorage("selectedLanguage")  private var language:          String = "system"
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGB: Double = 1.0
     @AppStorage("globalMute") private var globalMute: Bool = false
-    @AppStorage("showInMenuBar") private var showMenuBarVideo: Bool = false
     @AppStorage("screensaverEnabled") private var screensaverEnabled: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutes: Double = 5.0
 
@@ -27,8 +26,6 @@ struct GeneralSettingsView: View {
                 .onChange(of: globalMute) { newValue in
                     desktop_videoApp.applyGlobalMute(newValue)
                 }
-
-            MenuBarVideoToggle()
 
             ToggleRow(title: LocalizedStringKey(L("Launch at login")), value: Binding(
                 get: { launchAtLogin },

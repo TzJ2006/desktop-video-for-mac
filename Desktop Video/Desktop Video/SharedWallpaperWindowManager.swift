@@ -80,11 +80,6 @@ class SharedWallpaperWindowManager {
       dlog("overlay level = \(overlay.level.rawValue)")
     }
 
-    if let mirror = menuBarMirrors[sid], mirror.mirroredScreen !== screen {
-      dlog("menu bar mirror moved off \(screen.dv_localizedName); tearing down")
-      tearDownMenuBarMirror(for: screen)
-    }
-
     // Screensaver‑overlay window
     if let saverOverlay = screensaverOverlayWindows[sid], saverOverlay.screen !== screen {
       saverOverlay.orderOut(nil)
@@ -174,10 +169,6 @@ class SharedWallpaperWindowManager {
   var overlayWindows: [String: NSWindow] = [:]
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
   var screensaverOverlayWindows: [String: NSWindow] = [:]
-  /// 菜单栏镜像控制器
-  var menuBarMirrors: [String: ForeignMenuBarMirrorController] = [:]
-  /// 菜单栏顶部裁剪视频视图
-  var menuBarVideoViews: [String: TopCroppedVideoStripView] = [:]
   var players: [String: AVQueuePlayer] = [:]
   private let videoDataCache = NSCache<NSURL, NSData>()
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
@@ -541,7 +532,6 @@ class SharedWallpaperWindowManager {
         AppState.shared.currentMediaURL = nil
       }
     }
-    tearDownMenuBarMirror(for: screen)
     NotificationCenter.default.post(
       name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
     AppDelegate.shared?.startScreensaverTimer()
@@ -586,8 +576,6 @@ class SharedWallpaperWindowManager {
     currentViews[sid]?.removeFromSuperview()
     contentView.addSubview(newView)
     currentViews[sid] = newView
-    // 根据设置更新状态栏视频
-    updateStatusBarVideo(for: screen)
   }
 
   /// 根据 overlay 遮挡状态立即决定播放或暂停该屏幕的视频
@@ -630,130 +618,6 @@ class SharedWallpaperWindowManager {
   // periphery:ignore - reserved for future
   func refreshPlayState(for screen: NSScreen) {
     updatePlayState(for: screen)
-  }
-
-  /// 根据用户设置在菜单栏显示或移除动态着色
-  @discardableResult
-  func updateStatusBarVideo(for screen: NSScreen) -> ForeignMenuBarMirrorController? {
-    let sid = id(for: screen)
-    let enabled = Settings.shared.showInMenuBar
-    dlog("updateStatusBarVideo (mirror) enabled=\(enabled) for \(screen.dv_localizedName)")
-    guard enabled else {
-      tearDownMenuBarMirror(for: screen)
-      return nil
-    }
-    guard let player = players[sid] else {
-      dlog("updateStatusBarVideo missing player for \(screen.dv_localizedName)", level: .warn)
-      tearDownMenuBarMirror(for: screen)
-      return nil
-    }
-
-    let controller: ForeignMenuBarMirrorController
-    if let existing = menuBarMirrors[sid] {
-      controller = existing
-    } else {
-      controller = makeMenuBarMirror(for: screen)
-      menuBarMirrors[sid] = controller
-    }
-
-    controller.drawBackground = { [weak self] context, rect in
-      self?.drawMenuBarBackground(in: context, rect: rect, screen: screen)
-    }
-
-    controller.onGeometryChange = { [weak self] newFrame in
-      guard let self else { return }
-      if let view = self.menuBarVideoViews[sid] {
-        view.updateLayout(for: screen, band: newFrame)
-      }
-    }
-
-    let videoView: TopCroppedVideoStripView
-    if let existingView = menuBarVideoViews[sid] {
-      videoView = existingView
-    } else {
-      videoView = TopCroppedVideoStripView(frame: .zero)
-      menuBarVideoViews[sid] = videoView
-    }
-    controller.setHostedView(videoView)
-    videoView.attach(player: player)
-    if let frame = controller.currentOverlayFrame {
-      videoView.updateLayout(for: screen, band: frame)
-    } else {
-      videoView.updateLayout(for: screen)
-    }
-    controller.start()
-//    controller.refresh()
-    return controller
-  }
-
-  /// 更新所有屏幕的状态栏视频
-  // periphery:ignore - reserved for future
-  func updateStatusBarVideoForAllScreens() {
-    dlog("update status bar mirror for all screens")
-    for screen in NSScreen.screens {
-      _ = updateStatusBarVideo(for: screen)
-    }
-  }
-
-  private func makeMenuBarMirror(for screen: NSScreen) -> ForeignMenuBarMirrorController {
-    dlog("makeMenuBarMirror for \(screen.dv_localizedName)")
-    let controller = ForeignMenuBarMirrorController(screen: screen)
-    controller.drawBackground = { [weak self] context, rect in
-      self?.drawMenuBarBackground(in: context, rect: rect, screen: screen)
-    }
-    return controller
-  }
-
-  private func drawMenuBarBackground(in context: CGContext, rect: CGRect, screen: NSScreen) {
-    dlog(
-      "drawMenuBarBackground for \(screen.dv_localizedName) rect=\(NSStringFromRect(NSRectFromCGRect(rect)))"
-    )
-    context.setFillColor(NSColor.clear.cgColor)
-    context.fill(rect)
-  }
-
-  func tearDownMenuBarMirror(for screen: NSScreen) {
-    let sid = id(for: screen)
-    if let strip = menuBarVideoViews.removeValue(forKey: sid) {
-      dlog("tearDownMenuBarMirror remove strip for \(screen.dv_localizedName)")
-      strip.removeFromSuperview()
-    }
-    if let controller = menuBarMirrors.removeValue(forKey: sid) {
-      dlog("tearDownMenuBarMirror stop controller for \(screen.dv_localizedName)")
-      controller.removeHostedView()
-      controller.stop()
-    }
-  }
-
-  func tearDownAllMenuBarMirrors() {
-    dlog("tearDownAllMenuBarMirrors")
-    for (sid, controller) in menuBarMirrors {
-      dlog("tearDownAllMenuBarMirrors stop controller id=\(sid)")
-      controller.removeHostedView()
-      controller.stop()
-    }
-    menuBarMirrors.removeAll()
-    for (sid, view) in menuBarVideoViews {
-      dlog("tearDownAllMenuBarMirrors remove strip id=\(sid)")
-      view.removeFromSuperview()
-    }
-    menuBarVideoViews.removeAll()
-  }
-
-  func tearDownMenuBarMirror(forID id: String) {
-    if let screen = NSScreen.screen(forUUID: id) {
-      tearDownMenuBarMirror(for: screen)
-      return
-    }
-    if let controller = menuBarMirrors.removeValue(forKey: id) {
-      dlog("tearDownMenuBarMirror stop controller for missing screen id=\(id)")
-      controller.removeHostedView()
-      controller.stop()
-    }
-    if let strip = menuBarVideoViews.removeValue(forKey: id) {
-      dlog("tearDownMenuBarMirror remove strip for missing screen id=\(id)")
-      strip.removeFromSuperview()
-    }
   }
 
   func updateBookmark(stretch: Bool, volume: Float?, screen: NSScreen) {
@@ -908,14 +772,6 @@ class SharedWallpaperWindowManager {
           currentViews.removeValue(forKey: sid)
           windowControllers.removeValue(forKey: sid)?.stop()
           screenContent.removeValue(forKey: sid)
-          if let mirror = menuBarMirrors.removeValue(forKey: sid) {
-            dlog("cleanupDisconnectedScreens stop mirror for id=\(sid)")
-            mirror.stop()
-          }
-          if let strip = menuBarVideoViews.removeValue(forKey: sid) {
-            dlog("cleanupDisconnectedScreens remove strip for id=\(sid)")
-            strip.removeFromSuperview()
-          }
         }
       }
     }
