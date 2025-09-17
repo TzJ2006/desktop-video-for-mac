@@ -19,6 +19,9 @@ class SharedWallpaperWindowManager {
 
   /// 屏幕暂停状态集合
   private var pausedScreens: Set<String> = []
+  
+  /// 防止全局静音状态循环更新的标志
+  private var isUpdatingGlobalMute = false
 
   private var debounceWorkItem: DispatchWorkItem?
   private var blackScreensWorkItem: DispatchWorkItem?
@@ -353,7 +356,7 @@ class SharedWallpaperWindowManager {
        existingContent.url == url,
        let existingPlayer = players[sid] {
       dlog("reuse existing video player on same screen \(sid)")
-      existingPlayer.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
+      existingPlayer.volume = AppState.shared.isGlobalMuted ? 0.0 : volume
       if let playerView = currentViews[sid] as? AVPlayerView {
         playerView.videoGravity = stretch ? .resize : .resizeAspect
       }
@@ -402,7 +405,7 @@ class SharedWallpaperWindowManager {
       queuePlayer.automaticallyWaitsToMinimizeStalling = false
       let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
 
-      queuePlayer.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
+      queuePlayer.volume = AppState.shared.isGlobalMuted ? 0.0 : volume
 
       let playerView = AVPlayerView(frame: contentView.bounds)
       playerView.player = queuePlayer
@@ -438,6 +441,7 @@ class SharedWallpaperWindowManager {
   /// 会在静音前保存各屏幕最后一次非零音量。
   func muteAllScreens() {
     dlog("mute all screens")
+    isUpdatingGlobalMute = true // 设置标志，防止死循环
     // 先记录音量再静音
     for sid in screenContent.keys {
       let currentVol = screenContent[sid]?.volume ?? 0
@@ -446,12 +450,14 @@ class SharedWallpaperWindowManager {
         setVolume(0, for: screen)
       }
     }
+    isUpdatingGlobalMute = false // 重置标志
   }
 
   /// 恢复所有屏幕在上次全局静音前的音量，
   /// 已经为 0 的屏幕保持静音。
   func restoreAllScreens() {
     dlog("restore all screens")
+    isUpdatingGlobalMute = true // 设置标志，防止死循环
     for sid in screenContent.keys {
       let newVol = savedVolumes[sid] ?? (screenContent[sid]?.volume ?? 0)
       if let screen = NSScreen.screen(forUUID: sid) {
@@ -459,6 +465,7 @@ class SharedWallpaperWindowManager {
       }
     }
     savedVolumes.removeAll()
+    isUpdatingGlobalMute = false // 重置标志
 
     // 通知界面刷新音量滑块
     NotificationCenter.default.post(
@@ -472,7 +479,7 @@ class SharedWallpaperWindowManager {
   func updateVideoSettings(for screen: NSScreen, stretch: Bool, volume: Float) {
     dlog("update video settings on \(screen.dv_localizedName) stretch=\(stretch) volume=\(volume)")
     let sid = id(for: screen)
-    players[sid]?.volume = desktop_videoApp.shared!.globalMute ? 0.0 : volume
+    players[sid]?.volume = AppState.shared.isGlobalMuted ? 0.0 : volume
     if let playerView = currentViews[sid] as? AVPlayerView {
       playerView.videoGravity = stretch ? .resize : .resizeAspect
     }
@@ -631,7 +638,7 @@ class SharedWallpaperWindowManager {
 
   private func saveBookmark(for url: URL, stretch: Bool, volume: Float?, screen: NSScreen) {
     dlog(
-      "save bookmark for \(screen.dv_localizedName) url=\(url.lastPathComponent) stretch=\(stretch) volume=\(String(describing: volume))"
+      "save bookmark for \(screen.dv_displayUUID) url=\(url.lastPathComponent) stretch=\(stretch) volume=\(String(describing: volume))"
     )
     let uuid = screen.dv_displayUUID
     do {
@@ -736,9 +743,9 @@ class SharedWallpaperWindowManager {
     dlog("set volume for \(screen.dv_localizedName) volume=\(volume)")
     let sid = id(for: screen)
     if let entry = screenContent[sid], entry.type == .video {
-      // 手动调整音量会取消全局静音
-      if volume > 0 {
-        desktop_videoApp.shared!.globalMute = false
+      // 防止死循环：只有在不是程序内部更新全局静音状态时才取消全局静音
+      if volume > 0 && !isUpdatingGlobalMute {
+        AppState.shared.isGlobalMuted = false
       }
 
       // 应用到播放器并持久化
