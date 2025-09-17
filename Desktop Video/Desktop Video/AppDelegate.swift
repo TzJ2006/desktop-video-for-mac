@@ -297,6 +297,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            if let screen = NSScreen.screen(forUUID: id) {
                dlog("found screen: \(screen)")
                guard let wallpaperWindow = SharedWallpaperWindowManager.shared.windowControllers[id]?.window else { continue }
+               wallpaperWindow.contentView?.wantsLayer = true  // ensure layer-backed
                wallpaperWindow.level = .screenSaver
                wallpaperWindow.ignoresMouseEvents = false
                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -317,11 +318,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                let dateLabel = NSTextField(labelWithString: "")
                dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
                dateLabel.textColor = .white
+               // update styling to match original
                dateLabel.drawsBackground = true
                dateLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
-               dateLabel.wantsLayer = true
-               dateLabel.layer?.cornerRadius = 8
-               dateLabel.layer?.masksToBounds = true
+               if dateLabel.wantsLayer {
+                   dateLabel.layer?.cornerRadius = 8
+                   dateLabel.layer?.masksToBounds = true
+               }
+               dateLabel.layer?.zPosition = 100 // bring above video
                dateLabel.isBezeled = false
                dateLabel.isEditable = false
                dateLabel.alignment = .center
@@ -332,9 +336,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                dateLabel.sizeToFit()
                // 根据窗口内容视图计算标签位置
                if let contentBounds = wallpaperWindow.contentView?.bounds {
-                   // 使用和 updateClockLabels 相同的逻辑：顶部中央，向下偏移20点
-                   let dateX = contentBounds.midX - dateLabel.frame.width / 2
-                   let dateY = contentBounds.maxY - dateLabel.frame.height - contentBounds.maxY * 0.05
+                   // place at top 1/5 of view, horizontally centered
+                   let dateX = (contentBounds.width - dateLabel.frame.width) / 2
+                   let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
                }
                wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
@@ -363,6 +367,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                }
                wallpaperWindow.contentView?.addSubview(timeLabel, positioned: .above, relativeTo: nil)
                clockTimeLabels.append(timeLabel)
+               // Ensure dateLabel is above all (bring to front)
+               wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
            } else {
                dlog("no NSScreen found forDisplayID \(id), skipping")
                continue
@@ -896,11 +902,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
               let contentBounds = window.contentView?.bounds {
 
-               // 更新日期标签
+               // 更新日期标签样式并文本
+               dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
+               dateLabel.textColor = .white
+               // update styling to match original
+//               dateLabel.drawsBackground = true
+//               dateLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+               dateLabel.wantsLayer = true
+               dateLabel.layer?.cornerRadius = 8
+               dateLabel.layer?.masksToBounds = true
+               dateLabel.isBezeled = false
+               dateLabel.isEditable = false
+               dateLabel.alignment = .center
+               dateLabel.layer?.zPosition = 100
                dateLabel.stringValue = dateString
                dateLabel.sizeToFit()
-               let dateX = contentBounds.midX - dateLabel.frame.width / 2
-               let dateY = contentBounds.maxY - dateLabel.frame.height - contentBounds.maxY * 0.05
+               // 重新定位
+               let dateX = (contentBounds.width - dateLabel.frame.width) / 2
+               let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
                // 更新时间标签
