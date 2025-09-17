@@ -309,6 +309,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                dateLabel.backgroundColor = NSColor(calibratedWhite: 0.2, alpha: 0.5) // DEBUG: 半透明背景，便于观察
                dateLabel.isBezeled = false
                dateLabel.isEditable = false
+               let dateFormatter = DateFormatter()
+               dateFormatter.locale = Locale.current
+               dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
+               dateLabel.stringValue = dateFormatter.string(from: Date())
                dateLabel.sizeToFit()
                // 根据窗口内容视图计算标签位置
                if let contentBounds = wallpaperWindow.contentView?.bounds {

@@ -1,10 +1,10 @@
 import SwiftUI
 import AppKit
+import Combine
 
 struct PlaybackSettingsView: View {
     @ObservedObject private var appState = AppState.shared
     @AppStorage("globalVolume") private var globalVolume: Double = 100
-    @AppStorage("globalMute") private var globalMute: Bool = false
 
     private let numberFormatter: NumberFormatter = {
         let f = NumberFormatter()
@@ -46,8 +46,8 @@ struct PlaybackSettingsView: View {
                         SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
                     }
                 }
-                .onChange(of: globalMute) { newValue in
-                    dlog("apply global mute \(newValue)")
+                .onReceive(appState.$isGlobalMuted.removeDuplicates()) { newValue in
+                    dlog("PlaybackSettingsView observed global mute \(newValue)")
                     desktop_videoApp.applyGlobalMute(newValue)
                 }
 

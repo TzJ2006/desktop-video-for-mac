@@ -5,7 +5,6 @@ struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
     @AppStorage("selectedLanguage")  private var language:          String = "system"
     @AppStorage("maxVideoFileSizeInGB") private var maxVideoFileSizeInGB: Double = 1.0
-    @AppStorage("globalMute") private var globalMute: Bool = false
     @AppStorage("screensaverEnabled") private var screensaverEnabled: Bool = false
     @AppStorage("screensaverDelayMinutes") private var screensaverDelayMinutes: Double = 5.0
 
@@ -22,10 +21,13 @@ struct GeneralSettingsView: View {
     var body: some View {
         CardSection(title: LocalizedStringKey(L("General")), systemImage: "gearshape", help: LocalizedStringKey(L("Common preferences."))) {
             VStack(spacing: 18) { // 增大行间距
-                ToggleRow(title: LocalizedStringKey(L("GlobalMute")), value: $globalMute)
-                    .onChange(of: globalMute) { newValue in
-                        desktop_videoApp.applyGlobalMute(newValue)
-                    }
+                ToggleRow(
+                    title: LocalizedStringKey(L("GlobalMute")),
+                    value: Binding(
+                        get: { appState.isGlobalMuted },
+                        set: { desktop_videoApp.applyGlobalMute($0) }
+                    )
+                )
 
                 ToggleRow(title: LocalizedStringKey(L("Launch at login")), value: Binding(
                     get: { launchAtLogin },
