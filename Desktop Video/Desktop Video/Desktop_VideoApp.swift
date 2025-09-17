@@ -23,7 +23,6 @@ struct desktop_videoApp: App {
     // 这些 AppStorage 只在菜单命令里保持最新状态，不直接绑定到 PreferencesView
     // periphery:ignore - reserved for future
     @AppStorage("launchAtLogin")     private var launchAtLogin:     Bool = true
-    @AppStorage("globalMute")        var globalMute:        Bool = false
 
     init() {
         Self.shared = self
@@ -66,13 +65,7 @@ struct desktop_videoApp: App {
     /// 切换静音的统一处理（菜单命令也会调用）
     static func applyGlobalMute(_ enabled: Bool) {
         dlog("applyGlobalMute \(enabled)")
-        guard let shared = shared else { return }
-        shared.globalMute = enabled
-        if enabled {
-            SharedWallpaperWindowManager.shared.muteAllScreens()
-        } else {
-            SharedWallpaperWindowManager.shared.restoreAllScreens()
-        }
+        AppState.shared.isGlobalMuted = enabled
         NotificationCenter.default.post(
             name: Notification.Name("WallpaperContentDidChange"),
             object: nil

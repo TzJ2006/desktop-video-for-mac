@@ -21,6 +21,15 @@ class AppState: ObservableObject {
     @Published var lastStretchToFill: Bool = true
     @Published var currentMediaURL: String?
 
+    /// Global mute switch shared across all players and UI bindings
+    @Published var isGlobalMuted: Bool {
+        didSet {
+            guard oldValue != isGlobalMuted else { return }
+            dlog("AppState.isGlobalMuted updated to \(isGlobalMuted)")
+            UserDefaults.standard.set(isGlobalMuted, forKey: globalMuteKey)
+        }
+    }
+
     // MARK: Playback Mode
     enum PlaybackMode: Int, CaseIterable, Identifiable {
         case alwaysPlay = 0      // 总是播放
@@ -68,10 +77,31 @@ class AppState: ObservableObject {
     }
 
     private let idlePauseSensitivityKey = "idlePauseSensitivity"
+    private let globalMuteKey = "globalMute"
+    private var userDefaultsCancellable: AnyCancellable?
 
     private init() {
         let raw = UserDefaults.standard.integer(forKey: "playbackMode")
         self.playbackMode = PlaybackMode(rawValue: raw) ?? .automatic
         self.idlePauseSensitivity = UserDefaults.standard.object(forKey: idlePauseSensitivityKey) as? Double ?? 40.0
+        self.isGlobalMuted = UserDefaults.standard.object(forKey: globalMuteKey) as? Bool ?? false
+        bindUserDefaults()
+    }
+
+    private func bindUserDefaults() {
+        userDefaultsCancellable = NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .map { [weak self] _ -> Bool in
+                guard let self else { return false }
+                return UserDefaults.standard.object(forKey: self.globalMuteKey) as? Bool ?? false
+            }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newValue in
+                guard let self else { return }
+                if self.isGlobalMuted != newValue {
+                    dlog("AppState observed external global mute change = \(newValue)")
+                    self.isGlobalMuted = newValue
+                }
+            }
     }
 }
