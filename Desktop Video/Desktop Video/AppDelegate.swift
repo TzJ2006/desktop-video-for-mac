@@ -316,24 +316,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
                // 添加日期文本
                let dateLabel = NSTextField(labelWithString: "")
-               dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
-               dateLabel.textColor = .white
-               // update styling to match original
-               dateLabel.drawsBackground = true
-               dateLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
-               if dateLabel.wantsLayer {
-                   dateLabel.layer?.cornerRadius = 8
-                   dateLabel.layer?.masksToBounds = true
-               }
-               dateLabel.layer?.zPosition = 100 // bring above video
-               dateLabel.isBezeled = false
-               dateLabel.isEditable = false
-               dateLabel.alignment = .center
+               configureScreensaverDateLabel(dateLabel)
                let dateFormatter = DateFormatter()
                dateFormatter.locale = Locale.current
                dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
                dateLabel.stringValue = dateFormatter.string(from: Date())
                dateLabel.sizeToFit()
+               applyScreensaverLabelPadding(dateLabel)
                // 根据窗口内容视图计算标签位置
                if let contentBounds = wallpaperWindow.contentView?.bounds {
                    // place at top 1/5 of view, horizontally centered
@@ -346,17 +335,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
                // 添加时间文本，位于日期标签下方约两倍高度处
                let timeLabel = NSTextField(labelWithString: "")
-               timeLabel.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
-               timeLabel.textColor = .white
-               timeLabel.drawsBackground = true
-               timeLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
-               timeLabel.wantsLayer = true
-               timeLabel.layer?.cornerRadius = 12
-               timeLabel.layer?.masksToBounds = true
-               timeLabel.isBezeled = false
-               timeLabel.isEditable = false
-               timeLabel.alignment = .center
+               configureScreensaverTimeLabel(timeLabel)
                timeLabel.sizeToFit()
+               applyScreensaverLabelPadding(timeLabel, horizontal: 40, vertical: 20)
                // 根据窗口内容视图计算标签位置
                if let contentBounds = wallpaperWindow.contentView?.bounds {
                    // 使用和 updateClockLabels 相同的逻辑：日期标签下方，间隔10点
@@ -880,11 +861,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        desktop_videoApp.shared?.showAboutDialog()
    }
    // 更新时钟标签位置和时间
-   private func updateClockLabels() {
-       dlog("updateClockLabels")
-       let dateFormatter = DateFormatter()
-       dateFormatter.locale = Locale.current
-       dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
+    private func updateClockLabels() {
+        dlog("updateClockLabels")
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale.current
+        dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
        let dateString = dateFormatter.string(from: Date())
 
        let timeFormatter = DateFormatter()
@@ -901,35 +882,69 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            let sid = screen.dv_displayUUID
            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
               let contentBounds = window.contentView?.bounds {
+                // 更新日期标签样式并文本
+                configureScreensaverDateLabel(dateLabel)
+                dateLabel.stringValue = dateString
+                dateLabel.sizeToFit()
+                applyScreensaverLabelPadding(dateLabel)
+                // 重新定位
+                let dateX = (contentBounds.width - dateLabel.frame.width) / 2
+                let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
+                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
-               // 更新日期标签样式并文本
-               dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
-               dateLabel.textColor = .white
-               // update styling to match original
-//               dateLabel.drawsBackground = true
-//               dateLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
-               dateLabel.wantsLayer = true
-               dateLabel.layer?.cornerRadius = 8
-               dateLabel.layer?.masksToBounds = true
-               dateLabel.isBezeled = false
-               dateLabel.isEditable = false
-               dateLabel.alignment = .center
-               dateLabel.layer?.zPosition = 100
-               dateLabel.stringValue = dateString
-               dateLabel.sizeToFit()
-               // 重新定位
-               let dateX = (contentBounds.width - dateLabel.frame.width) / 2
-               let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
-               dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+                // 更新时间标签
+                configureScreensaverTimeLabel(timeLabel)
+                timeLabel.stringValue = timeString
+                timeLabel.sizeToFit()
+                applyScreensaverLabelPadding(timeLabel, horizontal: 40, vertical: 20)
+                let timeX = contentBounds.midX - timeLabel.frame.width / 2
+                let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height / 1.5
+                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+        }
+    }
 
-               // 更新时间标签
-               timeLabel.stringValue = timeString
-               timeLabel.sizeToFit()
-               let timeX = contentBounds.midX - timeLabel.frame.width / 2
-               let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height / 1.5
-               timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
-           }
-       }
+    private func configureScreensaverDateLabel(_ label: NSTextField) {
+        label.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
+        label.textColor = .white
+        label.drawsBackground = true
+        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+        label.isBezeled = false
+        label.isEditable = false
+        label.alignment = .center
+        label.wantsLayer = true
+        label.layer?.cornerRadius = 8
+        label.layer?.masksToBounds = true
+        label.layer?.zPosition = 100
+        label.lineBreakMode = .byWordWrapping
+    }
+
+    private func configureScreensaverTimeLabel(_ label: NSTextField) {
+        label.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
+        label.textColor = .white
+        label.drawsBackground = true
+        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+        label.isBezeled = false
+        label.isEditable = false
+        label.alignment = .center
+        label.wantsLayer = true
+        label.layer?.cornerRadius = 12
+        label.layer?.masksToBounds = true
+        label.layer?.zPosition = 100
+        label.lineBreakMode = .byClipping
+    }
+
+    private func applyScreensaverLabelPadding(
+        _ label: NSTextField,
+        horizontal: CGFloat = 24,
+        vertical: CGFloat = 10
+    ) {
+        var frame = label.frame
+        frame.origin.x -= horizontal
+        frame.origin.y -= vertical
+        frame.size.width += horizontal * 2
+        frame.size.height += vertical * 2
+        label.frame = frame
+    }
    }
    // MARK: - External Screensaver Suppression
    @objc private func handleExternalScreensaverActive(_: Notification) {

@@ -6,9 +6,11 @@ import Combine
 /// Controls for a single screen's wallpaper.
 struct SingleScreenView: View {
     let screen: NSScreen
+    @ObservedObject private var appState = AppState.shared
+
     @State private var volume: Double = 100
     @State private var stretchToFill: Bool = true
-    @State private var isMuted: Bool = false
+    @State private var isLocallyMuted: Bool = false
     @State private var lastVolumeBeforeMute: Double = 100
     @State private var currentFileName: String = ""
     
@@ -31,28 +33,22 @@ struct SingleScreenView: View {
             }
             HStack(spacing: 8) {
                 SliderInputRow(title: LocalizedStringKey(L("Volume")), value: $volume, range: 0...100)
-                    .disabled(isMuted)
+                    .disabled(isMuteEffective)
                     .onChange(of: volume) { newValue in
                         let clamped = min(max(newValue, 0), 100)
                         volume = clamped
-                        guard !isMuted else { return }
+                        guard !isMuteEffective else { return }
                         SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
                     }
 
-                Toggle(LocalizedStringKey(L("Mute")), isOn: $isMuted)
-                    .toggleStyle(.checkbox)
-                    .onChange(of: isMuted) { muted in
-                        if muted {
-                            lastVolumeBeforeMute = volume
-                            SharedWallpaperWindowManager.shared.setVolume(0, for: screen)
-                            dlog("muted volume for \(screen.dv_localizedName)")
-                        } else {
-                            let clamped = min(max(lastVolumeBeforeMute, 0), 100)
-                            volume = clamped
-                            SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
-                            dlog("unmuted; restore volume \(clamped) for \(screen.dv_localizedName)")
-                        }
-                    }
+                Toggle(
+                    LocalizedStringKey(L("Mute")),
+                    isOn: Binding(
+                        get: { isMuteEffective },
+                        set: { handleMuteToggle($0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
             }
             .font(.system(size: 15))
             ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
@@ -64,11 +60,19 @@ struct SingleScreenView: View {
         .frame(minWidth: 440, maxWidth: 600) // 外层VStack宽度限制，防止内容被压缩
         .onAppear(perform: syncInitialState)
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
-            updateNowPlaying()
+            refreshStateFromManager()
         }
         .onChange(of: screen.dv_displayUUID) { _ in
             dlog("screen changed; sync controls for \(screen.dv_localizedName)")
             syncInitialState()
+        }
+        .onChange(of: appState.isGlobalMuted) { enabled in
+            dlog("observed global mute change = \(enabled) for \(screen.dv_localizedName)")
+            if enabled {
+                lastVolumeBeforeMute = max(volume, 0)
+            } else {
+                refreshStateFromManager()
+            }
         }
     }
 
@@ -84,7 +88,12 @@ struct SingleScreenView: View {
                 if type.conforms(to: .image) {
                     SharedWallpaperWindowManager.shared.showImage(for: screen, url: url, stretch: stretchToFill)
                 } else {
-                    SharedWallpaperWindowManager.shared.showVideo(for: screen, url: url, stretch: stretchToFill, volume: isMuted ? 0 : Float(volume / 100))
+                    SharedWallpaperWindowManager.shared.showVideo(
+                        for: screen,
+                        url: url,
+                        stretch: stretchToFill,
+                        volume: isMuteEffective ? 0 : Float(volume / 100)
+                    )
                 }
             }
         }
@@ -123,33 +132,68 @@ struct SingleScreenView: View {
             case .image:
                 SharedWallpaperWindowManager.shared.showImage(for: screen, url: entry.url, stretch: stretch)
             case .video:
-                SharedWallpaperWindowManager.shared.showVideo(for: screen, url: entry.url, stretch: stretch, volume: isMuted ? 0 : Float(volume / 100))
+                SharedWallpaperWindowManager.shared.showVideo(
+                    for: screen,
+                    url: entry.url,
+                    stretch: stretch,
+                    volume: isMuteEffective ? 0 : Float(volume / 100)
+                )
             }
         }
         dlog("update stretch \(stretch) for \(screen.dv_localizedName)")
     }
 
     private func syncInitialState() {
-        let sid = screen.dv_displayUUID
-        if let player = SharedWallpaperWindowManager.shared.players[sid] {
-            volume = Double(player.volume * 100)
-            isMuted = player.volume == 0
-            lastVolumeBeforeMute = max(volume, 0)
-        }
-        if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
-            stretchToFill = entry.stretch
-        }
-        updateNowPlaying()
+        refreshStateFromManager()
         dlog("sync controls for \(screen.dv_localizedName)")
     }
 
-    private func updateNowPlaying() {
+    private func refreshStateFromManager() {
         let sid = screen.dv_displayUUID
+        if let player = SharedWallpaperWindowManager.shared.players[sid] {
+            let newVolume = Double(player.volume * 100)
+            volume = newVolume
+            if newVolume > 0 {
+                lastVolumeBeforeMute = newVolume
+            }
+            if !appState.isGlobalMuted {
+                isLocallyMuted = player.volume == 0
+            }
+        }
         if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
+            stretchToFill = entry.stretch
             currentFileName = entry.url.lastPathComponent
         } else {
             currentFileName = ""
         }
-        dlog("updateNowPlaying for \(screen.dv_localizedName) file=\(currentFileName)")
+        dlog("refresh state for \(screen.dv_localizedName) file=\(currentFileName) volume=\(Int(volume)) mute=\(isMuteEffective)")
+    }
+
+    private func handleMuteToggle(_ newValue: Bool) {
+        if appState.isGlobalMuted {
+            if !newValue {
+                dlog("toggle off per-screen mute while global mute active on \(screen.dv_localizedName)")
+                desktop_videoApp.applyGlobalMute(false)
+                isLocallyMuted = false
+            }
+            return
+        }
+
+        if newValue {
+            lastVolumeBeforeMute = volume
+            isLocallyMuted = true
+            SharedWallpaperWindowManager.shared.setVolume(0, for: screen)
+            dlog("muted volume for \(screen.dv_localizedName)")
+        } else {
+            let clamped = min(max(lastVolumeBeforeMute, 0), 100)
+            volume = clamped
+            isLocallyMuted = false
+            SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
+            dlog("unmuted; restore volume \(clamped) for \(screen.dv_localizedName)")
+        }
+    }
+
+    private var isMuteEffective: Bool {
+        appState.isGlobalMuted || isLocallyMuted
     }
 }
