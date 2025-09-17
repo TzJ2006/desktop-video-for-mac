@@ -306,7 +306,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                let dateLabel = NSTextField(labelWithString: "")
                dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
                dateLabel.textColor = .white
-               dateLabel.backgroundColor = .clear
+               dateLabel.backgroundColor = NSColor(calibratedWhite: 0.2, alpha: 0.5) // DEBUG: 半透明背景，便于观察
                dateLabel.isBezeled = false
                dateLabel.isEditable = false
                dateLabel.sizeToFit()
@@ -324,7 +324,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                let timeLabel = NSTextField(labelWithString: "")
                timeLabel.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
                timeLabel.textColor = .white
-               timeLabel.backgroundColor = .clear
+               timeLabel.backgroundColor = NSColor(calibratedWhite: 0.2, alpha: 0.5) // DEBUG: 半透明背景，便于观察
                timeLabel.isBezeled = false
                timeLabel.isEditable = false
                timeLabel.sizeToFit()
@@ -831,7 +831,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    }
    // 更新时钟标签位置和时间
    private func updateClockLabels() {
-//       dlog("updateClockLabels")
+       dlog("updateClockLabels")
        let dateFormatter = DateFormatter()
        dateFormatter.locale = Locale.current
        dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
