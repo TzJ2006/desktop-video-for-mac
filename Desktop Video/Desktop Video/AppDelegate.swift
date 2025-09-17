@@ -49,6 +49,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var displaySleepAssertionID: IOPMAssertionID = 0
    // 外部应用禁止屏保的标记
    private var otherAppSuppressScreensaver: Bool = false
+   // 菜单栏“启动屏保”按钮引用，便于根据内容启用/禁用
+   private var startScreensaverMenuItem: NSMenuItem?
 
    // UserDefaults 键名
    private let screensaverEnabledKey = "screensaverEnabled"
@@ -115,6 +117,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
                     self?.startScreensaverTimer()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.updateScreensaverMenuItemState()
                 }
             }
             .store(in: &cancellables)
@@ -306,9 +317,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                let dateLabel = NSTextField(labelWithString: "")
                dateLabel.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
                dateLabel.textColor = .white
-               dateLabel.backgroundColor = NSColor(calibratedWhite: 0.2, alpha: 0.5) // DEBUG: 半透明背景，便于观察
+               dateLabel.drawsBackground = true
+               dateLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+               dateLabel.wantsLayer = true
+               dateLabel.layer?.cornerRadius = 8
+               dateLabel.layer?.masksToBounds = true
                dateLabel.isBezeled = false
                dateLabel.isEditable = false
+               dateLabel.alignment = .center
                let dateFormatter = DateFormatter()
                dateFormatter.locale = Locale.current
                dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
@@ -321,16 +337,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    let dateY = contentBounds.maxY - dateLabel.frame.height - contentBounds.maxY * 0.05
                    dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
                }
-               wallpaperWindow.contentView?.addSubview(dateLabel)
+               wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
                clockDateLabels.append(dateLabel)
 
                // 添加时间文本，位于日期标签下方约两倍高度处
                let timeLabel = NSTextField(labelWithString: "")
                timeLabel.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
                timeLabel.textColor = .white
-               timeLabel.backgroundColor = NSColor(calibratedWhite: 0.2, alpha: 0.5) // DEBUG: 半透明背景，便于观察
+               timeLabel.drawsBackground = true
+               timeLabel.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+               timeLabel.wantsLayer = true
+               timeLabel.layer?.cornerRadius = 12
+               timeLabel.layer?.masksToBounds = true
                timeLabel.isBezeled = false
                timeLabel.isEditable = false
+               timeLabel.alignment = .center
                timeLabel.sizeToFit()
                // 根据窗口内容视图计算标签位置
                if let contentBounds = wallpaperWindow.contentView?.bounds {
@@ -340,7 +361,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    let timeY = dateY - timeLabel.frame.height / 1.5 - dateLabel.frame.height
                    timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
                }
-               wallpaperWindow.contentView?.addSubview(timeLabel)
+               wallpaperWindow.contentView?.addSubview(timeLabel, positioned: .above, relativeTo: nil)
                clockTimeLabels.append(timeLabel)
            } else {
                dlog("no NSScreen found forDisplayID \(id), skipping")
@@ -663,6 +684,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    keyEquivalent: KeyBindings.startScreensaverKey
                )
                ssItem.keyEquivalentModifierMask = KeyBindings.startScreensaverModifiers
+               startScreensaverMenuItem = ssItem
+               updateScreensaverMenuItemState()
                menu.addItem(
                     withTitle: L("QuitDesktopVideo"),
                     action: #selector(NSApplication.terminate(_:)),
@@ -679,6 +702,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        if let item = statusItem {
            NSStatusBar.system.removeStatusItem(item)
            statusItem = nil
+           startScreensaverMenuItem = nil
        }
    }
 
@@ -691,12 +715,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// Manually trigger the screensaver from UI.
    @objc func manualRunScreensaver(_: Any? = nil) {
         dlog("manualRunScreensaver")
+        let hasVideoContent = SharedWallpaperWindowManager.shared.screenContent.contains { _, entry in
+            entry.type == .video
+        }
+        guard hasVideoContent else {
+            dlog("manualRunScreensaver aborted: no video content available", level: .info)
+            return
+        }
         // 若用户在偏好里关闭了屏保，也顺便帮他打开
         if !UserDefaults.standard.bool(forKey: screensaverEnabledKey) {
             UserDefaults.standard.set(true, forKey: screensaverEnabledKey)
         }
         runScreenSaver()    // 已有方法，直接复用
     }
+
+   /// 根据当前壁纸内容启用或禁用菜单栏中的屏保按钮
+   private func updateScreensaverMenuItemState() {
+       let hasVideoContent = SharedWallpaperWindowManager.shared.screenContent.contains { _, entry in
+           entry.type == .video
+       }
+       dlog("updateScreensaverMenuItemState hasVideoContent=\(hasVideoContent)", level: .info)
+       startScreensaverMenuItem?.isEnabled = hasVideoContent
+   }
 
    // 是否显示 Docker 栏图标
    public func setDockIconVisible(_ visible: Bool) {

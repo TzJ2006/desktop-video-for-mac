@@ -65,11 +65,8 @@ struct desktop_videoApp: App {
     /// 切换静音的统一处理（菜单命令也会调用）
     static func applyGlobalMute(_ enabled: Bool) {
         dlog("applyGlobalMute \(enabled)")
+        guard AppState.shared.isGlobalMuted != enabled else { return }
         AppState.shared.isGlobalMuted = enabled
-        NotificationCenter.default.post(
-            name: Notification.Name("WallpaperContentDidChange"),
-            object: nil
-        )
     }
 
     func showAboutDialog() {

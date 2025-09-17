@@ -4,8 +4,17 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.0 hot-fix 2 (2025-09-17)
+
+- 当没有视频播放时，禁用菜单栏的“启动屏幕保护程序”按钮并阻止快捷键误触发
+- Disable the "Start Screensaver" menu item and related shortcut when no video content is active
+- 提升屏保日期/时间标签的显示层级并增加半透明背景，保证在播放视频时清晰可见
+- Raise the screensaver date/time overlays above the player and add translucent backgrounds so they remain legible over video playback
+
 ### Version 4.0 hot-fix 1 (2025-09-17)
 
+- 修复播放设置中切换全局静音会造成死循环的问题
+- Fix the infinite loop triggered by toggling global mute from the playback settings card
 - 恢复原有的屏保窗口与轮询逻辑，继续在检测到全屏窗口时暂停轮询
 - 保留屏保日期标签，改为在创建时立即填充文本避免首秒空白
 - Restore the original screensaver window flow and periodic checks, still pausing when a full-screen app is detected

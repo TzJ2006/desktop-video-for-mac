@@ -46,11 +46,6 @@ struct PlaybackSettingsView: View {
                         SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
                     }
                 }
-                .onReceive(appState.$isGlobalMuted.removeDuplicates()) { newValue in
-                    dlog("PlaybackSettingsView observed global mute \(newValue)")
-                    desktop_videoApp.applyGlobalMute(newValue)
-                }
-
                 HStack {
                     Slider(
                         value: Binding(
