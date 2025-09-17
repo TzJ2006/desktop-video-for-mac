@@ -27,6 +27,18 @@ class AppState: ObservableObject {
             guard oldValue != isGlobalMuted else { return }
             dlog("AppState.isGlobalMuted updated to \(isGlobalMuted)")
             UserDefaults.standard.set(isGlobalMuted, forKey: globalMuteKey)
+            let enabled = isGlobalMuted
+            Task { @MainActor in
+                if enabled {
+                    SharedWallpaperWindowManager.shared.muteAllScreens()
+                } else {
+                    SharedWallpaperWindowManager.shared.restoreAllScreens()
+                }
+                NotificationCenter.default.post(
+                    name: Notification.Name("WallpaperContentDidChange"),
+                    object: nil
+                )
+            }
         }
     }
 
