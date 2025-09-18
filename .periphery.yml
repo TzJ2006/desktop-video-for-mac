@@ -1,11 +1,4 @@
-# .periphery.yml
 project: Desktop Video/Desktop Video.xcodeproj
-schemes:
-  - Desktop Video
-targets:
-  - Desktop Video
 retain_public: true
-retain_assign_only_properties: true
-analyze_spm: true
-strict: true
-
+schemes:
+- Desktop Video

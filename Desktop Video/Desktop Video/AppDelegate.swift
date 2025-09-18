@@ -1106,34 +1106,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 }
 
 // MARK: - SwiftUI GlassLabel for macOS
-//#if canImport(SwiftUI)
-struct GlassLabel: View {
-    var text: String
-    var font: Font
-    var hPad: CGFloat
-    var vPad: CGFloat
-    var cornerRadius: CGFloat
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        if #available(macOS 26.0, *) {
-            Text(text)
-                .font(font)
-                .foregroundStyle(.primary)
-                .padding(.horizontal, hPad)
-                .padding(.vertical, vPad)
-                .glassEffect(.clear, in: shape)
-        } else {
-            Text(text)
-                .font(font)
-                .foregroundStyle(.primary)
-                .padding(.horizontal, hPad)
-                .padding(.vertical, vPad)
-                .modifier(GlassCompat(shape: shape))
-        }
-    }
-}
-
 @available(macOS 26.0, *)
 struct CombinedGlassClock: View {
     var dateText: String
@@ -1162,7 +1134,8 @@ private struct GlassCompat<S: Shape>: ViewModifier {
         if #available(macOS 26.0, *) {
             // Use the more transparent .clear variant of Liquid Glass
             content
-                .glassEffect(.clear, in: shape)
+//                .glassEffect(.clear, in: shape)
+                .glassEffect(.clear)
         } else {
             // Fallback: use a thinner, more transparent material
             content.background(.ultraThinMaterial, in: shape)
