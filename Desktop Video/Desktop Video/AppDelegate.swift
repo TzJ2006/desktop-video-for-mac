@@ -45,6 +45,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var clockDateLabels: [NSTextField] = []
    private var clockTimeLabels: [NSTextField] = []
    private var clockTimer: Timer?
+   // macOS 26+ SwiftUI Liquid Glass hosts (store as NSView for cross-version compile)
+   private var clockDateGlassHosts: [NSView] = []
+   private var clockTimeGlassHosts: [NSView] = []
+   // Combined date+time Liquid Glass hosts (macOS 26+)
+   private var clockCombinedGlassHosts: [NSView] = []
+   private var didLogLiquidGlassForScreens: Set<String> = []
    // 防止显示器休眠的断言 ID
    private var displaySleepAssertionID: IOPMAssertionID = 0
    // 外部应用禁止屏保的标记
@@ -314,42 +320,89 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                // 👉 收集待恢复播放的屏幕，稍后统一处理
                pendingResumeIDs.append(id)
 
-               // 添加日期文本
-               let dateLabel = NSTextField(labelWithString: "")
-               configureScreensaverDateLabel(dateLabel)
-               let dateFormatter = DateFormatter()
-               dateFormatter.locale = Locale.current
-               dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
-               dateLabel.stringValue = dateFormatter.string(from: Date())
-               dateLabel.sizeToFit()
-               applyScreensaverLabelPadding(dateLabel)
-               // 根据窗口内容视图计算标签位置
-               if let contentBounds = wallpaperWindow.contentView?.bounds {
-                   // place at top 1/5 of view, horizontally centered
-                   let dateX = (contentBounds.width - dateLabel.frame.width) / 2
-                   let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
-                   dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
-               }
-               wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
-               clockDateLabels.append(dateLabel)
+               if #available(macOS 26.0, *) {
+                   // ===== SwiftUI Liquid Glass combined label (macOS 26+) =====
+                   let dateFormatter = DateFormatter()
+                   dateFormatter.locale = Locale.current
+                   dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
+                   let dateText = dateFormatter.string(from: Date())
 
-               // 添加时间文本，位于日期标签下方约两倍高度处
-               let timeLabel = NSTextField(labelWithString: "")
-               configureScreensaverTimeLabel(timeLabel)
-               timeLabel.sizeToFit()
-               applyScreensaverLabelPadding(timeLabel, horizontal: 40, vertical: 20)
-               // 根据窗口内容视图计算标签位置
-               if let contentBounds = wallpaperWindow.contentView?.bounds {
-                   // 使用和 updateClockLabels 相同的逻辑：日期标签下方，间隔10点
-                   let dateY = dateLabel.frame.origin.y
-                   let timeX = contentBounds.midX - timeLabel.frame.width / 2
-                   let timeY = dateY - timeLabel.frame.height / 1.5 - dateLabel.frame.height
-                   timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+                   let timeFormatter = DateFormatter()
+                   timeFormatter.locale = Locale.current
+                   timeFormatter.dateFormat = "HH:mm:ss"
+                   let timeText = timeFormatter.string(from: Date())
+
+                   // Create ONE combined hosting view with a newline between date and time
+                   let combinedHost = NSHostingView(rootView: CombinedGlassClock(
+                       dateText: dateText,
+                       timeText: timeText
+                   ))
+
+                   // Size to fit SwiftUI content
+                   let combinedSize = combinedHost.fittingSize
+                   combinedHost.frame.size = combinedSize
+
+                   // Ensure overlay renders above the video view
+                   combinedHost.wantsLayer = true
+                   combinedHost.layer?.zPosition = 100
+
+                   if let contentBounds = wallpaperWindow.contentView?.bounds {
+                       // Place roughly where the previous date+time block would sit
+                       let originX = (contentBounds.width - combinedSize.width) / 2
+                       let originY = contentBounds.height * 4/5 - combinedSize.height / 2
+                       combinedHost.frame.origin = CGPoint(x: originX, y: originY)
+                   }
+
+                   wallpaperWindow.contentView?.addSubview(combinedHost, positioned: .above, relativeTo: nil)
+                   clockCombinedGlassHosts.append(combinedHost)
+                   if !didLogLiquidGlassForScreens.contains(id) {
+                       let screenName = NSScreen.screen(forUUID: id)?.dv_localizedName ?? id
+                       dlog("[LiquidGlass] Enabled for screen: \(screenName) (\(id))")
+                       didLogLiquidGlassForScreens.insert(id)
+                   }
+               } else {
+                   // ===== Fallback: AppKit labels for older macOS =====
+                   // 添加日期文本
+                   let dateLabel = NSTextField(labelWithString: "")
+                   configureScreensaverDateLabel(dateLabel)
+                   let dateFormatter = DateFormatter()
+                   dateFormatter.locale = Locale.current
+                   dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
+                   dateLabel.stringValue = dateFormatter.string(from: Date())
+                   dateLabel.sizeToFit()
+                   applyScreensaverLabelPadding(dateLabel)
+                   // 根据窗口内容视图计算标签位置
+                   if let contentBounds = wallpaperWindow.contentView?.bounds {
+                       // place at top 1/5 of view, horizontally centered
+                       let dateX = (contentBounds.width - dateLabel.frame.width) / 2
+                       let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
+                       dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+                   }
+                   wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
+                   clockDateLabels.append(dateLabel)
+
+                   // 添加时间文本，位于日期标签下方约两倍高度处
+                   let timeLabel = NSTextField(labelWithString: "")
+                   configureScreensaverTimeLabel(timeLabel)
+                   timeLabel.sizeToFit()
+                   applyScreensaverLabelPadding(timeLabel, horizontal: 40, vertical: 20)
+                   // 根据窗口内容视图计算标签位置
+                   if let contentBounds = wallpaperWindow.contentView?.bounds {
+                       // 使用和 updateClockLabels 相同的逻辑：日期标签下方，间隔10点
+                       let dateY = dateLabel.frame.origin.y
+                       let timeX = contentBounds.midX - timeLabel.frame.width / 2
+                       let timeY = dateY - timeLabel.frame.height / 1.5 - dateLabel.frame.height
+                       timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+                   }
+                   wallpaperWindow.contentView?.addSubview(timeLabel, positioned: .above, relativeTo: nil)
+                   timeLabel.wantsLayer = true
+                   timeLabel.layer?.zPosition = 10_000
+                   dateLabel.wantsLayer = true
+                   dateLabel.layer?.zPosition = 10_000
+                   clockTimeLabels.append(timeLabel)
+                   // Ensure dateLabel is above all (bring to front)
+                   wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
                }
-               wallpaperWindow.contentView?.addSubview(timeLabel, positioned: .above, relativeTo: nil)
-               clockTimeLabels.append(timeLabel)
-               // Ensure dateLabel is above all (bring to front)
-               wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
            } else {
                dlog("no NSScreen found forDisplayID \(id), skipping")
                continue
@@ -360,6 +413,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        for pid in pendingResumeIDs {
            reloadAndPlayVideo(displayUUID: pid)
        }
+       // Bring clock overlays to the front in case the video view was reinserted above them
+       bringClockOverlaysToFront()
 
        // 开始更新时钟标签
        updateClockLabels() // initial update
@@ -425,6 +480,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            label.removeFromSuperview()
        }
        clockTimeLabels.removeAll()
+       if #available(macOS 26.0, *) {
+           for host in clockDateGlassHosts { host.removeFromSuperview() }
+           clockDateGlassHosts.removeAll()
+           for host in clockTimeGlassHosts { host.removeFromSuperview() }
+           clockTimeGlassHosts.removeAll()
+           for host in clockCombinedGlassHosts { host.removeFromSuperview() }
+           clockCombinedGlassHosts.removeAll()
+       }
 
        // 1. 对每个窗口执行淡出动画后再恢复
        for (_, wallpaperWindowController) in SharedWallpaperWindowManager.shared.windowControllers {
@@ -866,33 +929,58 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale.current
         dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
-       let dateString = dateFormatter.string(from: Date())
+        let dateString = dateFormatter.string(from: Date())
 
-       let timeFormatter = DateFormatter()
-       timeFormatter.locale = Locale.current
-       timeFormatter.dateFormat = "HH:mm:ss"
-       let timeString = timeFormatter.string(from: Date())
+        let timeFormatter = DateFormatter()
+        timeFormatter.locale = Locale.current
+        timeFormatter.dateFormat = "HH:mm:ss"
+        let timeString = timeFormatter.string(from: Date())
 
-       // 使用每个标签对应的屏幕顺序遍历，更新所有屏幕的日期/时间标签
-       for (index, dateLabel) in clockDateLabels.enumerated() {
-           guard index < clockTimeLabels.count, index < NSScreen.screens.count else { continue }
-           let timeLabel = clockTimeLabels[index]
-           let screen = NSScreen.screens[index]
-           // 找到对应屏幕的 WallpaperWindow
-           let sid = screen.dv_displayUUID
-           if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
-              let contentBounds = window.contentView?.bounds {
-                // 更新日期标签样式并文本
+        if #available(macOS 26.0, *) {
+            // Update combined SwiftUI Liquid Glass hosts
+            for (index, anyHost) in clockCombinedGlassHosts.enumerated() {
+                guard index < NSScreen.screens.count else { continue }
+                guard let host = anyHost as? NSHostingView<CombinedGlassClock> else { continue }
+
+                let screen = NSScreen.screens[index]
+                let sid = screen.dv_displayUUID
+                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
+                   let contentBounds = window.contentView?.bounds {
+                    // Rebuild root view with new two-line content
+                    host.rootView = CombinedGlassClock(
+                        dateText: dateString,
+                        timeText: timeString
+                    )
+
+                    let combinedSize = host.fittingSize
+                    host.frame.size = combinedSize
+
+                    let originX = (contentBounds.width - combinedSize.width) / 2
+                    let originY = contentBounds.height * 0.875 - combinedSize.height / 2
+                    host.frame.origin = CGPoint(x: originX, y: originY)
+                }
+            }
+            // Keep overlays above the video even if the player view reorders
+            bringClockOverlaysToFront()
+            return
+        }
+
+        // Legacy AppKit path
+        for (index, dateLabel) in clockDateLabels.enumerated() {
+            guard index < clockTimeLabels.count, index < NSScreen.screens.count else { continue }
+            let timeLabel = clockTimeLabels[index]
+            let screen = NSScreen.screens[index]
+            let sid = screen.dv_displayUUID
+            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
+               let contentBounds = window.contentView?.bounds {
                 configureScreensaverDateLabel(dateLabel)
                 dateLabel.stringValue = dateString
                 dateLabel.sizeToFit()
                 applyScreensaverLabelPadding(dateLabel)
-                // 重新定位
                 let dateX = (contentBounds.width - dateLabel.frame.width) / 2
-                let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
+                let dateY = contentBounds.height * 9/10 - dateLabel.frame.height / 2
                 dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
 
-                // 更新时间标签
                 configureScreensaverTimeLabel(timeLabel)
                 timeLabel.stringValue = timeString
                 timeLabel.sizeToFit()
@@ -900,19 +988,74 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let timeX = contentBounds.midX - timeLabel.frame.width / 2
                 let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height / 1.5
                 timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+            }
         }
+        // Keep overlays above the video even if the player view reorders
+        bringClockOverlaysToFront()
     }
 
+    /// Re-adds clock overlays at the top of the z-order to ensure they are above the video.
+    private func bringClockOverlaysToFront() {
+        // SwiftUI hosts (macOS 26+)
+        if #available(macOS 26.0, *) {
+            for (index, host) in clockCombinedGlassHosts.enumerated() {
+                guard index < NSScreen.screens.count else { continue }
+                let sid = NSScreen.screens[index].dv_displayUUID
+                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                    host.wantsLayer = true
+                    host.layer?.zPosition = 10_000
+                    window.contentView?.addSubview(host, positioned: .above, relativeTo: nil)
+                }
+            }
+            for (index, host) in clockDateGlassHosts.enumerated() {
+                guard index < NSScreen.screens.count else { continue }
+                let sid = NSScreen.screens[index].dv_displayUUID
+                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                    host.wantsLayer = true
+                    host.layer?.zPosition = 10_000
+                    window.contentView?.addSubview(host, positioned: .above, relativeTo: nil)
+                }
+            }
+            for (index, host) in clockTimeGlassHosts.enumerated() {
+                guard index < NSScreen.screens.count else { continue }
+                let sid = NSScreen.screens[index].dv_displayUUID
+                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                    host.wantsLayer = true
+                    host.layer?.zPosition = 10_000
+                    window.contentView?.addSubview(host, positioned: .above, relativeTo: nil)
+                }
+            }
+        }
+        // Legacy AppKit labels
+        for (index, label) in clockDateLabels.enumerated() {
+            guard index < NSScreen.screens.count else { continue }
+            let sid = NSScreen.screens[index].dv_displayUUID
+            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                label.wantsLayer = true
+                label.layer?.zPosition = 10_000
+                window.contentView?.addSubview(label, positioned: .above, relativeTo: nil)
+            }
+        }
+        for (index, label) in clockTimeLabels.enumerated() {
+            guard index < NSScreen.screens.count else { continue }
+            let sid = NSScreen.screens[index].dv_displayUUID
+            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                label.wantsLayer = true
+                label.layer?.zPosition = 10_000
+                window.contentView?.addSubview(label, positioned: .above, relativeTo: nil)
+            }
+        }
+    }
     private func configureScreensaverDateLabel(_ label: NSTextField) {
         label.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
-        label.textColor = .white
+        label.textColor = .labelColor
         label.drawsBackground = true
-        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.9)
         label.isBezeled = false
         label.isEditable = false
         label.alignment = .center
         label.wantsLayer = true
-        label.layer?.cornerRadius = 8
+        label.layer?.cornerRadius = 12
         label.layer?.masksToBounds = true
         label.layer?.zPosition = 100
         label.lineBreakMode = .byWordWrapping
@@ -920,9 +1063,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func configureScreensaverTimeLabel(_ label: NSTextField) {
         label.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
-        label.textColor = .white
+        label.textColor = .labelColor
         label.drawsBackground = true
-        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.45)
+        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.9)
         label.isBezeled = false
         label.isEditable = false
         label.alignment = .center
@@ -945,7 +1088,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         frame.size.height += vertical * 2
         label.frame = frame
     }
-   }
    // MARK: - External Screensaver Suppression
    @objc private func handleExternalScreensaverActive(_: Notification) {
        dlog("handleExternalScreensaverActive")
@@ -961,4 +1103,72 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // 如有必要重新启动计时器
        startScreensaverTimer()
    }
+}
+
+// MARK: - SwiftUI GlassLabel for macOS
+//#if canImport(SwiftUI)
+struct GlassLabel: View {
+    var text: String
+    var font: Font
+    var hPad: CGFloat
+    var vPad: CGFloat
+    var cornerRadius: CGFloat
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(macOS 26.0, *) {
+            Text(text)
+                .font(font)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, hPad)
+                .padding(.vertical, vPad)
+                .glassEffect(.clear, in: shape)
+        } else {
+            Text(text)
+                .font(font)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, hPad)
+                .padding(.vertical, vPad)
+                .modifier(GlassCompat(shape: shape))
+        }
+    }
+}
+
+@available(macOS 26.0, *)
+struct CombinedGlassClock: View {
+    var dateText: String
+    var timeText: String
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(dateText)
+                .font(.system(size: 36, weight: .medium))
+            Text(timeText)
+                .font(.system(size: 100, weight: .light))
+        }
+        .multilineTextAlignment(.center)
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+/// A compatibility modifier that applies real Liquid Glass on new SDKs,
+/// and falls back to Material on older SDKs.
+private struct GlassCompat<S: Shape>: ViewModifier {
+    var shape: S
+    func body(content: Content) -> some View {
+        #if compiler(>=6.0)
+        if #available(macOS 26.0, *) {
+            // Use the more transparent .clear variant of Liquid Glass
+            content
+                .glassEffect(.clear, in: shape)
+        } else {
+            // Fallback: use a thinner, more transparent material
+            content.background(.ultraThinMaterial, in: shape)
+        }
+        #else
+        content.background(.ultraThinMaterial, in: shape)
+        #endif
+    }
 }
