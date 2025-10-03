@@ -112,6 +112,8 @@ class SharedWallpaperWindowManager {
           }
         }
       }
+      // 显示器唤醒后重新评估遮挡状态，确保播放模式立即生效
+      AppDelegate.shared.updatePlaybackStateForAllScreens()
     }
   }
 
