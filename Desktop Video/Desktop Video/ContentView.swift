@@ -1,4 +1,3 @@
-
 import SwiftUI
 import AppKit
 
@@ -37,6 +36,7 @@ private struct MainWindowBridge: NSViewRepresentable {
         if window.identifier?.rawValue != "MainWindow" {
             window.identifier = NSUserInterfaceItemIdentifier("MainWindow")
         }
-        AppDelegate.shared?.adoptMainWindowIfNeeded(window)
+        // No-op for now: AppDelegate has no adoptMainWindowIfNeeded; keep identifier set above.
+        _ = window // reserved for future use if adoption logic is added
     }
 }

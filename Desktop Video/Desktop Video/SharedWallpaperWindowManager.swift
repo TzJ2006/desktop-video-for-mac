@@ -94,7 +94,7 @@ class SharedWallpaperWindowManager {
     dlog("handling wake")
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
       // 唤醒后统一判断当前播放策略
-      AppDelegate.shared.updatePlaybackStateForAllScreens()
+      AppDelegate.shared?.updatePlaybackStateForAllScreens()
     }
   }
 
@@ -624,19 +624,59 @@ class SharedWallpaperWindowManager {
       "save bookmark for \(screen.dv_displayUUID) url=\(url.lastPathComponent) stretch=\(stretch) volume=\(String(describing: volume))"
     )
     let uuid = screen.dv_displayUUID
-    do {
-      guard url.startAccessingSecurityScopedResource() else {
-        errorLog("Failed to access security scoped resource for saving bookmark: \(url)")
-        return
-      }
-      let bookmarkData = try url.bookmarkData(
-        options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-      BookmarkStore.set(bookmarkData, prefix: "bookmark", id: uuid)
+
+    func persist(_ data: Data) {
+      BookmarkStore.set(data, prefix: "bookmark", id: uuid)
       BookmarkStore.set(stretch, prefix: "stretch", id: uuid)
       BookmarkStore.set(volume, prefix: "volume", id: uuid)
-      // 保存当前时间戳
       BookmarkStore.set(Date().timeIntervalSince1970, prefix: "savedAt", id: uuid)
-      url.stopAccessingSecurityScopedResource()
+    }
+
+    do {
+      // Prefer a security-scoped bookmark. This does not require calling startAccessing here.
+      let scoped = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+      persist(scoped)
+      dlog("saved security-scoped bookmark for \(url.lastPathComponent)")
+
+      // Save raw URL and guessed type for fallback restore
+      BookmarkStore.set(url.absoluteString, prefix: "lastURL", id: uuid)
+      // Guess type by extension for fallback restore
+      let ext = url.pathExtension.lowercased()
+      let lastType: String
+      if ["mp4", "mov", "m4v"].contains(ext) {
+        lastType = "video"
+      } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+        lastType = "image"
+      } else {
+        lastType = "unknown"
+      }
+      BookmarkStore.set(lastType, prefix: "lastType", id: uuid)
+
+      return
+    } catch {
+      errorLog("Failed to create security-scoped bookmark: \(error.localizedDescription). Will attempt non-scoped bookmark.")
+    }
+
+    do {
+      // Fallback: non–security-scoped bookmark. This still helps re-open within same sandbox permissions.
+      let nonScoped = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+      persist(nonScoped)
+      dlog("saved non-scoped bookmark for \(url.lastPathComponent)")
+
+      // Save raw URL and guessed type for fallback restore
+      BookmarkStore.set(url.absoluteString, prefix: "lastURL", id: uuid)
+      // Guess type by extension for fallback restore
+      let ext = url.pathExtension.lowercased()
+      let lastType: String
+      if ["mp4", "mov", "m4v"].contains(ext) {
+        lastType = "video"
+      } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+        lastType = "image"
+      } else {
+        lastType = "unknown"
+      }
+      BookmarkStore.set(lastType, prefix: "lastType", id: uuid)
+
     } catch {
       errorLog("Failed to save bookmark for \(url): \(error)")
     }
@@ -647,7 +687,24 @@ class SharedWallpaperWindowManager {
     for screen in NSScreen.screens {
       dlog("Check screen: \(screen.dv_localizedName)")
       let uuid = screen.dv_displayUUID
+      
       guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else {
+        // Fallback: try lastURL/lastType if bookmark missing or unusable
+        if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
+           let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
+           let fallbackURL = URL(string: lastURLString) {
+          let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+          let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+          if lastType == "video" {
+            dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+            showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
+          } else if lastType == "image" {
+            dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+            showImage(for: screen, url: fallbackURL, stretch: stretch)
+          } else {
+            dlog("fallback restore unknown type for URL: \(fallbackURL)")
+          }
+        }
         continue
       }
 
@@ -656,10 +713,9 @@ class SharedWallpaperWindowManager {
         let url = try URL(
           resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil,
           bookmarkDataIsStale: &isStale)
-        guard url.startAccessingSecurityScopedResource() else {
-          url.stopAccessingSecurityScopedResource()
-          errorLog("Failed to startAccessing for \(url.lastPathComponent)")
-          continue
+        let didStart = url.startAccessingSecurityScopedResource()
+        if !didStart {
+          dlog("bookmark restore: not security-scoped or startAccessing failed for \(url.lastPathComponent); proceeding anyway")
         }
         let ext = url.pathExtension.lowercased()
         let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
@@ -675,15 +731,23 @@ class SharedWallpaperWindowManager {
         url.stopAccessingSecurityScopedResource()
       } catch {
         errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
-      }
 
-      if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: uuid),
-        Date().timeIntervalSince1970 - savedAt > 86400
-      {
-        // 超过 24 小时，删除记录
-        dlog("Outdated bookmark for screen \(uuid), removing...")
-        BookmarkStore.purge(id: uuid)
-        continue
+        // Fallback: try lastURL/lastType if bookmark unusable
+        if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
+           let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
+           let fallbackURL = URL(string: lastURLString) {
+          let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+          let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+          if lastType == "video" {
+            dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+            showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
+          } else if lastType == "image" {
+            dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+            showImage(for: screen, url: fallbackURL, stretch: stretch)
+          } else {
+            dlog("fallback restore unknown type for URL: \(fallbackURL)")
+          }
+        }
       }
     }
   }
@@ -692,18 +756,37 @@ class SharedWallpaperWindowManager {
   func restoreFromBookmark(for screen: NSScreen) {
     dlog("restoreFromBookmark \(screen.dv_localizedName)")
     let uuid = screen.dv_displayUUID
+    
     guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else {
+      // Fallback: try lastURL/lastType if bookmark missing or unusable
+      if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
+         let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
+         let fallbackURL = URL(string: lastURLString) {
+        let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+        let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+        if lastType == "video" {
+          dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+          showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
+          return
+        } else if lastType == "image" {
+          dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+          showImage(for: screen, url: fallbackURL, stretch: stretch)
+          return
+        } else {
+          dlog("fallback restore unknown type for URL: \(fallbackURL)")
+        }
+      }
       return
     }
+    
     var isStale = false
     do {
       let url = try URL(
         resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil,
         bookmarkDataIsStale: &isStale)
-      guard url.startAccessingSecurityScopedResource() else {
-        url.stopAccessingSecurityScopedResource()
-        errorLog("Failed to startAccessing for \(url.lastPathComponent)")
-        return
+      let didStart = url.startAccessingSecurityScopedResource()
+      if !didStart {
+        dlog("bookmark restore: not security-scoped or startAccessing failed for \(url.lastPathComponent); proceeding anyway")
       }
       let ext = url.pathExtension.lowercased()
       let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
@@ -719,6 +802,25 @@ class SharedWallpaperWindowManager {
       url.stopAccessingSecurityScopedResource()
     } catch {
       errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
+
+      // Fallback: try lastURL/lastType if bookmark unusable
+      if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
+         let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
+         let fallbackURL = URL(string: lastURLString) {
+        let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+        let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+        if lastType == "video" {
+          dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+          showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
+          return
+        } else if lastType == "image" {
+          dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+          showImage(for: screen, url: fallbackURL, stretch: stretch)
+          return
+        } else {
+          dlog("fallback restore unknown type for URL: \(fallbackURL)")
+        }
+      }
     }
   }
 
@@ -748,11 +850,7 @@ class SharedWallpaperWindowManager {
     let activeIDs = Set(NSScreen.screens.map { $0.dv_displayUUID })
     for sid in Array(windowControllers.keys) {
       if !activeIDs.contains(sid) {
-        if let savedAt: Double = BookmarkStore.get(prefix: "savedAt", id: sid),
-          Date().timeIntervalSince1970 - savedAt > 86400
-        {
-          BookmarkStore.purge(id: sid)
-        }
+        // Removed time-based bookmark purge below per instructions
         if let screen = NSScreen.screen(forUUID: sid) {
           clear(for: screen, purgeBookmark: false)
         } else {
@@ -911,4 +1009,3 @@ class SharedWallpaperWindowManager {
     }
   }
 }
-
