@@ -93,26 +93,7 @@ class SharedWallpaperWindowManager {
   @objc private func handleWake() {
     dlog("handling wake")
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      for (_, player) in self.players {
-        // 检查是否为暂停状态的屏幕
-        let sid = self.id(
-          for: NSScreen.screens.first(where: { self.players[$0.dv_displayUUID] == player })
-            ?? NSScreen.main!)
-        if self.pausedScreens.contains(sid) {
-          continue
-        }
-        if let currentItem = player.currentItem {
-          // 如果播放已经暂停但应该播放
-          if player.timeControlStatus != .playing {
-            player.seek(
-              to: currentItem.currentTime(), toleranceBefore: .zero, toleranceAfter: .zero
-            ) { _ in
-              player.play()
-            }
-          }
-        }
-      }
-      // 显示器唤醒后重新评估遮挡状态，确保播放模式立即生效
+      // 唤醒后统一判断当前播放策略
       AppDelegate.shared.updatePlaybackStateForAllScreens()
     }
   }
@@ -930,3 +911,4 @@ class SharedWallpaperWindowManager {
     }
   }
 }
+

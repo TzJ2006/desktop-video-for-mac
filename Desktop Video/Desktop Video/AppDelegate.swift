@@ -179,6 +179,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            return
        }
        // 检查是否有可播放的媒体
+       guard !SharedWallpaperWindowManager.shared.screenContent.isEmpty else {
+           dlog("Screensaver not started: no active video or image content.")
+           return
+       }
        guard AppState.shared.currentMediaURL != nil else {
            dlog("Screensaver not started: no valid media selected or playable.")
            return
@@ -251,6 +255,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
        guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
        if isInScreensaver { return }
+       guard !SharedWallpaperWindowManager.shared.screenContent.isEmpty else {
+           dlog("Screensaver not started: no active video or image content.")
+           return
+       }
 
        // 若全屏覆盖窗口被完全遮挡，则取消进入屏保
        let shouldCancel = SharedWallpaperWindowManager.shared.screensaverOverlayWindows.values.contains { window in
@@ -1111,17 +1119,20 @@ struct CombinedGlassClock: View {
     var dateText: String
     var timeText: String
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
+            // iOS 锁屏风格玻璃字
             Text(dateText)
-                .font(.system(size: 36, weight: .medium))
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .modifier(GlassCompat(shape: Rectangle()))
             Text(timeText)
-                .font(.system(size: 100, weight: .light))
+                .font(.system(size: 100, weight: .semibold, design: .rounded))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 10)
+                .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .shadow(radius: 10)
         }
         .multilineTextAlignment(.center)
-        .foregroundStyle(.primary)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -1145,3 +1156,4 @@ private struct GlassCompat<S: Shape>: ViewModifier {
         #endif
     }
 }
+
