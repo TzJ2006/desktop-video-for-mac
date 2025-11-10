@@ -330,15 +330,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
                if #available(macOS 26.0, *) {
                    // ===== SwiftUI Liquid Glass combined label (macOS 26+) =====
-                   let dateFormatter = DateFormatter()
-                   dateFormatter.locale = Locale.current
-                   dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
-                   let dateText = dateFormatter.string(from: Date())
-
-                   let timeFormatter = DateFormatter()
-                   timeFormatter.locale = Locale.current
-                   timeFormatter.dateFormat = "HH:mm:ss"
-                   let timeText = timeFormatter.string(from: Date())
+                   let dateText = formatScreensaverDate()
+                   let timeText = formatScreensaverTime()
 
                    // Create ONE combined hosting view with a newline between date and time
                    let combinedHost = NSHostingView(rootView: CombinedGlassClock(
@@ -373,10 +366,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                    // 添加日期文本
                    let dateLabel = NSTextField(labelWithString: "")
                    configureScreensaverDateLabel(dateLabel)
-                   let dateFormatter = DateFormatter()
-                   dateFormatter.locale = Locale.current
-                   dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
-                   dateLabel.stringValue = dateFormatter.string(from: Date())
+                   dateLabel.stringValue = formatScreensaverDate()
                    dateLabel.sizeToFit()
                    applyScreensaverLabelPadding(dateLabel)
                    // 根据窗口内容视图计算标签位置
@@ -934,15 +924,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    // 更新时钟标签位置和时间
     private func updateClockLabels() {
         dlog("updateClockLabels")
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale.current
-        dateFormatter.dateFormat = "EEEE, yyyy-MM-dd"
-        let dateString = dateFormatter.string(from: Date())
-
-        let timeFormatter = DateFormatter()
-        timeFormatter.locale = Locale.current
-        timeFormatter.dateFormat = "HH:mm:ss"
-        let timeString = timeFormatter.string(from: Date())
+        let dateString = formatScreensaverDate()
+        let timeString = formatScreensaverTime()
 
         if #available(macOS 26.0, *) {
             // Update combined SwiftUI Liquid Glass hosts

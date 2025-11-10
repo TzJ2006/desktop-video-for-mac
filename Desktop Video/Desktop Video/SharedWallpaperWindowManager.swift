@@ -639,18 +639,7 @@ class SharedWallpaperWindowManager {
       dlog("saved security-scoped bookmark for \(url.lastPathComponent)")
 
       // Save raw URL and guessed type for fallback restore
-      BookmarkStore.set(url.absoluteString, prefix: "lastURL", id: uuid)
-      // Guess type by extension for fallback restore
-      let ext = url.pathExtension.lowercased()
-      let lastType: String
-      if ["mp4", "mov", "m4v"].contains(ext) {
-        lastType = "video"
-      } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
-        lastType = "image"
-      } else {
-        lastType = "unknown"
-      }
-      BookmarkStore.set(lastType, prefix: "lastType", id: uuid)
+      saveBookmarkFallbackData(for: url, uuid: uuid)
 
       return
     } catch {
@@ -664,21 +653,46 @@ class SharedWallpaperWindowManager {
       dlog("saved non-scoped bookmark for \(url.lastPathComponent)")
 
       // Save raw URL and guessed type for fallback restore
-      BookmarkStore.set(url.absoluteString, prefix: "lastURL", id: uuid)
-      // Guess type by extension for fallback restore
-      let ext = url.pathExtension.lowercased()
-      let lastType: String
-      if ["mp4", "mov", "m4v"].contains(ext) {
-        lastType = "video"
-      } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
-        lastType = "image"
-      } else {
-        lastType = "unknown"
-      }
-      BookmarkStore.set(lastType, prefix: "lastType", id: uuid)
+      saveBookmarkFallbackData(for: url, uuid: uuid)
 
     } catch {
       errorLog("Failed to save bookmark for \(url): \(error)")
+    }
+  }
+
+  /// Save URL and type information for fallback restoration when bookmark fails
+  private func saveBookmarkFallbackData(for url: URL, uuid: String) {
+    BookmarkStore.set(url.absoluteString, prefix: "lastURL", id: uuid)
+    // Guess type by extension for fallback restore
+    let ext = url.pathExtension.lowercased()
+    let lastType: String
+    if ["mp4", "mov", "m4v"].contains(ext) {
+      lastType = "video"
+    } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+      lastType = "image"
+    } else {
+      lastType = "unknown"
+    }
+    BookmarkStore.set(lastType, prefix: "lastType", id: uuid)
+  }
+
+  /// Attempt to restore content using fallback URL and type when bookmark fails
+  private func restoreFromFallback(uuid: String, screen: NSScreen) {
+    guard let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
+          let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
+          let fallbackURL = URL(string: lastURLString) else { return }
+    
+    let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+    let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+    
+    if lastType == "video" {
+      dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+      showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
+    } else if lastType == "image" {
+      dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
+      showImage(for: screen, url: fallbackURL, stretch: stretch)
+    } else {
+      dlog("fallback restore unknown type for URL: \(fallbackURL)")
     }
   }
 
@@ -690,21 +704,7 @@ class SharedWallpaperWindowManager {
       
       guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else {
         // Fallback: try lastURL/lastType if bookmark missing or unusable
-        if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
-           let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
-           let fallbackURL = URL(string: lastURLString) {
-          let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
-          let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
-          if lastType == "video" {
-            dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-            showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
-          } else if lastType == "image" {
-            dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-            showImage(for: screen, url: fallbackURL, stretch: stretch)
-          } else {
-            dlog("fallback restore unknown type for URL: \(fallbackURL)")
-          }
-        }
+        restoreFromFallback(uuid: uuid, screen: screen)
         continue
       }
 
@@ -731,23 +731,8 @@ class SharedWallpaperWindowManager {
         url.stopAccessingSecurityScopedResource()
       } catch {
         errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
-
         // Fallback: try lastURL/lastType if bookmark unusable
-        if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
-           let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
-           let fallbackURL = URL(string: lastURLString) {
-          let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
-          let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
-          if lastType == "video" {
-            dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-            showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
-          } else if lastType == "image" {
-            dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-            showImage(for: screen, url: fallbackURL, stretch: stretch)
-          } else {
-            dlog("fallback restore unknown type for URL: \(fallbackURL)")
-          }
-        }
+        restoreFromFallback(uuid: uuid, screen: screen)
       }
     }
   }
@@ -759,23 +744,7 @@ class SharedWallpaperWindowManager {
     
     guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else {
       // Fallback: try lastURL/lastType if bookmark missing or unusable
-      if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
-         let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
-         let fallbackURL = URL(string: lastURLString) {
-        let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
-        let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
-        if lastType == "video" {
-          dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-          showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
-          return
-        } else if lastType == "image" {
-          dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-          showImage(for: screen, url: fallbackURL, stretch: stretch)
-          return
-        } else {
-          dlog("fallback restore unknown type for URL: \(fallbackURL)")
-        }
-      }
+      restoreFromFallback(uuid: uuid, screen: screen)
       return
     }
     
@@ -802,25 +771,8 @@ class SharedWallpaperWindowManager {
       url.stopAccessingSecurityScopedResource()
     } catch {
       errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
-
       // Fallback: try lastURL/lastType if bookmark unusable
-      if let lastURLString: String = BookmarkStore.get(prefix: "lastURL", id: uuid),
-         let lastType: String = BookmarkStore.get(prefix: "lastType", id: uuid),
-         let fallbackURL = URL(string: lastURLString) {
-        let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
-        let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
-        if lastType == "video" {
-          dlog("fallback restore video \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-          showVideo(for: screen, url: fallbackURL, stretch: stretch, volume: volume)
-          return
-        } else if lastType == "image" {
-          dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
-          showImage(for: screen, url: fallbackURL, stretch: stretch)
-          return
-        } else {
-          dlog("fallback restore unknown type for URL: \(fallbackURL)")
-        }
-      }
+      restoreFromFallback(uuid: uuid, screen: screen)
     }
   }
 
@@ -988,24 +940,4 @@ class SharedWallpaperWindowManager {
     return false
   }
 
-  // MARK: - AVDataAsset
-  // 将内存中的视频数据写入带扩展名的临时文件以供播放
-  class AVDataAsset: AVURLAsset, @unchecked Sendable {
-    private let tempURL: URL
-
-    init(data: Data, contentType: UTType) {
-      let ext = contentType.preferredFilenameExtension ?? "mov"
-      let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent(UUID().uuidString)
-        .appendingPathExtension(ext)
-      try? data.write(to: tempURL)
-      dlog("create AVDataAsset temp file \(tempURL.lastPathComponent)")
-      self.tempURL = tempURL
-      super.init(url: tempURL, options: nil)
-    }
-
-    deinit {
-      try? FileManager.default.removeItem(at: tempURL)
-    }
-  }
 }
