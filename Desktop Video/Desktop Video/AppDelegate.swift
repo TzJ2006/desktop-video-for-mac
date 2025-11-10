@@ -987,58 +987,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// Re-adds clock overlays at the top of the z-order to ensure they are above the video.
     private func bringClockOverlaysToFront() {
+        // Helper to bring views to front with proper z-ordering
+        func bringViewsToFront<T: NSView>(_ views: [T]) {
+            for (index, view) in views.enumerated() {
+                guard index < NSScreen.screens.count else { continue }
+                let sid = NSScreen.screens[index].dv_displayUUID
+                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                    view.wantsLayer = true
+                    view.layer?.zPosition = 10_000
+                    window.contentView?.addSubview(view, positioned: .above, relativeTo: nil)
+                }
+            }
+        }
+        
         // SwiftUI hosts (macOS 26+)
         if #available(macOS 26.0, *) {
-            for (index, host) in clockCombinedGlassHosts.enumerated() {
-                guard index < NSScreen.screens.count else { continue }
-                let sid = NSScreen.screens[index].dv_displayUUID
-                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
-                    host.wantsLayer = true
-                    host.layer?.zPosition = 10_000
-                    window.contentView?.addSubview(host, positioned: .above, relativeTo: nil)
-                }
-            }
-            for (index, host) in clockDateGlassHosts.enumerated() {
-                guard index < NSScreen.screens.count else { continue }
-                let sid = NSScreen.screens[index].dv_displayUUID
-                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
-                    host.wantsLayer = true
-                    host.layer?.zPosition = 10_000
-                    window.contentView?.addSubview(host, positioned: .above, relativeTo: nil)
-                }
-            }
-            for (index, host) in clockTimeGlassHosts.enumerated() {
-                guard index < NSScreen.screens.count else { continue }
-                let sid = NSScreen.screens[index].dv_displayUUID
-                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
-                    host.wantsLayer = true
-                    host.layer?.zPosition = 10_000
-                    window.contentView?.addSubview(host, positioned: .above, relativeTo: nil)
-                }
-            }
+            bringViewsToFront(clockCombinedGlassHosts)
+            bringViewsToFront(clockDateGlassHosts)
+            bringViewsToFront(clockTimeGlassHosts)
         }
         // Legacy AppKit labels
-        for (index, label) in clockDateLabels.enumerated() {
-            guard index < NSScreen.screens.count else { continue }
-            let sid = NSScreen.screens[index].dv_displayUUID
-            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
-                label.wantsLayer = true
-                label.layer?.zPosition = 10_000
-                window.contentView?.addSubview(label, positioned: .above, relativeTo: nil)
-            }
-        }
-        for (index, label) in clockTimeLabels.enumerated() {
-            guard index < NSScreen.screens.count else { continue }
-            let sid = NSScreen.screens[index].dv_displayUUID
-            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
-                label.wantsLayer = true
-                label.layer?.zPosition = 10_000
-                window.contentView?.addSubview(label, positioned: .above, relativeTo: nil)
-            }
-        }
+        bringViewsToFront(clockDateLabels)
+        bringViewsToFront(clockTimeLabels)
     }
-    private func configureScreensaverDateLabel(_ label: NSTextField) {
-        label.font = NSFont(name: "DIN Alternate", size: 30) ?? NSFont.systemFont(ofSize: 30, weight: .medium)
+    /// Configure common properties for screensaver labels
+    private func configureScreensaverLabel(_ label: NSTextField, fontSize: CGFloat, fontWeight: NSFont.Weight, lineBreak: NSLineBreakMode) {
+        label.font = NSFont(name: "DIN Alternate", size: fontSize) ?? NSFont.systemFont(ofSize: fontSize, weight: fontWeight)
         label.textColor = .labelColor
         label.drawsBackground = true
         label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.9)
@@ -1049,22 +1023,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         label.layer?.cornerRadius = 12
         label.layer?.masksToBounds = true
         label.layer?.zPosition = 100
-        label.lineBreakMode = .byWordWrapping
+        label.lineBreakMode = lineBreak
+    }
+
+    private func configureScreensaverDateLabel(_ label: NSTextField) {
+        configureScreensaverLabel(label, fontSize: 30, fontWeight: .medium, lineBreak: .byWordWrapping)
     }
 
     private func configureScreensaverTimeLabel(_ label: NSTextField) {
-        label.font = NSFont(name: "DIN Alternate", size: 100) ?? NSFont.systemFont(ofSize: 100, weight: .light)
-        label.textColor = .labelColor
-        label.drawsBackground = true
-        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.9)
-        label.isBezeled = false
-        label.isEditable = false
-        label.alignment = .center
-        label.wantsLayer = true
-        label.layer?.cornerRadius = 12
-        label.layer?.masksToBounds = true
-        label.layer?.zPosition = 100
-        label.lineBreakMode = .byClipping
+        configureScreensaverLabel(label, fontSize: 100, fontWeight: .light, lineBreak: .byClipping)
     }
 
     private func applyScreensaverLabelPadding(

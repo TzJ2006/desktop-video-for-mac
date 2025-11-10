@@ -802,18 +802,37 @@ class SharedWallpaperWindowManager {
     let activeIDs = Set(NSScreen.screens.map { $0.dv_displayUUID })
     for sid in Array(windowControllers.keys) {
       if !activeIDs.contains(sid) {
-        // Removed time-based bookmark purge below per instructions
-        if let screen = NSScreen.screen(forUUID: sid) {
-          clear(for: screen, purgeBookmark: false)
-        } else {
-          // 无对应屏幕对象时直接移除记录
-          players.removeValue(forKey: sid)
-          loopers.removeValue(forKey: sid)
-          currentViews.removeValue(forKey: sid)
-          windowControllers.removeValue(forKey: sid)?.stop()
-          screenContent.removeValue(forKey: sid)
-        }
+        cleanupScreenResources(forUUID: sid, purgeBookmark: false)
       }
+    }
+  }
+
+  /// Clean up all resources associated with a screen UUID
+  private func cleanupScreenResources(forUUID sid: String, purgeBookmark: Bool) {
+    if let screen = NSScreen.screen(forUUID: sid) {
+      clear(for: screen, purgeBookmark: purgeBookmark)
+    } else {
+      // Direct cleanup when no screen object exists
+      if let overlay = overlayWindows[sid] {
+        NotificationCenter.default.removeObserver(
+          AppDelegate.shared as Any,
+          name: NSWindow.didChangeOcclusionStateNotification,
+          object: overlay)
+        overlay.orderOut(nil)
+        overlayWindows.removeValue(forKey: sid)
+      }
+      if let overlay = screensaverOverlayWindows[sid] {
+        overlay.orderOut(nil)
+        screensaverOverlayWindows.removeValue(forKey: sid)
+      }
+      windowControllers.removeValue(forKey: sid)?.stop()
+      currentViews[sid]?.removeFromSuperview()
+      currentViews.removeValue(forKey: sid)
+      players[sid]?.pause()
+      players[sid]?.replaceCurrentItem(with: nil)
+      players.removeValue(forKey: sid)
+      loopers.removeValue(forKey: sid)
+      screenContent.removeValue(forKey: sid)
     }
   }
 
@@ -868,32 +887,7 @@ class SharedWallpaperWindowManager {
     // Remove disconnected screen windows
     for sid in knownIDs.subtracting(activeIDs) {
       dlog("removing UUID \(sid)")
-      
-      if let screen = NSScreen.screen(forUUID: sid) {
-        clear(for: screen, purgeBookmark: false)
-      } else {
-        // Direct cleanup when no screen object exists
-        if let overlay = overlayWindows[sid] {
-          NotificationCenter.default.removeObserver(
-            AppDelegate.shared as Any,
-            name: NSWindow.didChangeOcclusionStateNotification,
-            object: overlay)
-          overlay.orderOut(nil)
-          overlayWindows.removeValue(forKey: sid)
-        }
-        if let overlay = screensaverOverlayWindows[sid] {
-          overlay.orderOut(nil)
-          screensaverOverlayWindows.removeValue(forKey: sid)
-        }
-        windowControllers.removeValue(forKey: sid)?.stop()
-        currentViews[sid]?.removeFromSuperview()
-        currentViews.removeValue(forKey: sid)
-        players[sid]?.pause()
-        players[sid]?.replaceCurrentItem(with: nil)
-        players.removeValue(forKey: sid)
-        loopers.removeValue(forKey: sid)
-        screenContent.removeValue(forKey: sid)
-      }
+      cleanupScreenResources(forUUID: sid, purgeBookmark: false)
     }
 
     // Add windows for newly connected screens
