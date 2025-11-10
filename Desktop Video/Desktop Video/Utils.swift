@@ -90,6 +90,23 @@ func dvTimestamp() -> String {
     return formatter.string(from: Date())
 }
 
+// MARK: - Date/Time Formatting Utilities
+/// 格式化日期为屏保显示格式（例如：Monday, 2025-11-10）
+func formatScreensaverDate(_ date: Date = Date()) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale.current
+    formatter.dateFormat = "EEEE, yyyy-MM-dd"
+    return formatter.string(from: date)
+}
+
+/// 格式化时间为屏保显示格式（例如：18:36:42）
+func formatScreensaverTime(_ date: Date = Date()) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale.current
+    formatter.dateFormat = "HH:mm:ss"
+    return formatter.string(from: date)
+}
+
 // MARK: - 日志辅助函数
 /// 日志级别定义
 enum DVLogLevel: String {
