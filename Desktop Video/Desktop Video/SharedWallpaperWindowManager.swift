@@ -57,6 +57,12 @@ class SharedWallpaperWindowManager {
       name: NSApplication.didChangeScreenParametersNotification,
       object: nil
     )
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(windowScreenDidChange(_:)),
+      name: NSWindow.didChangeScreenNotification,
+      object: nil
+    )
 
   }
 
@@ -251,13 +257,6 @@ class SharedWallpaperWindowManager {
       name: NSWindow.didChangeOcclusionStateNotification,
       object: overlay
     )
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(windowScreenDidChange(_:)),
-      name: NSWindow.didChangeScreenNotification,
-      object: nil
-    )
-
     // 创建用于屏保检测的全屏透明窗口
     let screensaverOverlay = NSWindow(
       contentRect: screenFrame,
@@ -724,6 +723,11 @@ class SharedWallpaperWindowManager {
         let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
         let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
 
+        if isStale {
+          dlog("bookmark is stale for \(url.lastPathComponent), refreshing")
+          saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
+        }
+
         if ["mp4", "mov", "m4v"].contains(ext) {
           dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
           showVideo(for: screen, url: url, stretch: stretch, volume: volume)
@@ -763,6 +767,11 @@ class SharedWallpaperWindowManager {
       let ext = url.pathExtension.lowercased()
       let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
       let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+
+      if isStale {
+        dlog("bookmark is stale for \(url.lastPathComponent), refreshing")
+        saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
+      }
 
       if ["mp4", "mov", "m4v"].contains(ext) {
         dlog("restoring video \(url.lastPathComponent) on \(screen.dv_localizedName)")
@@ -913,28 +922,31 @@ class SharedWallpaperWindowManager {
     }
   }
 
-  // Placeholder for missing method: reassignAllWindows
   @objc func reassignAllWindows() {
-    // TODO: Implement window reassignment logic if needed
-    dlog("reassignAllWindows called (stub)")
+    dlog("reassignAllWindows")
+    for screen in NSScreen.screens {
+      ensureWindowOnCorrectScreen(for: screen)
+    }
   }
 
-  // Placeholder for missing selector method: windowScreenDidChange
-  @objc func windowScreenDidChange(_: Notification) {
-    // TODO: Implement window screen change handling if needed
-    dlog("windowScreenDidChange called (stub)")
+  @objc func windowScreenDidChange(_ notification: Notification) {
+    guard let window = notification.object as? NSWindow else { return }
+    let isOurs = windowControllers.values.contains { $0.window === window }
+               || overlayWindows.values.contains { $0 === window }
+               || screensaverOverlayWindows.values.contains { $0 === window }
+    guard isOurs else { return }
+    dlog("windowScreenDidChange for managed window")
+    reassignAllWindows()
   }
 
-  // Placeholder for missing function: allOverlaysCompletelyCovered
   func allOverlaysCompletelyCovered() -> Bool {
-    // TODO: Implement actual overlay coverage check
-    return false
+    guard !overlayWindows.isEmpty else { return false }
+    return overlayWindows.values.allSatisfy { !$0.occlusionState.contains(.visible) }
   }
 
-  // Placeholder for missing function: anyOverlayCompletelyCovered
   func anyOverlayCompletelyCovered() -> Bool {
-    // TODO: Implement actual overlay coverage check
-    return false
+    guard !overlayWindows.isEmpty else { return false }
+    return overlayWindows.values.contains { !$0.occlusionState.contains(.visible) }
   }
 
 }

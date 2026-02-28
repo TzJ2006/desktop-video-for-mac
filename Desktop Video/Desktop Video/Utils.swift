@@ -76,7 +76,7 @@ struct BookmarkStore {
 
     /// 删除指定显示器的所有数据
     static func purge(id: CustomStringConvertible) {
-        ["bookmark", "stretch", "volume", "savedAt"].forEach {
+        ["bookmark", "stretch", "volume", "savedAt", "lastURL", "lastType"].forEach {
             UserDefaults.standard.removeObject(forKey: key($0, id: id))
         }
     }

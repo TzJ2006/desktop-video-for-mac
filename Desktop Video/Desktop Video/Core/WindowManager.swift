@@ -7,17 +7,8 @@ final class WindowManager {
     static let shared = WindowManager()
 
     private var wallpaperControllers: [String: WallpaperWindowController] = [:]
-    private var notificationObservers: [NSObjectProtocol] = []
 
-    private init() {
-        observeScreenChanges()
-    }
-
-    deinit {
-        for token in notificationObservers {
-            NotificationCenter.default.removeObserver(token)
-        }
-    }
+    private init() {}
 
     func startForAllScreens() {
         dlog("WindowManager.startForAllScreens")
@@ -34,20 +25,6 @@ final class WindowManager {
         let controller = SharedWallpaperWindowManager.shared.ensureWallpaperController(for: screen)
         wallpaperControllers[sid] = controller
         return controller
-    }
-
-    private func observeScreenChanges() {
-        let token = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.syncScreens()
-            }
-        }
-        notificationObservers.append(token)
     }
 
     private func syncScreens() {

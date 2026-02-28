@@ -60,8 +60,9 @@ Sidebar navigation (`SidebarView`, 220pt) + scrollable card-based content (`Card
 - PascalCase for types, camelCase for functions/variables
 - File names match the main type they contain
 - Provide Chinese comments when adding command-line scripts
-- Update `ChangeLog.md` (English + Chinese, newest first) with actual current date
+- **Every change must be logged in `ChangeLog.md`** — see `agents.md` for detailed requirements
 - Versioning: `Version X.Y hot-fix Z` (one hot-fix per day max)
+- **ChangeLog grouping rule**: If changes are made on the same day as an existing version entry, append to that entry. Only create a new `hot-fix` version if the changes are on a different day.
 
 ## Git Workflow
 

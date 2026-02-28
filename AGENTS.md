@@ -61,9 +61,7 @@ Desktop Video/
 - Remove any obsolete logic or unused methods.
 - Add a clear, informative log statement for each new function to aid debugging.
 - Provide Chinese comments when adding command-line scripts.
-- Update `ChangeLog.md` in both English and Chinese, placing the newest version at the top.
-- Use the actual current date for change-log entries.
-- Use `Version <previous-version-number> hot-fix <index>` for versioning. Only one hot-fix is allowed per day.
+- **Every change must be logged in `ChangeLog.md`** — see the [ChangeLog Requirements](#changelog-requirements) section below for details.
 
 ### Naming Conventions
 
@@ -137,6 +135,47 @@ echo "✅ 启动完成"
 - Currently no automated tests are included.
 - Ensure the project builds with `xcodebuild clean build` before merging.
 - Update `ChangeLog.md` with a summary of your changes.
+
+## ChangeLog Requirements
+
+Every code change **must** have a corresponding entry in `ChangeLog.md`. No exceptions.
+
+### Format
+
+- Entries are grouped under version headers: `### Version X.Y hot-fix Z (YYYY-MM-DD)`
+- Each entry is a bullet point with **Chinese first, then English**, in pairs
+- Newest entries go at the **top** of the file (below the file header)
+- Use the **actual current date**, not a placeholder
+
+### When to Add an Entry
+
+- Any bug fix, feature addition, refactor, or behavioral change
+- UI changes, localization updates, build configuration changes
+- Do **not** skip logging just because a change seems minor
+
+### How to Write Entries
+
+- Keep descriptions concise (one line each for Chinese and English)
+- Chinese line describes the change for Chinese-speaking users
+- English line describes the same change for English-speaking users
+- Use active voice: "修复…" / "Fix…", "新增…" / "Add…", "移除…" / "Remove…"
+
+### Version Bumping
+
+- If today already has a hot-fix entry, append to that section
+- If today has no entry yet, create a new hot-fix section (max one hot-fix bump per day)
+- Follow the pattern: `Version X.Y hot-fix Z` where Z increments from the last hot-fix
+
+### Example
+
+```markdown
+### Version 4.0 hot-fix 3 (2025-10-15)
+
+- 新增 HDR 视频支持
+- Add HDR video support
+- 修复多屏幕下音量不同步的问题
+- Fix volume not syncing across multiple screens
+```
 
 ## Security Policy
 

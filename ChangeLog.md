@@ -4,6 +4,39 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.1 Preview 0228 (2026-02-28)
+
+- 实现 powerSave/powerSavePlus 模式的遮挡检测，修复两种省电模式完全无效的问题
+- Implement overlay occlusion detection for powerSave/powerSavePlus modes, fixing both power-saving modes being completely non-functional
+- 实现窗口重新分配逻辑，修复唤醒/屏幕变更后窗口可能停留在错误显示器的问题
+- Implement window reassignment logic so windows return to correct displays after wake/screen changes
+- 修复 didChangeScreenNotification 观察者在每次创建新屏幕时重复注册的问题
+- Fix didChangeScreenNotification observer being registered repeatedly on every new screen setup
+- 清除壁纸时同时移除 lastURL 和 lastType 回退数据，防止壁纸意外恢复
+- Purge lastURL and lastType fallback data when clearing wallpaper to prevent unintended restoration
+- 检测到过期书签时自动刷新，防止书签逐渐失效
+- Automatically refresh stale bookmarks on detection to prevent gradual bookmark degradation
+- 移除 WindowManager 中重复的屏幕变更观察者，避免与 SharedWallpaperWindowManager 冲突
+- Remove duplicate screen change observer in WindowManager to avoid conflict with SharedWallpaperWindowManager
+- 新增壁纸历史记录功能，自动记录每次壁纸选择并支持按屏幕查看
+- Add wallpaper history feature that automatically logs each selection with per-screen viewing
+- 新增历史记录界面，支持缩略图预览、双击快速应用壁纸
+- Add history UI with thumbnail previews and double-click to reapply wallpaper
+- 新增视频和图片缩略图自动生成器
+- Add automatic thumbnail generator for videos and images
+- 新增内存视频资源加载支持 (AVDataAsset)
+- Add in-memory video asset loading support (AVDataAsset)
+- 重构 AppDelegate 中的标签配置和清理方法，消除重复代码
+- Refactor label config and cleanup methods in AppDelegate to eliminate duplicated code
+- 提取重复代码为可复用工具方法
+- Extract duplicated code into reusable utilities
+- 修复没有播放内容时屏保仍然启动的问题
+- Fix screensaver starting when no video or image content is active
+- 构建时自动将 Build Number 更新为当前日期
+- Automatically update build number to current date on every build
+- 新增历史记录相关的多语言翻译
+- Add localization for history-related UI strings
+
 ### Version 4.0 hot-fix 2 (2025-10-03)
 
 - 修复显示器唤醒后未重新评估遮挡状态导致视频在被遮挡时仍继续播放的问题
