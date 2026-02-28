@@ -23,6 +23,8 @@ struct SidebarView: View {
                     SidebarItem(icon: "sparkles", name: LocalizedStringKey(L("Wallpaper")), selection: item, current: $selection)
                 case .playback:
                     SidebarItem(icon: "bolt.circle", name: LocalizedStringKey(L("Playback")), selection: item, current: $selection)
+                case .history:
+                    SidebarItem(icon: "clock.arrow.circlepath", name: LocalizedStringKey(L("History")), selection: item, current: $selection)
                 case .general:
                     SidebarItem(icon: "gearshape", name: LocalizedStringKey(L("General")), selection: item, current: $selection)
                 }

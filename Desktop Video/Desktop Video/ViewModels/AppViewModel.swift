@@ -10,5 +10,6 @@ final class AppViewModel: ObservableObject {
 enum SidebarSelection: Hashable, CaseIterable {
     case wallpaper
     case playback
+    case history
     case general
 }

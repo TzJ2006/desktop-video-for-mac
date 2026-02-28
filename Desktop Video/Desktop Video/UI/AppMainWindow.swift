@@ -21,6 +21,7 @@ struct AppMainWindow: View {
                         switch vm.selection {
                         case .wallpaper: WallpaperView()
                         case .playback: PlaybackSettingsView()
+                        case .history:  HistoryView()
                         case .general:  GeneralSettingsView()
                         }
                     }

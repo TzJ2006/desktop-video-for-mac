@@ -308,6 +308,7 @@ class SharedWallpaperWindowManager {
     imageView.autoresizingMask = [.width, .height]
 
     self.screenContent[sid] = (.image, url, stretch, nil)
+    WallpaperHistoryStore.shared.record(url: url, contentType: "image")
     AppState.shared.currentMediaURL = url.absoluteString
     dlog("saveBookmark in showImage for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
     saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
@@ -347,6 +348,7 @@ class SharedWallpaperWindowManager {
         existingPlayer.play()
       }
       screenContent[sid] = (.video, url, stretch, volume)
+      WallpaperHistoryStore.shared.record(url: url, contentType: "video")
       NotificationCenter.default.post(
         name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
       onReady?()
@@ -399,6 +401,7 @@ class SharedWallpaperWindowManager {
       players[sid] = queuePlayer
       loopers[sid] = looper
       screenContent[sid] = (.video, url, stretch, volume)
+      WallpaperHistoryStore.shared.record(url: url, contentType: "video")
       saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
       AppState.shared.currentMediaURL = url.absoluteString
       AppDelegate.shared?.startScreensaverTimer()
