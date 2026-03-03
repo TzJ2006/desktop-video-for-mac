@@ -119,36 +119,6 @@ struct GeneralSettingsView: View {
                     }
                 }
 
-                VStack {
-                    Text(L("PlaybackMode"))
-                    Picker("", selection: Binding(
-                        get: { appState.playbackMode.rawValue },
-                        set: { appState.playbackMode = AppState.PlaybackMode(rawValue: $0) ?? .automatic }
-                    )) {
-                        ForEach(AppState.PlaybackMode.allCases, id: \.rawValue) { mode in
-                            Text(mode.description).tag(mode.rawValue)
-                        }
-                    }
-                    .labelsHidden()
-                    Text(appState.playbackMode.detail)
-                        .font(.system(size: 12)) // 小字体
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 10)
-                .frame(width: 200)
-                .onChange(of: appState.playbackMode) { newValue in
-                    dlog("playbackMode changed to \(newValue)")
-                    AppDelegate.shared?.updatePlaybackStateForAllScreens()
-                }
-
-                SliderInputRow(title: LocalizedStringKey(L("idlePauseSensitivity")), value: $appState.idlePauseSensitivity, range: 0...100)
-                    .frame(width: 300)
-                    .onChange(of: appState.idlePauseSensitivity) { newValue in
-                        let clamped = min(max(newValue, 0), 100)
-                        appState.idlePauseSensitivity = clamped
-                        dlog("set idle pause sensitivity \(clamped)")
-                    }
-
                 HStack {
                     Text(L("Max video cache (GB)"))
                     TextField("1.0", value: $maxVideoFileSizeInGB, formatter: NumberFormatter())

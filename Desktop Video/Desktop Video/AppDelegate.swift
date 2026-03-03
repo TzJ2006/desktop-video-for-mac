@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    static var shared: AppDelegate!
    /// Tracks whether the main window has been opened once already
    private var hasOpenedMainWindowOnce = false
+   private let clockVerticalPositionFactor: CGFloat = 0.85
    var window: NSWindow?
    var statusItem: NSStatusItem?
    private var preferencesWindow: NSWindow?
@@ -39,18 +40,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var isInScreensaver = false
    // Debounce work item for occlusion events
    private var occlusionDebounceWorkItem: DispatchWorkItem?
+   /// 记录上次 pauseAll 状态，仅在变化时发送通知
+   private var lastPauseAllState: Bool?
    /// Token to keep the system awake while screensaver videos play
    private var systemSleepActivity: NSObjectProtocol?
    // 屏保模式下的时钟标签
-   private var clockDateLabels: [NSTextField] = []
-   private var clockTimeLabels: [NSTextField] = []
    private var clockTimer: Timer?
-   // macOS 26+ SwiftUI Liquid Glass hosts (store as NSView for cross-version compile)
-   private var clockDateGlassHosts: [NSView] = []
-   private var clockTimeGlassHosts: [NSView] = []
-   // Combined date+time Liquid Glass hosts (macOS 26+)
-   private var clockCombinedGlassHosts: [NSView] = []
-   private var didLogLiquidGlassForScreens: Set<String> = []
+   // 独立时钟窗口（per-screen UUID → NSWindow）
+   private var clockWindows: [String: NSWindow] = [:]
+   // 无壁纸屏幕的黑色背景窗口（per-screen UUID → NSWindow）
+   private var screensaverBlackWindows: [String: NSWindow] = [:]
    // 防止显示器休眠的断言 ID
    private var displaySleepAssertionID: IOPMAssertionID = 0
    // 外部应用禁止屏保的标记
@@ -151,6 +150,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                               name: Notification.Name("OtherAppScreensaverInactive"),
                               object: nil)
 
+       // 监听低电量模式变化，用于自动模式的行为切换
+       NotificationCenter.default.addObserver(
+           self,
+           selector: #selector(powerStateDidChange),
+           name: Notification.Name.NSProcessInfoPowerStateDidChange,
+           object: nil
+       )
+
        // Ensure shouldPauseVideo is evaluated once when the app launches
        updatePlaybackStateForAllScreens()
 
@@ -168,7 +175,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // Reset any existing timer before scheduling a new one
        screensaverTimer?.invalidate()
        screensaverTimer = nil
-       dlog("startScreensaverTimer isInScreensaver=\(isInScreensaver) otherAppSuppressScreensaver=\(otherAppSuppressScreensaver) url=\(AppState.shared.currentMediaURL ?? "None")")
        // 先检查是否被其他应用暂停
        guard !otherAppSuppressScreensaver else {
            dlog("Screensaver not started: external suppression active.")
@@ -176,15 +182,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
        guard !isInScreensaver else {
            dlog("Screensaver not started: is alread in screensaver.")
-           return
-       }
-       // 检查是否有可播放的媒体
-       guard !SharedWallpaperWindowManager.shared.screenContent.isEmpty else {
-           dlog("Screensaver not started: no active video or image content.")
-           return
-       }
-       guard AppState.shared.currentMediaURL != nil else {
-           dlog("Screensaver not started: no valid media selected or playable.")
            return
        }
        // Suppress screensaver if any screensaver overlay window is fully covered
@@ -201,6 +198,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        }
        let delayMinutes = UserDefaults.standard.double(forKey: screensaverDelayMinutesKey)
        let delaySeconds = TimeInterval(max(delayMinutes, 1) * 60)
+       dlog("startScreensaverTimer scheduling timer delaySeconds=\(delaySeconds)")
        //debug settings
 //      var delaySeconds = 10
 //       dlog("Warning! Debug settings on !!!")
@@ -208,14 +206,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        screensaverTimer = Timer.scheduledTimer(withTimeInterval: delaySeconds / 5, repeats: true) { [weak self] _ in
            Task { @MainActor [weak self] in
                guard let self else { return }
-               guard AppState.shared.currentMediaURL != nil else {
-                   dlog("Screensaver not started: no valid media selected or playable.")
-                   self.screensaverTimer?.invalidate()
-                   self.screensaverTimer = nil
-                   return
-               }
                let idleTime = self.getSystemIdleTime()
-               dlog("idleTime=\(idleTime) delaySeconds=\(delaySeconds)")
                if idleTime >= delaySeconds {
                    self.screensaverTimer?.invalidate()
                    self.screensaverTimer = nil
@@ -255,10 +246,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        dlog("runScreenSaver isInScreensaver=\(isInScreensaver)")
        guard UserDefaults.standard.bool(forKey: screensaverEnabledKey) else { return }
        if isInScreensaver { return }
-       guard !SharedWallpaperWindowManager.shared.screenContent.isEmpty else {
-           dlog("Screensaver not started: no active video or image content.")
-           return
-       }
 
        // 若全屏覆盖窗口被完全遮挡，则取消进入屏保
        let shouldCancel = SharedWallpaperWindowManager.shared.screensaverOverlayWindows.values.contains { window in
@@ -287,12 +274,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        systemSleepActivity = ProcessInfo.processInfo.beginActivity(options: [.idleSystemSleepDisabled, .idleDisplaySleepDisabled], reason: "DesktopVideo screensaver active")
        dlog("beginActivity to keep system awake during screensaver")
 
-       // 使用现有窗口列表的键值
-       let keys = NSScreen.screens.compactMap { screen in
-           let id = screen.dv_displayUUID
-           return SharedWallpaperWindowManager.shared.windowControllers.keys.contains(id) ? id : nil
-       }
-       dlog("windowControllers.keys = \(keys)")
+       dlog("runScreenSaver iterating all screens")
 
        // 隐藏检测窗口，避免屏保模式下触发自动暂停
        for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
@@ -303,116 +285,136 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            overlay.orderOut(nil)
        }
 
-       // 1. 提升现有壁纸窗口为屏保窗口，并添加淡入动画
-       // 👇 先把需要恢复播放的屏幕 ID 收集起来，稍后统一延迟 5 s 再播放
+       // 1. 遍历所有屏幕，有壁纸窗口的提升为屏保，没有壁纸的创建黑色背景窗口
        var pendingResumeIDs: [String] = []
-       for id in keys {
-           dlog("looping id = \(id)")
-           if let screen = NSScreen.screen(forUUID: id) {
-               dlog("found screen: \(screen)")
-               guard let wallpaperWindow = SharedWallpaperWindowManager.shared.windowControllers[id]?.window else { continue }
-               wallpaperWindow.contentView?.wantsLayer = true  // ensure layer-backed
+       let dateText = formatScreensaverDate()
+       let timeText = formatScreensaverTime()
+
+       for screen in NSScreen.screens {
+           let id = screen.dv_displayUUID
+           dlog("looping screen id = \(id)")
+
+           let hasWallpaper = SharedWallpaperWindowManager.shared.windowControllers[id]?.window != nil
+           let referenceFrame: NSRect
+           var referenceWindowNumber: Int?
+
+           if hasWallpaper, let wallpaperWindow = SharedWallpaperWindowManager.shared.windowControllers[id]?.window {
+               // === 有壁纸窗口：提升为屏保级别 ===
+               wallpaperWindow.contentView?.wantsLayer = true
                wallpaperWindow.level = .screenSaver
                wallpaperWindow.ignoresMouseEvents = false
                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-               wallpaperWindow.alphaValue = 0 // 初始透明
-               // 仅将窗口置于最前，不请求键盘焦点以避免系统警告
+               wallpaperWindow.alphaValue = 0
                wallpaperWindow.orderFront(nil)
-
-               // 使用动画淡入
-               NSAnimationContext.runAnimationGroup({ context in
-                   context.duration = 0.5
-                   wallpaperWindow.animator().alphaValue = 1
-               }, completionHandler: nil)
-
-               // 👉 收集待恢复播放的屏幕，稍后统一处理
+               referenceFrame = wallpaperWindow.frame
+               referenceWindowNumber = wallpaperWindow.windowNumber
                pendingResumeIDs.append(id)
-
-               if #available(macOS 26.0, *) {
-                   // ===== SwiftUI Liquid Glass combined label (macOS 26+) =====
-                   let dateText = formatScreensaverDate()
-                   let timeText = formatScreensaverTime()
-
-                   // Create ONE combined hosting view with a newline between date and time
-                   let combinedHost = NSHostingView(rootView: CombinedGlassClock(
-                       dateText: dateText,
-                       timeText: timeText
-                   ))
-
-                   // Size to fit SwiftUI content
-                   let combinedSize = combinedHost.fittingSize
-                   combinedHost.frame.size = combinedSize
-
-                   // Ensure overlay renders above the video view
-                   combinedHost.wantsLayer = true
-                   combinedHost.layer?.zPosition = 100
-
-                   if let contentBounds = wallpaperWindow.contentView?.bounds {
-                       // Place roughly where the previous date+time block would sit
-                       let originX = (contentBounds.width - combinedSize.width) / 2
-                       let originY = contentBounds.height * 4/5 - combinedSize.height / 2
-                       combinedHost.frame.origin = CGPoint(x: originX, y: originY)
-                   }
-
-                   wallpaperWindow.contentView?.addSubview(combinedHost, positioned: .above, relativeTo: nil)
-                   clockCombinedGlassHosts.append(combinedHost)
-                   if !didLogLiquidGlassForScreens.contains(id) {
-                       let screenName = NSScreen.screen(forUUID: id)?.dv_localizedName ?? id
-                       dlog("[LiquidGlass] Enabled for screen: \(screenName) (\(id))")
-                       didLogLiquidGlassForScreens.insert(id)
-                   }
-               } else {
-                   // ===== Fallback: AppKit labels for older macOS =====
-                   // 添加日期文本
-                   let dateLabel = NSTextField(labelWithString: "")
-                   configureScreensaverDateLabel(dateLabel)
-                   dateLabel.stringValue = formatScreensaverDate()
-                   dateLabel.sizeToFit()
-                   applyScreensaverLabelPadding(dateLabel)
-                   // 根据窗口内容视图计算标签位置
-                   if let contentBounds = wallpaperWindow.contentView?.bounds {
-                       // place at top 1/5 of view, horizontally centered
-                       let dateX = (contentBounds.width - dateLabel.frame.width) / 2
-                       let dateY = contentBounds.height * 4/5 - dateLabel.frame.height / 2
-                       dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
-                   }
-                   wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
-                   clockDateLabels.append(dateLabel)
-
-                   // 添加时间文本，位于日期标签下方约两倍高度处
-                   let timeLabel = NSTextField(labelWithString: "")
-                   configureScreensaverTimeLabel(timeLabel)
-                   timeLabel.sizeToFit()
-                   applyScreensaverLabelPadding(timeLabel, horizontal: 40, vertical: 20)
-                   // 根据窗口内容视图计算标签位置
-                   if let contentBounds = wallpaperWindow.contentView?.bounds {
-                       // 使用和 updateClockLabels 相同的逻辑：日期标签下方，间隔10点
-                       let dateY = dateLabel.frame.origin.y
-                       let timeX = contentBounds.midX - timeLabel.frame.width / 2
-                       let timeY = dateY - timeLabel.frame.height / 1.5 - dateLabel.frame.height
-                       timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
-                   }
-                   wallpaperWindow.contentView?.addSubview(timeLabel, positioned: .above, relativeTo: nil)
-                   timeLabel.wantsLayer = true
-                   timeLabel.layer?.zPosition = 10_000
-                   dateLabel.wantsLayer = true
-                   dateLabel.layer?.zPosition = 10_000
-                   clockTimeLabels.append(timeLabel)
-                   // Ensure dateLabel is above all (bring to front)
-                   wallpaperWindow.contentView?.addSubview(dateLabel, positioned: .above, relativeTo: nil)
-               }
            } else {
-               dlog("no NSScreen found forDisplayID \(id), skipping")
-               continue
+               // === 无壁纸窗口：创建黑色全屏窗口 ===
+               let blackWin = NSWindow(
+                   contentRect: screen.frame,
+                   styleMask: .borderless,
+                   backing: .buffered,
+                   defer: false
+               )
+               blackWin.isOpaque = true
+               blackWin.backgroundColor = .black
+               blackWin.hasShadow = false
+               blackWin.ignoresMouseEvents = false
+               blackWin.level = .screenSaver
+               blackWin.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+               blackWin.alphaValue = 0
+               blackWin.orderFront(nil)
+               screensaverBlackWindows[id] = blackWin
+               referenceFrame = screen.frame
+               referenceWindowNumber = blackWin.windowNumber
            }
+
+           // === 创建时钟窗口（两种屏幕共用） ===
+           let clockWin = NSWindow(
+               contentRect: referenceFrame,
+               styleMask: .borderless,
+               backing: .buffered,
+               defer: false
+           )
+           clockWin.isOpaque = false
+           clockWin.backgroundColor = .clear
+           clockWin.hasShadow = false
+           clockWin.ignoresMouseEvents = true
+           clockWin.level = .screenSaver
+           clockWin.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+           let highlightHost = NSHostingView(rootView: ScreensaverClockHighlight(dateText: dateText, timeText: timeText))
+           let clockSize = highlightHost.fittingSize
+
+           let contentBounds = CGRect(origin: .zero, size: referenceFrame.size)
+           let originX = (contentBounds.width - clockSize.width) / 2
+           let originY = contentBounds.height * clockVerticalPositionFactor - clockSize.height / 2
+           let clockFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: clockSize)
+
+           if hasWallpaper {
+               // 有壁纸：使用毛玻璃 + 高光
+               let blurView = NSVisualEffectView(frame: clockWin.contentView!.bounds)
+               blurView.blendingMode = .behindWindow
+               blurView.material = .hudWindow
+               blurView.state = .active
+               blurView.wantsLayer = true
+               blurView.frame = clockFrame
+               blurView.autoresizingMask = []
+
+               let maskImage = renderTextMask(dateText: dateText, timeText: timeText, size: clockSize)
+               let maskLayer = CALayer()
+               maskLayer.frame = blurView.bounds
+               maskLayer.contents = maskImage
+               maskLayer.contentsGravity = .resize
+               blurView.layer?.mask = maskLayer
+
+               highlightHost.frame = clockFrame
+               highlightHost.wantsLayer = true
+               highlightHost.layer?.backgroundColor = .clear
+
+               clockWin.contentView?.addSubview(blurView)
+               clockWin.contentView?.addSubview(highlightHost)
+           } else {
+               // 无壁纸：黑色背景上直接显示白色文字（不需要毛玻璃）
+               highlightHost.frame = clockFrame
+               highlightHost.wantsLayer = true
+               highlightHost.layer?.backgroundColor = .clear
+
+               clockWin.contentView?.addSubview(highlightHost)
+           }
+
+           clockWin.alphaValue = 0
+           if let refNum = referenceWindowNumber {
+               clockWin.order(.above, relativeTo: refNum)
+           }
+           clockWindows[id] = clockWin
+
+           // 淡入动画
+           NSAnimationContext.runAnimationGroup({ context in
+               context.duration = 1.0
+               context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+               if hasWallpaper, let wallpaperWindow = SharedWallpaperWindowManager.shared.windowControllers[id]?.window {
+                   wallpaperWindow.animator().alphaValue = 1
+               }
+               if let blackWin = self.screensaverBlackWindows[id] {
+                   blackWin.animator().alphaValue = 1
+               }
+               clockWin.animator().alphaValue = 1
+           }, completionHandler: nil)
        }
 
        // === 立即恢复各屏幕的视频播放 ===
        for pid in pendingResumeIDs {
            reloadAndPlayVideo(displayUUID: pid)
        }
-       // Bring clock overlays to the front in case the video view was reinserted above them
-       bringClockOverlaysToFront()
+
+       // 视频重载可能调用 orderFrontRegardless，需要把时钟窗口重新排到壁纸上方
+       for (sid, clockWin) in clockWindows {
+           if let wallpaperWin = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+               clockWin.order(.above, relativeTo: wallpaperWin.windowNumber)
+           }
+       }
 
        // 开始更新时钟标签
        updateClockLabels() // initial update
@@ -470,37 +472,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // 清理时钟定时器和标签
        clockTimer?.invalidate()
        clockTimer = nil
-       for label in clockDateLabels {
-           label.removeFromSuperview()
-       }
-       clockDateLabels.removeAll()
-       for label in clockTimeLabels {
-           label.removeFromSuperview()
-       }
-       clockTimeLabels.removeAll()
-       if #available(macOS 26.0, *) {
-           for host in clockDateGlassHosts { host.removeFromSuperview() }
-           clockDateGlassHosts.removeAll()
-           for host in clockTimeGlassHosts { host.removeFromSuperview() }
-           clockTimeGlassHosts.removeAll()
-           for host in clockCombinedGlassHosts { host.removeFromSuperview() }
-           clockCombinedGlassHosts.removeAll()
-       }
+        // 1. 对每个窗口执行淡出动画后再恢复
+        NSAnimationContext.beginGrouping()
+        NSAnimationContext.current.duration = 0.5
+        NSAnimationContext.current.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 
-       // 1. 对每个窗口执行淡出动画后再恢复
-       for (_, wallpaperWindowController) in SharedWallpaperWindowManager.shared.windowControllers {
-           guard let wallpaperWindow = wallpaperWindowController.window else { continue }
-           NSAnimationContext.runAnimationGroup({ context in
-               context.duration = 0.5
-               wallpaperWindow.animator().alphaValue = 0
-           }, completionHandler: {
-               wallpaperWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
-               wallpaperWindow.ignoresMouseEvents = true
-               wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-               wallpaperWindow.orderBack(nil)
-               wallpaperWindow.alphaValue = 1 // 恢复透明度供下一次屏保使用
-           })
-       }
+        for (_, clockWin) in clockWindows {
+            clockWin.animator().alphaValue = 0
+        }
+
+        for (_, wallpaperWindowController) in SharedWallpaperWindowManager.shared.windowControllers {
+            guard let wallpaperWindow = wallpaperWindowController.window else { continue }
+            wallpaperWindow.animator().alphaValue = 0
+        }
+
+        // 淡出黑色背景窗口
+        for (_, blackWin) in screensaverBlackWindows {
+            blackWin.animator().alphaValue = 0
+        }
+
+        NSAnimationContext.current.completionHandler = {
+            for (_, clockWin) in self.clockWindows {
+                clockWin.orderOut(nil)
+            }
+            self.clockWindows.removeAll()
+
+            // 清理黑色背景窗口
+            for (_, blackWin) in self.screensaverBlackWindows {
+                blackWin.orderOut(nil)
+            }
+            self.screensaverBlackWindows.removeAll()
+
+            for (_, wallpaperWindowController) in SharedWallpaperWindowManager.shared.windowControllers {
+                guard let wallpaperWindow = wallpaperWindowController.window else { continue }
+                wallpaperWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+                wallpaperWindow.ignoresMouseEvents = true
+                wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+                wallpaperWindow.orderBack(nil)
+                wallpaperWindow.alphaValue = 1 // 恢复透明度供下一次屏保使用
+            }
+        }
+        NSAnimationContext.endGrouping()
 
        // 重新显示检测窗口
        for overlay in SharedWallpaperWindowManager.shared.overlayWindows.values {
@@ -691,7 +703,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     NSApp.setActivationPolicy(.regular)
                     self.removeStatusBarIcon()
                 }
-                self.toggleMainWindow()
+                if self.hasOpenedMainWindowOnce {
+                    self.toggleMainWindow()
+                }
                 hasOpenedMainWindowOnce = true
  //           self.statusBarIconClicked()
             }
@@ -763,13 +777,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// Manually trigger the screensaver from UI.
    @objc func manualRunScreensaver(_: Any? = nil) {
         dlog("manualRunScreensaver")
-        let hasVideoContent = SharedWallpaperWindowManager.shared.screenContent.contains { _, entry in
-            entry.type == .video
-        }
-        guard hasVideoContent else {
-            dlog("manualRunScreensaver aborted: no video content available", level: .info)
-            return
-        }
         // 若用户在偏好里关闭了屏保，也顺便帮他打开
         if !UserDefaults.standard.bool(forKey: screensaverEnabledKey) {
             UserDefaults.standard.set(true, forKey: screensaverEnabledKey)
@@ -777,13 +784,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         runScreenSaver()    // 已有方法，直接复用
     }
 
-   /// 根据当前壁纸内容启用或禁用菜单栏中的屏保按钮
+   /// 根据屏保开关状态启用或禁用菜单栏中的屏保按钮（无视频时也允许启动屏保）
    private func updateScreensaverMenuItemState() {
-       let hasVideoContent = SharedWallpaperWindowManager.shared.screenContent.contains { _, entry in
-           entry.type == .video
-       }
-       dlog("updateScreensaverMenuItemState hasVideoContent=\(hasVideoContent)", level: .info)
-       startScreensaverMenuItem?.isEnabled = hasVideoContent
+       let screensaverEnabled = UserDefaults.standard.bool(forKey: screensaverEnabledKey)
+       dlog("updateScreensaverMenuItemState screensaverEnabled=\(screensaverEnabled)", level: .info)
+       startScreensaverMenuItem?.isEnabled = true
    }
 
    // 是否显示 Docker 栏图标
@@ -827,17 +832,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             } else {
                 if player.timeControlStatus != .playing {
                     if player.currentItem != nil {
-                        let time = player.currentItem!.currentTime()
-                        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-                            player.play()
-                        }
+                        player.play()
                     } else {
                         reloadAndPlayVideo(displayUUID: sid)
                     }
                 }
             }
         }
-        NotificationCenter.default.post(name: Notification.Name("WallpaperContentDidChange"), object: nil)
+        // 仅在状态变化时才通知 UI 刷新
+        if lastPauseAllState != pauseAll {
+            lastPauseAllState = pauseAll
+            NotificationCenter.default.post(name: Notification.Name("WallpaperContentDidChange"), object: nil)
+        }
     }
 
     /// Determines whether all videos should be paused (e.g., all overlays are fully occluded).
@@ -851,24 +857,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return false
 
         case .automatic:
-            dlog("testing pause videos or not (automatic)")
-
-            let overlaysDict = SharedWallpaperWindowManager.shared.overlayWindows
-            guard !overlaysDict.isEmpty else { return false }
-
-            let pauseAll = overlaysDict.values.allSatisfy { !$0.occlusionState.contains(.visible) }
-
-            if !pauseAll {
-                // 列出仍可见的屏幕，便于调试
-                var visibleScreens: [String] = []
-                for (sid, win) in overlaysDict where win.occlusionState.contains(.visible) {
-                    if let screen = NSScreen.screen(forUUID: sid) {
-                        visibleScreens.append(screen.dv_localizedName)
-                    }
-                }
-                dlog("[IdlePause] overlay still visible on screens: \(visibleScreens.joined(separator: ", "))")
+            let isLowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+            dlog("testing pause videos or not (automatic) isLowPower=\(isLowPower)")
+            if isLowPower {
+                // 低电量模式：行为等同省电+（任意遮挡即暂停全部）
+                return SharedWallpaperWindowManager.shared.anyOverlayCompletelyCovered()
+            } else {
+                // 正常电量：行为等同省电（全部遮挡才暂停）
+                return SharedWallpaperWindowManager.shared.allOverlaysCompletelyCovered()
             }
-            return pauseAll
 
         case .powerSave:
             // 省电：所有 overlay 都被完全遮挡才暂停
@@ -883,6 +880,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
         
+    @objc private func powerStateDidChange(_ notification: Notification) {
+        dlog("[LowPower] isLowPowerModeEnabled=\(ProcessInfo.processInfo.isLowPowerModeEnabled)")
+        updatePlaybackStateForAllScreens()
+    }
+
         @objc
     func wallpaperWindowOcclusionDidChange(_: Notification) {
         // 防抖：短时间内只评估一次
@@ -923,128 +925,114 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    }
    // 更新时钟标签位置和时间
     private func updateClockLabels() {
-        dlog("updateClockLabels")
         let dateString = formatScreensaverDate()
         let timeString = formatScreensaverTime()
 
-        if #available(macOS 26.0, *) {
-            // Update combined SwiftUI Liquid Glass hosts
-            for (index, anyHost) in clockCombinedGlassHosts.enumerated() {
-                guard index < NSScreen.screens.count else { continue }
-                guard let host = anyHost as? NSHostingView<CombinedGlassClock> else { continue }
-
-                let screen = NSScreen.screens[index]
-                let sid = screen.dv_displayUUID
-                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
-                   let contentBounds = window.contentView?.bounds {
-                    // Rebuild root view with new two-line content
-                    host.rootView = CombinedGlassClock(
-                        dateText: dateString,
-                        timeText: timeString
-                    )
-
-                    let combinedSize = host.fittingSize
-                    host.frame.size = combinedSize
-
-                    let originX = (contentBounds.width - combinedSize.width) / 2
-                    let originY = contentBounds.height * 0.875 - combinedSize.height / 2
-                    host.frame.origin = CGPoint(x: originX, y: originY)
-                }
-            }
-            // Keep overlays above the video even if the player view reorders
-            bringClockOverlaysToFront()
-            return
-        }
-
-        // Legacy AppKit path
-        for (index, dateLabel) in clockDateLabels.enumerated() {
-            guard index < clockTimeLabels.count, index < NSScreen.screens.count else { continue }
-            let timeLabel = clockTimeLabels[index]
-            let screen = NSScreen.screens[index]
+        for screen in NSScreen.screens {
             let sid = screen.dv_displayUUID
-            if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window,
-               let contentBounds = window.contentView?.bounds {
-                configureScreensaverDateLabel(dateLabel)
-                dateLabel.stringValue = dateString
-                dateLabel.sizeToFit()
-                applyScreensaverLabelPadding(dateLabel)
-                let dateX = (contentBounds.width - dateLabel.frame.width) / 2
-                let dateY = contentBounds.height * 9/10 - dateLabel.frame.height / 2
-                dateLabel.frame.origin = CGPoint(x: dateX, y: dateY)
+            guard let clockWin = clockWindows[sid] else { continue }
 
-                configureScreensaverTimeLabel(timeLabel)
-                timeLabel.stringValue = timeString
-                timeLabel.sizeToFit()
-                applyScreensaverLabelPadding(timeLabel, horizontal: 40, vertical: 20)
-                let timeX = contentBounds.midX - timeLabel.frame.width / 2
-                let timeY = dateY - dateLabel.frame.height - timeLabel.frame.height / 1.5
-                timeLabel.frame.origin = CGPoint(x: timeX, y: timeY)
+            // 使用壁纸窗口或黑色窗口或屏幕本身作为参考尺寸
+            let contentBounds: NSRect
+            if let wallpaperWindow = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
+                contentBounds = wallpaperWindow.contentView?.bounds ?? wallpaperWindow.frame
+            } else if let blackWin = screensaverBlackWindows[sid] {
+                contentBounds = blackWin.contentView?.bounds ?? blackWin.frame
+            } else {
+                contentBounds = CGRect(origin: .zero, size: screen.frame.size)
             }
-        }
-        // Keep overlays above the video even if the player view reorders
-        bringClockOverlaysToFront()
-    }
 
-    /// Re-adds clock overlays at the top of the z-order to ensure they are above the video.
-    private func bringClockOverlaysToFront() {
-        // Helper to bring views to front with proper z-ordering
-        func bringViewsToFront<T: NSView>(_ views: [T]) {
-            for (index, view) in views.enumerated() {
-                guard index < NSScreen.screens.count else { continue }
-                let sid = NSScreen.screens[index].dv_displayUUID
-                if let window = SharedWallpaperWindowManager.shared.windowControllers[sid]?.window {
-                    view.wantsLayer = true
-                    view.layer?.zPosition = 10_000
-                    window.contentView?.addSubview(view, positioned: .above, relativeTo: nil)
+            // 更新高光文字
+            if let highlightHost = clockWin.contentView?.subviews.compactMap({ $0 as? NSHostingView<ScreensaverClockHighlight> }).first {
+                highlightHost.rootView = ScreensaverClockHighlight(dateText: dateString, timeText: timeString)
+                let clockSize = highlightHost.fittingSize
+                let originX = (contentBounds.width - clockSize.width) / 2
+                let originY = contentBounds.height * clockVerticalPositionFactor - clockSize.height / 2
+                let clockFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: clockSize)
+                highlightHost.frame = clockFrame
+
+                // 更新 blur 遮罩（仅有壁纸的屏幕才有 blurView）
+                // 禁用 CALayer 隐式动画，避免旧遮罩残留（默认 ~0.25s 交叉淡入淡出）
+                if let blurView = clockWin.contentView?.subviews.compactMap({ $0 as? NSVisualEffectView }).first {
+                    CATransaction.begin()
+                    CATransaction.setDisableActions(true)
+                    blurView.frame = clockFrame
+                    let maskImage = renderTextMask(dateText: dateString, timeText: timeString, size: clockSize)
+                    blurView.layer?.mask?.frame = blurView.bounds
+                    blurView.layer?.mask?.contents = maskImage
+                    CATransaction.commit()
                 }
             }
         }
-        
-        // SwiftUI hosts (macOS 26+)
-        if #available(macOS 26.0, *) {
-            bringViewsToFront(clockCombinedGlassHosts)
-            bringViewsToFront(clockDateGlassHosts)
-            bringViewsToFront(clockTimeGlassHosts)
-        }
-        // Legacy AppKit labels
-        bringViewsToFront(clockDateLabels)
-        bringViewsToFront(clockTimeLabels)
-    }
-    /// Configure common properties for screensaver labels
-    private func configureScreensaverLabel(_ label: NSTextField, fontSize: CGFloat, fontWeight: NSFont.Weight, lineBreak: NSLineBreakMode) {
-        label.font = NSFont(name: "DIN Alternate", size: fontSize) ?? NSFont.systemFont(ofSize: fontSize, weight: fontWeight)
-        label.textColor = .labelColor
-        label.drawsBackground = true
-        label.backgroundColor = NSColor(calibratedWhite: 0.0, alpha: 0.9)
-        label.isBezeled = false
-        label.isEditable = false
-        label.alignment = .center
-        label.wantsLayer = true
-        label.layer?.cornerRadius = 12
-        label.layer?.masksToBounds = true
-        label.layer?.zPosition = 100
-        label.lineBreakMode = lineBreak
     }
 
-    private func configureScreensaverDateLabel(_ label: NSTextField) {
-        configureScreensaverLabel(label, fontSize: 30, fontWeight: .medium, lineBreak: .byWordWrapping)
-    }
+    /// Renders clock text into a CGImage for use as a CALayer mask on the blur view.
+    /// Uses NSAttributedString drawing instead of SwiftUI snapshot because NSHostingView
+    /// renders via CALayer, making cacheDisplay produce a blank bitmap.
+    private func renderTextMask(dateText: String, timeText: String, size: CGSize) -> CGImage? {
+        guard size.width > 0, size.height > 0 else { return nil }
 
-    private func configureScreensaverTimeLabel(_ label: NSTextField) {
-        configureScreensaverLabel(label, fontSize: 100, fontWeight: .light, lineBreak: .byClipping)
-    }
+        // Match fonts from ScreensaverClockMask / ScreensaverClockHighlight
+        let timeFont: NSFont = {
+            let base = NSFont.monospacedDigitSystemFont(ofSize: 96, weight: .regular)
+            if let desc = base.fontDescriptor.withDesign(.rounded) {
+                return NSFont(descriptor: desc, size: 96) ?? base
+            }
+            return base
+        }()
+        let dateFont: NSFont = {
+            let base = NSFont.systemFont(ofSize: 28, weight: .semibold)
+            if let desc = base.fontDescriptor.withDesign(.rounded) {
+                return NSFont(descriptor: desc, size: 28) ?? base
+            }
+            return base
+        }()
 
-    private func applyScreensaverLabelPadding(
-        _ label: NSTextField,
-        horizontal: CGFloat = 24,
-        vertical: CGFloat = 10
-    ) {
-        var frame = label.frame
-        frame.origin.x -= horizontal
-        frame.origin.y -= vertical
-        frame.size.width += horizontal * 2
-        frame.size.height += vertical * 2
-        label.frame = frame
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
+
+        let timeAttrs: [NSAttributedString.Key: Any] = [
+            .font: timeFont, .foregroundColor: NSColor.white, .paragraphStyle: para
+        ]
+        let dateAttrs: [NSAttributedString.Key: Any] = [
+            .font: dateFont, .foregroundColor: NSColor.white, .paragraphStyle: para
+        ]
+
+        let timeTextSize = (timeText as NSString).boundingRect(
+            with: CGSize(width: size.width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin], attributes: timeAttrs
+        ).size
+        let dateTextSize = (dateText as NSString).boundingRect(
+            with: CGSize(width: size.width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin], attributes: dateAttrs
+        ).size
+
+        let spacing: CGFloat = 8
+        let totalH = timeTextSize.height + spacing + dateTextSize.height
+
+        // Draw into NSImage (transparent background; CALayer mask uses alpha channel)
+        let image = NSImage(size: size)
+        image.lockFocus()
+
+        // Non-flipped coordinates: y=0 at bottom, time on top, date below
+        let centerY = size.height / 2
+        let timeY = centerY + totalH / 2 - timeTextSize.height
+        let dateY = centerY - totalH / 2
+
+        (timeText as NSString).draw(
+            in: CGRect(x: 0, y: timeY, width: size.width, height: timeTextSize.height),
+            withAttributes: timeAttrs
+        )
+        (dateText as NSString).draw(
+            in: CGRect(x: 0, y: dateY, width: size.width, height: dateTextSize.height),
+            withAttributes: dateAttrs
+        )
+
+        image.unlockFocus()
+
+        guard let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff) else { return nil }
+        return rep.cgImage
     }
    // MARK: - External Screensaver Suppression
    @objc private func handleExternalScreensaverActive(_: Notification) {
@@ -1063,47 +1051,4 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    }
 }
 
-// MARK: - SwiftUI GlassLabel for macOS
-@available(macOS 26.0, *)
-struct CombinedGlassClock: View {
-    var dateText: String
-    var timeText: String
-    var body: some View {
-        VStack(spacing: 10) {
-            // iOS 锁屏风格玻璃字
-            Text(dateText)
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .modifier(GlassCompat(shape: Rectangle()))
-            Text(timeText)
-                .font(.system(size: 100, weight: .semibold, design: .rounded))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 28)
-                .padding(.vertical, 10)
-                .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .shadow(radius: 10)
-        }
-        .multilineTextAlignment(.center)
-    }
-}
-
-/// A compatibility modifier that applies real Liquid Glass on new SDKs,
-/// and falls back to Material on older SDKs.
-private struct GlassCompat<S: Shape>: ViewModifier {
-    var shape: S
-    func body(content: Content) -> some View {
-        #if compiler(>=6.0)
-        if #available(macOS 26.0, *) {
-            // Use the more transparent .clear variant of Liquid Glass
-            content
-//                .glassEffect(.clear, in: shape)
-                .glassEffect(.clear)
-        } else {
-            // Fallback: use a thinner, more transparent material
-            content.background(.ultraThinMaterial, in: shape)
-        }
-        #else
-        content.background(.ultraThinMaterial, in: shape)
-        #endif
-    }
-}
 

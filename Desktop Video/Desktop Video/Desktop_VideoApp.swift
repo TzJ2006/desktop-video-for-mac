@@ -271,8 +271,6 @@ struct PreferencesView: View {
         appState.idlePauseSensitivity = idlePauseSensitivity
 
         appState.playbackMode = playbackMode
-        // Evaluate whether videos should be paused/resumed after mode change
-        AppDelegate.shared?.updatePlaybackStateForAllScreens()
 
         if launchAtLogin != launchAtLoginStorage {
             handleLaunchAtLoginChange()

@@ -1294,31 +1294,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pause when the system is idle."
+            "value": "Normal power: pause when all screens are covered. Low Power Mode: pause when any screen is covered."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausa cuando el sistema está inactivo."
+            "value": "Energía normal: pausa cuando todas las pantallas están cubiertas. Modo ahorro: pausa cuando cualquier pantalla está cubierta."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Met en pause lorsque le système est inactif."
+            "value": "Alimentation normale : pause quand tous les écrans sont couverts. Mode économie d'énergie : pause quand un écran est couvert."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "空闲时暂停播放。"
+            "value": "正常电量下全部遮挡暂停，低电量模式下任意遮挡暂停。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "閒置時暫停播放。"
+            "value": "正常電量下全部遮擋暫停，低電量模式下任意遮擋暫停。"
           }
         }
       }

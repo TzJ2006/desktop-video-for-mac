@@ -164,10 +164,95 @@ class SharedWallpaperWindowManager {
   var players: [String: AVQueuePlayer] = [:]
   private let videoDataCache = NSCache<NSURL, NSData>()
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
+  /// 已激活安全作用域访问的 URL（按屏幕 UUID），在 clear 时释放
+  private var activeSecurityScopedURLs: [String: URL] = [:]
 
   enum ContentType {
     case image
     case video
+  }
+
+  /// 确保对指定屏幕的文件有安全作用域访问权限。
+  /// 如果已有活跃访问则直接返回；否则从存储的书签解析并启动访问。
+  private func ensureFileAccess(for screen: NSScreen, url: URL) -> URL {
+    let sid = id(for: screen)
+    // 已有活跃的安全作用域访问
+    if let active = activeSecurityScopedURLs[sid], active.path == url.path {
+      return active
+    }
+    // 尝试从存储的书签获取安全作用域访问
+    guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: sid) else {
+      return url
+    }
+    var isStale = false
+    var resolved: URL
+    if let scopedURL = try? URL(
+      resolvingBookmarkData: bookmarkData,
+      options: .withSecurityScope,
+      relativeTo: nil,
+      bookmarkDataIsStale: &isStale
+    ) {
+      resolved = scopedURL
+    } else if let nonScopedURL = try? URL(
+      resolvingBookmarkData: bookmarkData,
+      options: [],
+      relativeTo: nil,
+      bookmarkDataIsStale: &isStale
+    ) {
+      dlog("ensureFileAccess: fell back to non-scoped bookmark for \(nonScopedURL.lastPathComponent)")
+      resolved = nonScopedURL
+      // Re-save as security-scoped for future use
+      let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: sid) ?? false
+      let volume: Float = BookmarkStore.get(prefix: "volume", id: sid) ?? 1.0
+      if let screen = NSScreen.screen(forUUID: sid) {
+        saveBookmark(for: resolved, stretch: stretch, volume: volume, screen: screen)
+      }
+    } else {
+      return url
+    }
+    // 书签指向旧文件时，先尝试 per-URL 书签（历史记录场景），找不到才回退原始 URL（NSOpenPanel 场景）
+    if resolved.standardized.path != url.standardized.path {
+      dlog("ensureFileAccess: per-screen bookmark (\(resolved.lastPathComponent)) differs from requested (\(url.lastPathComponent)); trying per-URL bookmark")
+      if let urlBookmarkData: Data = BookmarkStore.get(prefix: "urlBookmark", id: url.standardized.path) {
+        var urlStale = false
+        if let urlResolved = try? URL(
+          resolvingBookmarkData: urlBookmarkData,
+          options: .withSecurityScope,
+          relativeTo: nil,
+          bookmarkDataIsStale: &urlStale
+        ) {
+          stopSecurityScopedAccess(forScreenID: sid)
+          if urlResolved.startAccessingSecurityScopedResource() {
+            activeSecurityScopedURLs[sid] = urlResolved
+            dlog("ensureFileAccess: activated per-URL bookmark for \(urlResolved.lastPathComponent)")
+          }
+          return urlResolved
+        }
+      }
+      // 没有 per-URL 书签 — 原始 URL 应自带权限（如来自 NSOpenPanel）
+      dlog("ensureFileAccess: no per-URL bookmark; using original URL")
+      return url
+    }
+    // 释放旧的安全作用域访问
+    stopSecurityScopedAccess(forScreenID: sid)
+    if resolved.startAccessingSecurityScopedResource() {
+      activeSecurityScopedURLs[sid] = resolved
+      dlog("ensureFileAccess: started security-scoped access for \(resolved.lastPathComponent) on \(screen.dv_localizedName)")
+    }
+    if isStale {
+      let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: sid) ?? false
+      let volume: Float = BookmarkStore.get(prefix: "volume", id: sid) ?? 1.0
+      saveBookmark(for: resolved, stretch: stretch, volume: volume, screen: screen)
+    }
+    return resolved
+  }
+
+  /// 释放指定屏幕的安全作用域访问
+  private func stopSecurityScopedAccess(forScreenID sid: String) {
+    if let url = activeSecurityScopedURLs.removeValue(forKey: sid) {
+      url.stopAccessingSecurityScopedResource()
+      dlog("stopped security-scoped access for \(url.lastPathComponent)")
+    }
   }
 
   private func videoData(for url: URL) throws -> Data {
@@ -297,7 +382,8 @@ class SharedWallpaperWindowManager {
     let controller = ensureWallpaperController(for: screen)
     stopVideoIfNeeded(for: screen)
 
-    guard let image = NSImage(contentsOf: url),
+    let accessibleURL = ensureFileAccess(for: screen, url: url)
+    guard let image = NSImage(contentsOf: accessibleURL),
       let contentView = controller.window?.contentView
     else { return }
 
@@ -372,9 +458,10 @@ class SharedWallpaperWindowManager {
       stopVideoIfNeeded(for: screen)
     }
 
+    let accessibleURL = ensureFileAccess(for: screen, url: url)
     do {
-      let data = try videoData(for: url)
-      guard let contentType = UTType(filenameExtension: url.pathExtension),
+      let data = try videoData(for: accessibleURL)
+      guard let contentType = UTType(filenameExtension: accessibleURL.pathExtension),
             contentType.conforms(to: .movie) else {
         errorLog("Unsupported video type")
         return
@@ -396,6 +483,9 @@ class SharedWallpaperWindowManager {
       playerView.controlsStyle = .none
       playerView.videoGravity = stretch ? .resize : .resizeAspect
       playerView.autoresizingMask = [.width, .height]
+      if #available(macOS 14, *) {
+          playerView.allowsVideoFrameAnalysis = false
+      }
 
       players[sid] = queuePlayer
       loopers[sid] = looper
@@ -488,6 +578,9 @@ class SharedWallpaperWindowManager {
     if purgeBookmark {
       BookmarkStore.purge(id: sid)
     }
+
+    // 释放安全作用域访问
+    stopSecurityScopedAccess(forScreenID: sid)
 
     // 移除播放器引用
     stopVideoIfNeeded(for: screen)
@@ -582,23 +675,9 @@ class SharedWallpaperWindowManager {
     case .alwaysPlay:
       if player.timeControlStatus != .playing { player.play() }
 
-    case .automatic:
-      // Delegate to existing global logic
-      AppDelegate.shared.updatePlaybackStateForAllScreens()
-
-    case .powerSave:
-      if allOverlaysCompletelyCovered() {
-        if player.timeControlStatus != .paused { player.pause() }
-      } else {
-        if player.timeControlStatus != .playing { player.play() }
-      }
-
-    case .powerSavePlus:
-      if anyOverlayCompletelyCovered() {
-        if player.timeControlStatus != .paused { player.pause() }
-      } else {
-        if player.timeControlStatus != .playing { player.play() }
-      }
+    case .automatic, .powerSave, .powerSavePlus:
+      // 这些模式做全局决策（影响所有屏幕），委托给全局评估器
+      AppDelegate.shared?.updatePlaybackStateForAllScreens()
 
     case .stationary:
       player.pause()
@@ -638,6 +717,8 @@ class SharedWallpaperWindowManager {
       // Prefer a security-scoped bookmark. This does not require calling startAccessing here.
       let scoped = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
       persist(scoped)
+      // 同时以 URL 路径为 key 保存一份书签，供历史记录恢复时使用
+      BookmarkStore.set(scoped, prefix: "urlBookmark", id: url.standardized.path)
       dlog("saved security-scoped bookmark for \(url.lastPathComponent)")
 
       // Save raw URL and guessed type for fallback restore
@@ -652,6 +733,8 @@ class SharedWallpaperWindowManager {
       // Fallback: non–security-scoped bookmark. This still helps re-open within same sandbox permissions.
       let nonScoped = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
       persist(nonScoped)
+      // 同时以 URL 路径为 key 保存一份书签，供历史记录恢复时使用
+      BookmarkStore.set(nonScoped, prefix: "urlBookmark", id: url.standardized.path)
       dlog("saved non-scoped bookmark for \(url.lastPathComponent)")
 
       // Save raw URL and guessed type for fallback restore
@@ -716,7 +799,10 @@ class SharedWallpaperWindowManager {
           resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil,
           bookmarkDataIsStale: &isStale)
         let didStart = url.startAccessingSecurityScopedResource()
-        if !didStart {
+        if didStart {
+          // 记录活跃的安全作用域访问，在 clear 时释放
+          activeSecurityScopedURLs[uuid] = url
+        } else {
           dlog("bookmark restore: not security-scoped or startAccessing failed for \(url.lastPathComponent); proceeding anyway")
         }
         let ext = url.pathExtension.lowercased()
@@ -735,11 +821,29 @@ class SharedWallpaperWindowManager {
           dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
           showImage(for: screen, url: url, stretch: stretch)
         }
-        url.stopAccessingSecurityScopedResource()
+        // 不在此处释放安全作用域访问，由 ensureFileAccess / clear 管理生命周期
       } catch {
-        errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
-        // Fallback: try lastURL/lastType if bookmark unusable
-        restoreFromFallback(uuid: uuid, screen: screen)
+        // Scoped resolve failed — try non-scoped as fallback for old bookmarks
+        var nonScopedStale = false
+        if let nonScopedURL = try? URL(
+          resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil,
+          bookmarkDataIsStale: &nonScopedStale) {
+          dlog("restoreFromBookmark: fell back to non-scoped bookmark for \(nonScopedURL.lastPathComponent)")
+          let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+          let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+          // Re-save as security-scoped for future use
+          saveBookmark(for: nonScopedURL, stretch: stretch, volume: volume, screen: screen)
+          let ext = nonScopedURL.pathExtension.lowercased()
+          if ["mp4", "mov", "m4v"].contains(ext) {
+            showVideo(for: screen, url: nonScopedURL, stretch: stretch, volume: volume)
+          } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+            showImage(for: screen, url: nonScopedURL, stretch: stretch)
+          }
+        } else {
+          errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
+          // Fallback: try lastURL/lastType if bookmark unusable
+          restoreFromFallback(uuid: uuid, screen: screen)
+        }
       }
     }
   }
@@ -748,20 +852,22 @@ class SharedWallpaperWindowManager {
   func restoreFromBookmark(for screen: NSScreen) {
     dlog("restoreFromBookmark \(screen.dv_localizedName)")
     let uuid = screen.dv_displayUUID
-    
+
     guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: uuid) else {
       // Fallback: try lastURL/lastType if bookmark missing or unusable
       restoreFromFallback(uuid: uuid, screen: screen)
       return
     }
-    
+
     var isStale = false
     do {
       let url = try URL(
         resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil,
         bookmarkDataIsStale: &isStale)
       let didStart = url.startAccessingSecurityScopedResource()
-      if !didStart {
+      if didStart {
+        activeSecurityScopedURLs[uuid] = url
+      } else {
         dlog("bookmark restore: not security-scoped or startAccessing failed for \(url.lastPathComponent); proceeding anyway")
       }
       let ext = url.pathExtension.lowercased()
@@ -780,11 +886,29 @@ class SharedWallpaperWindowManager {
         dlog("restoring image \(url.lastPathComponent) on \(screen.dv_localizedName)")
         showImage(for: screen, url: url, stretch: stretch)
       }
-      url.stopAccessingSecurityScopedResource()
+      // 不在此处释放安全作用域访问，由 ensureFileAccess / clear 管理生命周期
     } catch {
-      errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
-      // Fallback: try lastURL/lastType if bookmark unusable
-      restoreFromFallback(uuid: uuid, screen: screen)
+      // Scoped resolve failed — try non-scoped as fallback for old bookmarks
+      var nonScopedStale = false
+      if let nonScopedURL = try? URL(
+        resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil,
+        bookmarkDataIsStale: &nonScopedStale) {
+        dlog("restoreFromBookmark(for:): fell back to non-scoped bookmark for \(nonScopedURL.lastPathComponent)")
+        let stretch: Bool = BookmarkStore.get(prefix: "stretch", id: uuid) ?? false
+        let volume: Float = BookmarkStore.get(prefix: "volume", id: uuid) ?? 1.0
+        // Re-save as security-scoped for future use
+        saveBookmark(for: nonScopedURL, stretch: stretch, volume: volume, screen: screen)
+        let ext = nonScopedURL.pathExtension.lowercased()
+        if ["mp4", "mov", "m4v"].contains(ext) {
+          showVideo(for: screen, url: nonScopedURL, stretch: stretch, volume: volume)
+        } else if ["jpg", "jpeg", "png", "heic"].contains(ext) {
+          showImage(for: screen, url: nonScopedURL, stretch: stretch)
+        }
+      } else {
+        errorLog("Failed to restore bookmark for screen \(uuid): \(error)")
+        // Fallback: try lastURL/lastType if bookmark unusable
+        restoreFromFallback(uuid: uuid, screen: screen)
+      }
     }
   }
 
@@ -825,6 +949,7 @@ class SharedWallpaperWindowManager {
       clear(for: screen, purgeBookmark: purgeBookmark)
     } else {
       // Direct cleanup when no screen object exists
+      stopSecurityScopedAccess(forScreenID: sid)
       if let overlay = overlayWindows[sid] {
         NotificationCenter.default.removeObserver(
           AppDelegate.shared as Any,

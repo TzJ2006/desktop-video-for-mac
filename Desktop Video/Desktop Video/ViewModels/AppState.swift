@@ -77,7 +77,11 @@ class AppState: ObservableObject {
     /// 用户选定的播放模式（默认 automatic）；写入 UserDefaults 以便持久化
     @Published var playbackMode: PlaybackMode {
         didSet {
+            guard oldValue != playbackMode else { return }
             UserDefaults.standard.set(playbackMode.rawValue, forKey: "playbackMode")
+            Task { @MainActor in
+                AppDelegate.shared?.updatePlaybackStateForAllScreens()
+            }
         }
     }
 

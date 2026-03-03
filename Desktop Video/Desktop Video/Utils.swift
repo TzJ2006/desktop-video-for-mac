@@ -91,11 +91,15 @@ func dvTimestamp() -> String {
 }
 
 // MARK: - Date/Time Formatting Utilities
-/// 格式化日期为屏保显示格式（例如：Monday, 2025-11-10）
+/// 格式化日期为屏保显示格式（例如：en → "Saturday, March 1"，zh → "3月1日 星期六"）
 func formatScreensaverDate(_ date: Date = Date()) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale.current
-    formatter.dateFormat = "EEEE, yyyy-MM-dd"
+    formatter.dateFormat = DateFormatter.dateFormat(
+        fromTemplate: "EEEEMMMMd",
+        options: 0,
+        locale: Locale.current
+    )
     return formatter.string(from: date)
 }
 
@@ -142,29 +146,13 @@ func dlog(_ message: String,
 }
 
 /// 错误日志辅助，会写入 ~/Library/Logs/desktop-video.log
-/// 在 DEBUG 模式下同时输出到控制台
+/// 通过 LogFile.shared 统一写入，避免并发 FileHandle 写入丢失日志
 func errorLog(_ message: String, function: String = #function) {
-    let entry = "[\(dvTimestamp())] \(function): \(message)\n"
+    let entry = "[\(dvTimestamp())][ERROR] \(function): \(message)"
 #if DEBUG
-    print(entry, terminator: "")
+    print(entry)
 #endif
-    if let logDir = FileManager.default
-        .urls(for: .libraryDirectory, in: .userDomainMask)
-        .first?
-        .appendingPathComponent("Logs", isDirectory: true) {
-        let logURL = logDir.appendingPathComponent("desktop-video.log")
-        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
-        if !FileManager.default.fileExists(atPath: logURL.path) {
-            FileManager.default.createFile(atPath: logURL.path, contents: nil)
-        }
-        if let handle = try? FileHandle(forWritingTo: logURL) {
-            defer { try? handle.close() }
-            handle.seekToEndOfFile()
-            if let data = entry.data(using: .utf8) {
-                handle.write(data)
-            }
-        }
-    }
+    LogFile.shared.write(entry)
 }
 
 final class LogFile {
