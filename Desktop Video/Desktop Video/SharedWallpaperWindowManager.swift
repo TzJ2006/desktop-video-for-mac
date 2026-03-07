@@ -12,6 +12,7 @@ import CoreGraphics  // for CGWindowListCopyWindowInfo
 import Foundation
 import UniformTypeIdentifiers
 import Combine
+import WebKit
 
 @MainActor
 class SharedWallpaperWindowManager {
@@ -116,8 +117,12 @@ class SharedWallpaperWindowManager {
 
   @objc private func handleScreensDidSleep() {
     dlog("screens did sleep")
+    exitAllBrowseModes()
     for (_, player) in players {
       player.pause()
+    }
+    for (_, webView) in webViews {
+      webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(e=>e.pause())", completionHandler: nil)
     }
     cleanupDisconnectedScreens()
   }
@@ -170,7 +175,12 @@ class SharedWallpaperWindowManager {
   enum ContentType {
     case image
     case video
+    case web
   }
+
+  var webViews: [String: WKWebView] = [:]
+  var browseMode: [String: Bool] = [:]
+  private var browseEventMonitor: Any?
 
   /// 确保对指定屏幕的文件有安全作用域访问权限。
   /// 如果已有活跃访问则直接返回；否则从存储的书签解析并启动访问。
@@ -512,6 +522,183 @@ class SharedWallpaperWindowManager {
     }
   }
 
+  // MARK: - Web Wallpaper
+
+  func showWeb(for screen: NSScreen, url: URL, volume: Float = 1.0) {
+    let sid = id(for: screen)
+    dlog("show web \(url.absoluteString) on \(screen.dv_localizedName)")
+    ensureWindowOnCorrectScreen(for: screen)
+
+    // 清理可能存在的视频或旧网页
+    stopVideoIfNeeded(for: screen)
+    cleanupWebView(forScreenID: sid)
+
+    let controller = ensureWallpaperController(for: screen)
+    guard let contentView = controller.window?.contentView else { return }
+
+    let config = WKWebViewConfiguration()
+    config.mediaTypesRequiringUserActionForPlayback = []
+    config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+
+    let scrollbarCSS = """
+        var style = document.createElement('style');
+        style.textContent = `
+            ::-webkit-scrollbar { width: 12px; height: 12px; }
+            ::-webkit-scrollbar-track { background: rgba(128,128,128,0.2); border-radius: 6px; }
+            ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.5); border-radius: 6px; }
+            ::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.7); }
+        `;
+        document.head.appendChild(style);
+        """
+    let scrollbarScript = WKUserScript(source: scrollbarCSS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+    config.userContentController.addUserScript(scrollbarScript)
+
+    let webView = WKWebView(frame: contentView.bounds, configuration: config)
+    webView.navigationDelegate = WebNavigationHandler.shared
+    webView.autoresizingMask = [.width, .height]
+    webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
+    webView.load(URLRequest(url: url))
+    webViews[sid] = webView
+
+    screenContent[sid] = (.web, url, false, volume)
+    WallpaperHistoryStore.shared.record(url: url, contentType: "web")
+    AppState.shared.currentMediaURL = url.absoluteString
+    saveWebBookmark(url: url, volume: volume, screen: screen)
+
+    switchContent(to: webView, for: screen)
+    NotificationCenter.default.post(
+      name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+    AppDelegate.shared?.startScreensaverTimer()
+  }
+
+  /// 页面加载完成后应用音量设置
+  func applyWebSettings(for webView: WKWebView) {
+    guard let entry = webViews.first(where: { $0.value === webView }) else { return }
+    let sid = entry.key
+    guard let content = screenContent[sid] else { return }
+    let vol = AppState.shared.isGlobalMuted ? 0.0 : (content.volume ?? 1.0)
+    let muted = AppState.shared.isGlobalMuted || vol == 0
+    let js = "document.querySelectorAll('video,audio').forEach(e=>{e.volume=\(vol);e.muted=\(muted)})"
+    webView.evaluateJavaScript(js, completionHandler: nil)
+    dlog("applied web settings for screen \(sid) volume=\(vol)")
+  }
+
+  func cleanupWebView(forScreenID sid: String) {
+    if let webView = webViews.removeValue(forKey: sid) {
+      webView.stopLoading()
+      webView.navigationDelegate = nil
+      webView.removeFromSuperview()
+      dlog("cleaned up webView for screen \(sid)")
+    }
+  }
+
+  // MARK: - Browse Mode
+
+  func enterBrowseMode(for screen: NSScreen) {
+    let sid = id(for: screen)
+    guard webViews[sid] != nil else { return }
+    browseMode[sid] = true
+    if let window = windowControllers[sid]?.window as? WallpaperWindow {
+      window.level = .normal
+      window.ignoresMouseEvents = false
+      window.allowsBecomeKey = true
+      window.orderBack(nil)
+    }
+    installBrowseEscMonitor()
+    if let window = windowControllers[sid]?.window, let contentView = window.contentView {
+      let toast = NSTextField(labelWithString: L("EnterBrowseToast"))
+      toast.font = .systemFont(ofSize: 16, weight: .medium)
+      toast.textColor = .white
+      toast.backgroundColor = NSColor.black.withAlphaComponent(0.6)
+      toast.isBezeled = false
+      toast.drawsBackground = true
+      toast.alignment = .center
+      toast.wantsLayer = true
+      toast.layer?.cornerRadius = 8
+      toast.sizeToFit()
+      toast.frame.size.width += 24
+      toast.frame.size.height += 12
+      toast.frame.origin = CGPoint(
+        x: (contentView.bounds.width - toast.frame.width) / 2,
+        y: contentView.bounds.height - toast.frame.height - 40
+      )
+      toast.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin]
+      contentView.addSubview(toast)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        NSAnimationContext.runAnimationGroup({ context in
+          context.duration = 0.5
+          toast.animator().alphaValue = 0
+        }, completionHandler: {
+          toast.removeFromSuperview()
+        })
+      }
+    }
+    dlog("enter browse mode for \(screen.dv_localizedName)")
+    NotificationCenter.default.post(
+      name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+  }
+
+  func exitBrowseMode(for screen: NSScreen) {
+    let sid = id(for: screen)
+    browseMode[sid] = false
+    if let window = windowControllers[sid]?.window as? WallpaperWindow {
+      window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+      window.ignoresMouseEvents = true
+      window.allowsBecomeKey = false
+    }
+    removeBrowseEscMonitor()
+    // 恢复 overlay 窗口顺序
+    if let overlay = overlayWindows[sid] {
+      overlay.orderFront(nil)
+    }
+    dlog("exit browse mode for \(screen.dv_localizedName)")
+    NotificationCenter.default.post(
+      name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
+  }
+
+  func exitAllBrowseModes() {
+    for sid in browseMode.keys where browseMode[sid] == true {
+      if let screen = NSScreen.screen(forUUID: sid) {
+        exitBrowseMode(for: screen)
+      } else {
+        browseMode[sid] = false
+      }
+    }
+  }
+
+  private func installBrowseEscMonitor() {
+    guard browseEventMonitor == nil else { return }
+    browseEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      if event.keyCode == 53 { // ESC
+        let activeBrowse = self?.browseMode.first(where: { $0.value })
+        if let sid = activeBrowse?.key, let screen = NSScreen.screen(forUUID: sid) {
+          self?.exitBrowseMode(for: screen)
+          return nil
+        }
+      }
+      return event
+    }
+  }
+
+  private func removeBrowseEscMonitor() {
+    let anyActive = browseMode.values.contains(true)
+    guard !anyActive, let monitor = browseEventMonitor else { return }
+    NSEvent.removeMonitor(monitor)
+    browseEventMonitor = nil
+  }
+
+  private func saveWebBookmark(url: URL, volume: Float, screen: NSScreen) {
+    let uuid = screen.dv_displayUUID
+    BookmarkStore.set(url.absoluteString, prefix: "lastURL", id: uuid)
+    BookmarkStore.set("web", prefix: "lastType", id: uuid)
+    // 不需要安全作用域书签（网络 URL），清除旧的文件书签
+    BookmarkStore.set(nil as Data?, prefix: "bookmark", id: uuid)
+    BookmarkStore.set(false, prefix: "stretch", id: uuid)
+    BookmarkStore.set(volume, prefix: "volume", id: uuid)
+    BookmarkStore.set(Date().timeIntervalSince1970, prefix: "savedAt", id: uuid)
+  }
+
   /// 使用与单屏静音相同的逻辑静音所有屏幕，
   /// 会在静音前保存各屏幕最后一次非零音量。
   func muteAllScreens() {
@@ -582,6 +769,15 @@ class SharedWallpaperWindowManager {
     // 释放安全作用域访问
     stopSecurityScopedAccess(forScreenID: sid)
 
+    // 退出浏览模式
+    if browseMode[sid] == true {
+      exitBrowseMode(for: screen)
+    }
+    browseMode.removeValue(forKey: sid)
+
+    // 清理网页视图
+    cleanupWebView(forScreenID: sid)
+
     // 移除播放器引用
     stopVideoIfNeeded(for: screen)
 
@@ -637,6 +833,8 @@ class SharedWallpaperWindowManager {
       showImage(for: screen, url: entry.url, stretch: entry.stretch)
     case .video:
       showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+    case .web:
+      showWeb(for: screen, url: entry.url, volume: entry.volume ?? 1.0)
     }
   }
 
@@ -776,6 +974,9 @@ class SharedWallpaperWindowManager {
     } else if lastType == "image" {
       dlog("fallback restore image \(fallbackURL.lastPathComponent) on \(screen.dv_localizedName)")
       showImage(for: screen, url: fallbackURL, stretch: stretch)
+    } else if lastType == "web" {
+      dlog("fallback restore web \(fallbackURL.absoluteString) on \(screen.dv_localizedName)")
+      showWeb(for: screen, url: fallbackURL, volume: volume)
     } else {
       dlog("fallback restore unknown type for URL: \(fallbackURL)")
     }
@@ -915,15 +1116,23 @@ class SharedWallpaperWindowManager {
   func setVolume(_ volume: Float, for screen: NSScreen) {
     dlog("set volume for \(screen.dv_localizedName) volume=\(volume)")
     let sid = id(for: screen)
-    if let entry = screenContent[sid], entry.type == .video {
+    if let entry = screenContent[sid] {
       // 防止死循环：只有在不是程序内部更新全局静音状态时才取消全局静音
       if volume > 0 && !isUpdatingGlobalMute {
         AppState.shared.isGlobalMuted = false
       }
 
-      // 应用到播放器并持久化
-      updateVideoSettings(for: screen, stretch: entry.stretch, volume: volume)
-      screenContent[sid] = (.video, entry.url, entry.stretch, volume)
+      if entry.type == .video {
+        updateVideoSettings(for: screen, stretch: entry.stretch, volume: volume)
+        screenContent[sid] = (.video, entry.url, entry.stretch, volume)
+      } else if entry.type == .web {
+        // 通过 JS 注入设置网页中媒体元素的音量
+        let muted = volume == 0
+        let js = "document.querySelectorAll('video,audio').forEach(e=>{e.volume=\(volume);e.muted=\(muted)})"
+        webViews[sid]?.evaluateJavaScript(js, completionHandler: nil)
+        screenContent[sid] = (.web, entry.url, entry.stretch, volume)
+        saveWebBookmark(url: entry.url, volume: volume, screen: screen)
+      }
     }
 
     // 通知所有界面立即刷新滑块和标签
@@ -949,6 +1158,7 @@ class SharedWallpaperWindowManager {
       clear(for: screen, purgeBookmark: purgeBookmark)
     } else {
       // Direct cleanup when no screen object exists
+      browseMode.removeValue(forKey: sid)
       stopSecurityScopedAccess(forScreenID: sid)
       if let overlay = overlayWindows[sid] {
         NotificationCenter.default.removeObserver(
@@ -965,6 +1175,7 @@ class SharedWallpaperWindowManager {
       windowControllers.removeValue(forKey: sid)?.stop()
       currentViews[sid]?.removeFromSuperview()
       currentViews.removeValue(forKey: sid)
+      cleanupWebView(forScreenID: sid)
       players[sid]?.pause()
       players[sid]?.replaceCurrentItem(with: nil)
       players.removeValue(forKey: sid)
@@ -992,9 +1203,11 @@ class SharedWallpaperWindowManager {
     for screen in NSScreen.screens {
       let sid = id(for: screen)
       let hasBookmark = (BookmarkStore.get(prefix: "bookmark", id: sid) as Data?) != nil
+      let hasLastURL = (BookmarkStore.get(prefix: "lastURL", id: sid) as String?) != nil
       let viewMissing = currentViews[sid] == nil
       let playerMissing = screenContent[sid]?.type == .video && players[sid] == nil
-      guard hasBookmark && (viewMissing || playerMissing) else { continue }
+      let webMissing = screenContent[sid]?.type == .web && webViews[sid] == nil
+      guard (hasBookmark || hasLastURL) && (viewMissing || playerMissing || webMissing) else { continue }
       dlog(
         "black screen detected on \(screen.dv_localizedName) viewMissing=\(viewMissing) playerMissing=\(playerMissing)"
       )
@@ -1040,6 +1253,8 @@ class SharedWallpaperWindowManager {
           showImage(for: screen, url: entry.url, stretch: entry.stretch)
         case .video:
           showVideo(for: screen, url: entry.url, stretch: entry.stretch, volume: entry.volume ?? 1.0)
+        case .web:
+          showWeb(for: screen, url: entry.url, volume: entry.volume ?? 1.0)
         }
       } else if BookmarkStore.get(prefix: "bookmark", id: sid) != nil {
         restoreFromBookmark(for: screen)

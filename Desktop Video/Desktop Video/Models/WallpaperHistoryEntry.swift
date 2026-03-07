@@ -16,4 +16,5 @@ struct WallpaperHistoryEntry: Codable, Identifiable {
 
     var url: URL? { URL(string: urlString) }
     var isVideo: Bool { contentType == "video" }
+    var isWeb: Bool { contentType == "web" }
 }

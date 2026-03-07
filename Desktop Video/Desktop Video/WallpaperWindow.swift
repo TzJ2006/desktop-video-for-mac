@@ -10,7 +10,8 @@ import AVFoundation  // 引入 AVPlayer 所需框架
 
 @MainActor
 final class WallpaperWindow: NSWindow {
-    override var canBecomeKey: Bool { false }
+    var allowsBecomeKey: Bool = false
+    override var canBecomeKey: Bool { allowsBecomeKey }
     override var canBecomeMain: Bool { false }
 
 //    private var playerLayer: AVPlayerLayer?

@@ -22,6 +22,8 @@ There are no automated tests. The build command above is the primary verificatio
 
 **Dead code detection** is configured via `.periphery.yml` (retain_public=true, strict=true).
 
+**Localization check**: When making code changes, verify if translations are needed and update `Localizable.xcstrings` accordingly.
+
 ## Architecture
 
 ### Core Pattern: MVVM with Centralized State
@@ -60,7 +62,10 @@ Sidebar navigation (`SidebarView`, 220pt) + scrollable card-based content (`Card
 - PascalCase for types, camelCase for functions/variables
 - File names match the main type they contain
 - Provide Chinese comments when adding command-line scripts
-- **Every change must be logged in `ChangeLog.md`** — see `agents.md` for detailed requirements
+- **Every change must be logged in `ChangeLog.md`** — see `AGENTS.md` for detailed requirements
+  - Format: Bilingual entries (Chinese first, then English) under version headers
+  - Newest entries go at the top of the file
+  - Use actual current date in format `YYYY-MM-DD`
 - Versioning: `Version X.Y hot-fix Z` (one hot-fix per day max)
 - **ChangeLog grouping rule**: If changes are made on the same day as an existing version entry, append to that entry. Only create a new `hot-fix` version if the changes are on a different day.
 

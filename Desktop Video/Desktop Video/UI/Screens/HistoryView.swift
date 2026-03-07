@@ -72,7 +72,9 @@ struct HistoryView: View {
                 ?? screenObserver.screens.first
         else { return }
 
-        if entry.isVideo {
+        if entry.isWeb {
+            SharedWallpaperWindowManager.shared.showWeb(for: screen, url: url)
+        } else if entry.isVideo {
             SharedWallpaperWindowManager.shared.showVideo(
                 for: screen, url: url, stretch: true, volume: AppState.shared.isGlobalMuted ? 0 : 1.0)
         } else {

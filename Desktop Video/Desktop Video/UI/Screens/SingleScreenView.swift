@@ -13,17 +13,37 @@ struct SingleScreenView: View {
     @State private var isLocallyMuted: Bool = false
     @State private var lastVolumeBeforeMute: Double = 100
     @State private var currentFileName: String = ""
+    @State private var webURLString: String = ""
+    @State private var showWebURLInput: Bool = false
+    @State private var webURLError: String? = nil
     
     var body: some View {
         VStack(alignment: .center, spacing: 16) {  // 增加垂直间距
             HStack(spacing: 8) {
                 Button(action: chooseMedia) { Text(L("Choose Video…")).font(.system(size: 15)) }
+                Button(action: { showWebURLInput.toggle() }) { Text(L("Web URL...")).font(.system(size: 15)) }
                 Button(action: clear) { Text(L("Clear")).font(.system(size: 15)) }
                 Button(action: play) { Text(L("Play")).font(.system(size: 15)) }
                 Button(action: pause) { Text(L("Pause")).font(.system(size: 15)) }
                 Button(action: syncAll) { Text(L("Sync same videos")).font(.system(size: 15)) }
             }
             .frame(minWidth: 400) // 保证按钮文字完整显示
+            if showWebURLInput {
+                HStack(spacing: 8) {
+                    TextField(L("EnterWebURL"), text: $webURLString)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 13))
+                        .onSubmit { applyWebURL() }
+                    Button(action: applyWebURL) {
+                        Text(L("Apply")).font(.system(size: 13))
+                    }
+                }
+                if let error = webURLError {
+                    Text(error)
+                        .font(.system(size: 11))
+                        .foregroundColor(.red)
+                }
+            }
             if !currentFileName.isEmpty {
                 HStack(spacing: 4) {
                     Text(LocalizedStringKey(L("NowPlaying"))).font(.system(size: 12))
@@ -51,11 +71,18 @@ struct SingleScreenView: View {
                 .toggleStyle(.checkbox)
             }
             .font(.system(size: 15))
-            ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
-                .onChange(of: stretchToFill) { newValue in
-                    updateStretch(newValue)
+            if !isWebContent {
+                ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
+                    .onChange(of: stretchToFill) { newValue in
+                        updateStretch(newValue)
+                    }
+                    .font(.system(size: 15))
+            }
+            if isWebContent {
+                Button(action: toggleBrowseMode) {
+                    Text(isBrowseMode ? L("ExitBrowse") : L("Browse")).font(.system(size: 15))
                 }
-                .font(.system(size: 15))
+            }
         }
         .frame(minWidth: 440, maxWidth: 600) // 外层VStack宽度限制，防止内容被压缩
         .onAppear(perform: syncInitialState)
@@ -109,14 +136,22 @@ struct SingleScreenView: View {
     private func play() {
         let sid = screen.dv_displayUUID
         dlog("play wallpaper for \(screen.dv_localizedName)")
-        SharedWallpaperWindowManager.shared.players[sid]?.play()
+        if let webView = SharedWallpaperWindowManager.shared.webViews[sid] {
+            webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(e=>e.play())", completionHandler: nil)
+        } else {
+            SharedWallpaperWindowManager.shared.players[sid]?.play()
+        }
     }
-    
+
     // 暂停当前屏幕的壁纸
     private func pause() {
         let sid = screen.dv_displayUUID
         dlog("pause wallpaper for \(screen.dv_localizedName)")
-        SharedWallpaperWindowManager.shared.players[sid]?.pause()
+        if let webView = SharedWallpaperWindowManager.shared.webViews[sid] {
+            webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(e=>e.pause())", completionHandler: nil)
+        } else {
+            SharedWallpaperWindowManager.shared.players[sid]?.pause()
+        }
     }
 
     // 将当前屏幕的视频同步到所有屏幕
@@ -138,6 +173,8 @@ struct SingleScreenView: View {
                     stretch: stretch,
                     volume: isMuteEffective ? 0 : Float(volume / 100)
                 )
+            case .web:
+                break
             }
         }
         dlog("update stretch \(stretch) for \(screen.dv_localizedName)")
@@ -159,10 +196,23 @@ struct SingleScreenView: View {
             if !appState.isGlobalMuted {
                 isLocallyMuted = player.volume == 0
             }
+        } else if let entry = SharedWallpaperWindowManager.shared.screenContent[sid], entry.type == .web {
+            let webVol = Double((entry.volume ?? 1.0) * 100)
+            volume = webVol
+            if webVol > 0 {
+                lastVolumeBeforeMute = webVol
+            }
+            if !appState.isGlobalMuted {
+                isLocallyMuted = (entry.volume ?? 1.0) == 0
+            }
         }
         if let entry = SharedWallpaperWindowManager.shared.screenContent[sid] {
             stretchToFill = entry.stretch
-            currentFileName = entry.url.lastPathComponent
+            if entry.type == .web {
+                currentFileName = entry.url.host ?? entry.url.absoluteString
+            } else {
+                currentFileName = entry.url.lastPathComponent
+            }
         } else {
             currentFileName = ""
         }
@@ -195,5 +245,45 @@ struct SingleScreenView: View {
 
     private var isMuteEffective: Bool {
         appState.isGlobalMuted || isLocallyMuted
+    }
+
+    private var isWebContent: Bool {
+        let sid = screen.dv_displayUUID
+        return SharedWallpaperWindowManager.shared.screenContent[sid]?.type == .web
+    }
+
+    private var isBrowseMode: Bool {
+        let sid = screen.dv_displayUUID
+        return SharedWallpaperWindowManager.shared.browseMode[sid] == true
+    }
+
+    private func toggleBrowseMode() {
+        let mgr = SharedWallpaperWindowManager.shared
+        if isBrowseMode {
+            mgr.exitBrowseMode(for: screen)
+        } else {
+            mgr.enterBrowseMode(for: screen)
+        }
+    }
+
+    private func applyWebURL() {
+        webURLError = nil
+        var urlString = webURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !urlString.isEmpty else {
+            webURLError = L("URLEmpty")
+            return
+        }
+        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+            urlString = "https://" + urlString
+        }
+        guard let url = URL(string: urlString) else {
+            webURLError = L("InvalidURL")
+            return
+        }
+        let sid = screen.dv_displayUUID
+        let currentVolume = SharedWallpaperWindowManager.shared.screenContent[sid]?.volume ?? 1.0
+        SharedWallpaperWindowManager.shared.showWeb(for: screen, url: url, volume: currentVolume)
+        showWebURLInput = false
+        webURLString = ""
     }
 }

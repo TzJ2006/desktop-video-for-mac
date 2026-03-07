@@ -839,6 +839,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }
         }
+        // 网页中的视频/音频暂停与恢复
+        let jsCommand = pauseAll
+            ? "document.querySelectorAll('video,audio').forEach(e=>e.pause())"
+            : "document.querySelectorAll('video,audio').forEach(e=>e.play())"
+        for (_, webView) in SharedWallpaperWindowManager.shared.webViews {
+            webView.evaluateJavaScript(jsCommand, completionHandler: nil)
+        }
         // 仅在状态变化时才通知 UI 刷新
         if lastPauseAllState != pauseAll {
             lastPauseAllState = pauseAll

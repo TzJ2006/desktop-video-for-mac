@@ -4,6 +4,51 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 4.2 (2026-03-07)
+
+#### 网页壁纸 Web Wallpaper
+
+- 新增网页壁纸功能：支持通过 URL 加载任意网页作为桌面壁纸，可播放 YouTube、Bilibili 等平台视频
+- Add web wallpaper support: load any web page as desktop wallpaper via URL, enabling playback of YouTube, Bilibili and other platform videos
+- 使用 WKWebView 渲染网页，支持自动播放媒体内容
+- Use WKWebView to render web pages with automatic media playback support
+- 网页壁纸支持持久化：退出并重启应用后自动恢复网页壁纸
+- Web wallpaper persistence: automatically restore web wallpapers after app restart
+- 历史记录支持网页条目，使用紫色标签和地球图标区分
+- History supports web entries with purple badge and globe icon
+- 遮挡暂停支持网页中的视频和音频元素
+- Occlusion-based pause/resume works with video and audio elements in web pages
+- 网页壁纸现在显示完整的音量、静音、缩放控件，与本地视频一致
+- Web wallpaper now shows full volume, mute, and stretch controls, consistent with local video
+- 网页壁纸音量和缩放设置支持持久化，重启后自动恢复
+- Web wallpaper volume and stretch settings are persisted and restored after restart
+
+#### 浏览模式 Browse Mode
+
+- 新增浏览模式：可直接与网页壁纸交互（点击链接、滚动、输入等）
+- Add browse mode: interact directly with web wallpaper (click links, scroll, type, etc.)
+- 按 ESC 键或点击控制面板按钮退出浏览模式
+- Press ESC or click the control panel button to exit browse mode
+- 修复浏览模式无法交互的问题：进入浏览模式时窗口提升至 normal 层级以接收鼠标/键盘事件，退出时恢复桌面层级
+- Fix browse mode interaction: elevate window to normal level for mouse/keyboard input on enter, restore desktop level on exit
+- 进入浏览模式时窗口置于其他窗口之下，不再遮挡已打开的应用
+- Browse mode window now stays behind other windows, no longer covering open apps
+- 进入浏览模式时显示 "已进入浏览模式" 提示，3 秒后自动消失
+- Show "Entering Browse Mode" toast for 3 seconds on activation
+
+#### 修复 Bug Fixes
+
+- 移除网页壁纸的拉伸功能（本地视频/图片拉伸不受影响）
+- Remove stretch feature for web wallpaper (local video/image stretch is unaffected)
+- 修复控制面板滑块输入框透明的问题
+- Fix transparent slider input field in control panel
+- 修复部分网站提示浏览器版本过低的问题（设置现代 Chrome User-Agent）
+- Fix websites reporting outdated browser (set modern Chrome User-Agent)
+- 修复网页壁纸滚动条透明的问题，添加可见的滚动条轨道背景
+- Fix transparent scrollbar in web wallpaper by adding visible scrollbar track
+- 修复切换网页/视频壁纸时音量设置未正确应用的问题
+- Fix volume settings not applied when switching between web and video wallpaper
+
 ### Version 4.1 (2026-03-02)
 
 #### 屏保 Screensaver

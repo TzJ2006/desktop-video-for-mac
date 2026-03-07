@@ -15,7 +15,7 @@ struct HistoryItemRow: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                 } else {
-                    Image(systemName: entry.isVideo ? "film" : "photo")
+                    Image(systemName: entry.isWeb ? "globe" : (entry.isVideo ? "film" : "photo"))
                         .font(.title2)
                         .foregroundColor(.secondary)
                 }
@@ -35,15 +35,15 @@ struct HistoryItemRow: View {
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
 
-                    Text(LocalizedStringKey(L(entry.isVideo ? "Video" : "Image")))
+                    Text(LocalizedStringKey(L(entry.isWeb ? "Web" : (entry.isVideo ? "Video" : "Image"))))
                         .font(.system(size: 10, weight: .medium))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(entry.isVideo ? Color.blue.opacity(0.15) : Color.green.opacity(0.15))
+                                .fill(entry.isWeb ? Color.purple.opacity(0.15) : (entry.isVideo ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)))
                         )
-                        .foregroundColor(entry.isVideo ? .blue : .green)
+                        .foregroundColor(entry.isWeb ? .purple : (entry.isVideo ? .blue : .green))
                 }
 
                 HStack(spacing: 8) {
@@ -52,7 +52,7 @@ struct HistoryItemRow: View {
                         .foregroundColor(.secondary)
 
                     if let url = entry.url {
-                        Text(url.deletingLastPathComponent().path)
+                        Text(entry.isWeb ? url.absoluteString : url.deletingLastPathComponent().path)
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -72,7 +72,7 @@ struct HistoryItemRow: View {
     }
 
     private func loadThumbnail() async {
-        guard let url = entry.url else { return }
+        guard !entry.isWeb, let url = entry.url else { return }
         thumbnail = await ThumbnailGenerator.generate(for: url, isVideo: entry.isVideo)
     }
 }
