@@ -6,6 +6,8 @@ struct SidebarItem: View {
     let selection: SidebarSelection
     @Binding var current: SidebarSelection
 
+    @Environment(\.theme) private var theme
+
     var body: some View {
         Button(action: { current = selection }) {
             Label(name, systemImage: icon)
@@ -18,7 +20,7 @@ struct SidebarItem: View {
         .padding(.horizontal)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(current == selection ? Color.accentColor.opacity(0.2) : .clear)
+                .fill(current == selection ? theme.selectionFill : .clear)
         )
     }
 }

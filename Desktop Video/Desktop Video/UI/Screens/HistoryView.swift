@@ -10,6 +10,11 @@ struct HistoryView: View {
         BookmarkStore.get(prefix: "lastScreen", id: 0) ?? (NSScreen.main?.dv_displayUUID ?? "")
     }()
 
+    /// 当前所选屏幕的历史记录。切换屏幕选择器即切换列表。
+    private var screenHistory: [WallpaperHistoryEntry] {
+        store.playedEntries(for: selectedScreenID)
+    }
+
     var body: some View {
         CardSection(title: LocalizedStringKey(L("History")), systemImage: "clock.arrow.circlepath", help: LocalizedStringKey(L("Previously used wallpapers."))) {
             // Screen picker for multi-display
@@ -25,25 +30,25 @@ struct HistoryView: View {
             }
 
             // Clear history button
-            if !store.entries.isEmpty {
+            if !screenHistory.isEmpty {
                 HStack {
                     Spacer()
-                    Button(action: { store.clearAll() }) {
+                    Button(action: { store.clearHistory(for: selectedScreenID) }) {
                         Text(LocalizedStringKey(L("Clear History")))
                             .font(.system(size: 13))
                     }
                 }
             }
 
-            // History list
-            if store.entries.isEmpty {
+            // History list（只显示真正设为过壁纸的条目；仅添加进库的不在此显示）
+            if screenHistory.isEmpty {
                 Text(LocalizedStringKey(L("No history yet")))
                     .foregroundColor(.secondary)
                     .font(.system(size: 14))
                     .frame(maxWidth: .infinity, minHeight: 80)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(store.entries) { entry in
+                    ForEach(screenHistory) { entry in
                         HistoryItemRow(entry: entry) {
                             guard !isCooldown else { return }
                             applyWallpaper(entry)
@@ -52,12 +57,23 @@ struct HistoryView: View {
                                 isCooldown = false
                             }
                         }
-                        if entry.id != store.entries.last?.id {
+                        if entry.id != screenHistory.last?.id {
                             Divider()
                         }
                     }
                 }
             }
+        }
+        .onAppear {
+            // 若保存的屏幕已不在当前活动屏幕中（单屏 / 屏幕变更），重选到有效屏幕，
+            // 否则按屏过滤会得到空列表，让本有历史的屏幕误显示「无历史」。
+            if !screenObserver.screens.contains(where: { $0.dv_displayUUID == selectedScreenID }) {
+                selectedScreenID = screenObserver.screens.first?.dv_displayUUID ?? selectedScreenID
+            }
+        }
+        .onChange(of: selectedScreenID) { newID in
+            // 与「墙纸」面板共用 lastScreen，使两处屏幕选择保持一致
+            BookmarkStore.set(newID, prefix: "lastScreen", id: 0)
         }
         .onChange(of: screenObserver.screens) { screens in
             if !screens.contains(where: { $0.dv_displayUUID == selectedScreenID }) {
@@ -72,13 +88,18 @@ struct HistoryView: View {
                 ?? screenObserver.screens.first
         else { return }
 
+        let manager = SharedWallpaperWindowManager.shared
         if entry.isWeb {
-            SharedWallpaperWindowManager.shared.showWeb(for: screen, url: url)
-        } else if entry.isVideo {
-            SharedWallpaperWindowManager.shared.showVideo(
-                for: screen, url: url, stretch: true, volume: AppState.shared.isGlobalMuted ? 0 : 1.0)
+            manager.showWeb(for: screen, url: url)
         } else {
-            SharedWallpaperWindowManager.shared.showImage(for: screen, url: url, stretch: true)
+            // 文件不可访问时先弹窗请求重新授权，成功后再切换；用户取消则保留当前壁纸（功能7）
+            guard let authorized = manager.ensureAccessibleURL(url, isVideo: entry.isVideo) else { return }
+            if entry.isVideo {
+                manager.showVideo(
+                    for: screen, url: authorized, stretch: true, volume: AppState.shared.isGlobalMuted ? 0 : 1.0)
+            } else {
+                manager.showImage(for: screen, url: authorized, stretch: true)
+            }
         }
     }
 }

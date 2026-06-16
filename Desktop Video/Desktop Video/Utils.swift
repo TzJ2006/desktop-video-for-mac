@@ -9,6 +9,21 @@ import AppKit
 import Foundation
 import CoreGraphics
 import OSLog
+import WebKit
+
+// MARK: - WKWebView JS 辅助
+extension WKWebView {
+  static let jsPauseAll = "document.querySelectorAll('video,audio').forEach(e=>e.pause())"
+  static let jsPlayAll  = "document.querySelectorAll('video,audio').forEach(e=>e.play())"
+  static func jsSetVolume(_ vol: Double, muted: Bool) -> String {
+    "document.querySelectorAll('video,audio').forEach(e=>{e.volume=\(vol);e.muted=\(muted)})"
+  }
+  func dv_evaluateJS(_ script: String) {
+    evaluateJavaScript(script) { _, error in
+      if let error = error { errorLog("JS eval failed: \(error.localizedDescription)") }
+    }
+  }
+}
 
 // MARK: - Notification 统一管理
 //extension Notification.Name {

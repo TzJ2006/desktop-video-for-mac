@@ -42,7 +42,7 @@ struct desktop_videoApp: App {
 
             // Replace the default Settings menu to prevent conflicts
             CommandGroup(replacing: .appSettings) {
-                Button(L("Preferences…")) {
+                Button(L("Preferences")) {
                     AppDelegate.openPreferencesWindow() // 调用AppDelegate中的方法
                 }
                 .keyboardShortcut(",", modifiers: [.command])
@@ -107,7 +107,7 @@ struct PreferencesView: View {
     @State private var launchAtLogin:     Bool = true
     @State private var globalMute:        Bool = false
     @State private var selectedLanguage:  String = "system"
-    @State private var idlePauseSensitivity:  Double = 40.0
+    @State private var idlePauseSensitivity:  Double = 50.0
     @State private var screensaverEnabled: Bool = false
     @State private var screensaverDelayMinutes: Double = 5.0
     @State private var maxVideoFileSizeInGB: Double = 1.0
@@ -117,7 +117,7 @@ struct PreferencesView: View {
     @State private var originalLaunchAtLogin:     Bool = true
     @State private var originalGlobalMute:        Bool = false
     @State private var originalSelectedLanguage:  String = "system"
-    @State private var originalidlePauseSensitivity:  Double = 40.0
+    @State private var originalidlePauseSensitivity:  Double = 50.0
     @State private var originalScreensaverEnabled: Bool = false
     @State private var originalScreensaverDelayMinutes: Double = 5.0
     @State private var originalMaxVideoFileSizeInGB: Double = 1.0
@@ -148,6 +148,9 @@ struct PreferencesView: View {
     // 注入 LanguageManager
     // periphery:ignore - reserved for future
     @ObservedObject private var languageManager = LanguageManager.shared
+
+    // 注入 ThemeManager：偏好设置窗口随主题实时变换外观
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         ZStack {
@@ -194,7 +197,7 @@ struct PreferencesView: View {
 
                 HStack {
                     Text(L("idlePauseSensitivity"))
-                    TextField("40", value: $idlePauseSensitivity, formatter: NumberFormatter())
+                    TextField("50", value: $idlePauseSensitivity, formatter: NumberFormatter())
                         .frame(width: 40)
                 }
                 .disabled(!screensaverEnabled)
@@ -229,6 +232,7 @@ struct PreferencesView: View {
         .fixedSize()
         .frame(minWidth: 360, maxWidth: .infinity, minHeight: 480, maxHeight: .infinity) // 增大窗口最小尺寸
         .padding(24)
+        .applyTheme(themeManager)
         .onAppear {
             // 首次出现时缓存原始值
             originalLaunchAtLogin = launchAtLoginStorage
@@ -239,7 +243,8 @@ struct PreferencesView: View {
             originalScreensaverDelayMinutes = screensaverDelayMinutesStorage
             originalMaxVideoFileSizeInGB = maxVideoFileSizeInGBStorage
             originalPlaybackMode = appState.playbackMode
-            idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 40.0 : originalidlePauseSensitivity
+            // 默认灵敏度对齐为 50%（旧值 0/未设时回落到 50）
+            idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 50.0 : originalidlePauseSensitivity
             maxVideoFileSizeInGB = max(0.1, originalMaxVideoFileSizeInGB)
             playbackMode = originalPlaybackMode
             loadStoredValues()
@@ -251,7 +256,7 @@ struct PreferencesView: View {
         launchAtLogin = originalLaunchAtLogin
         globalMute = originalGlobalMute
         selectedLanguage = originalSelectedLanguage
-        idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 40.0 : originalidlePauseSensitivity
+        idlePauseSensitivity = originalidlePauseSensitivity == 0 ? 50.0 : originalidlePauseSensitivity
         screensaverEnabled = originalScreensaverEnabled
         screensaverDelayMinutes = originalScreensaverDelayMinutes
         maxVideoFileSizeInGB = originalMaxVideoFileSizeInGB
@@ -284,7 +289,7 @@ struct PreferencesView: View {
         guard #available(macOS 13.0, *) else {
             let alert = NSAlert()
             alert.messageText = L("UnsupportedVersion")
-            alert.informativeText = L("Launch at login requires macOS 13.0 or later.")
+            alert.informativeText = L("UnsupportedLaunchAtLogin")
             alert.alertStyle = .warning
             alert.runModal()
             launchAtLogin = launchAtLoginStorage

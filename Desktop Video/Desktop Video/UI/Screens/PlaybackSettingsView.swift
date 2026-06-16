@@ -4,7 +4,8 @@ import Combine
 
 struct PlaybackSettingsView: View {
     @ObservedObject private var appState = AppState.shared
-    @AppStorage("globalVolume") private var globalVolume: Double = 100
+
+    @Environment(\.theme) private var theme
 
     private let numberFormatter: NumberFormatter = {
         let f = NumberFormatter()
@@ -14,59 +15,80 @@ struct PlaybackSettingsView: View {
     }()
 
     var body: some View {
-        CardSection(title: LocalizedStringKey(L("Playback")), systemImage: "bolt.circle", help: LocalizedStringKey(L("Auto pause and power modes."))) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(L("PlaybackMode")).font(.system(size: 15))
-                Picker("", selection: Binding(
-                    get: { appState.playbackMode.rawValue },
-                    set: { appState.playbackMode = AppState.PlaybackMode(rawValue: $0) ?? .automatic }
-                )) {
-                    ForEach(AppState.PlaybackMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.description).tag(mode.rawValue).font(.system(size: 15))
+        VStack(alignment: .leading, spacing: 16) {
+            PageHeader(L("Playback"), subtitle: L("PlaybackSubtitle")) {
+                HStack(spacing: 8) {
+                    HeaderActionButton(title: L("RestoreDefaults"), systemImage: "arrow.counterclockwise") {
+                        restoreDefaults()
                     }
-                }
-                .labelsHidden()
-
-                Text(appState.playbackMode.detail)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-
-//                HStack {
-//                    Text(L("Volume"))
-//                    TextField("100", value: $globalVolume, formatter: numberFormatter)
-//                        .frame(width: 40)
-//                    Text("%")
-//                    Toggle(L("MuteVideo"), isOn: $globalMute)
-//                }
-                .onChange(of: globalVolume) { newValue in
-                    let clamped = min(max(newValue, 0), 100)
-                    globalVolume = clamped
-                    dlog("set global volume \(clamped)")
-                    for screen in NSScreen.screens {
-                        SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
-                    }
-                }
-                HStack {
-                    Slider(
-                        value: Binding(
-                            get: { appState.idlePauseSensitivity },
-                            set: { appState.idlePauseSensitivity = min(max($0, 0), 100) }
-                        ),
-                        in: 0...100
-                    )
-                    .accessibilityLabel(LocalizedStringKey(L("idlePauseSensitivity")))
-
-                    TextField("", value: $appState.idlePauseSensitivity, formatter: numberFormatter)
-                        .frame(width: 44)
-                        .font(.system(size: 15))
-                }
-                .onChange(of: appState.idlePauseSensitivity) { newValue in
-                    let clamped = min(max(newValue, 0), 100)
-                    appState.idlePauseSensitivity = clamped
-                    dlog("set idle pause sensitivity \(clamped)")
+                    HeaderHelpButton(LocalizedStringKey(L("Auto pause and power modes.")))
                 }
             }
-            .font(.system(size: 15)) // 统一大字
+
+            playbackCard
+            SlideshowSettingsView()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var playbackCard: some View {
+        CardSection(title: LocalizedStringKey(L("PlaybackMode")),
+                    systemImage: "bolt.circle") {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(L("PlaybackModeSubtitle"))
+                    .font(.system(size: 13))
+                    .foregroundStyle(theme.secondaryText)
+
+                PlaybackModeSelector(selection: Binding(
+                    get: { appState.playbackMode },
+                    set: { appState.playbackMode = $0 }
+                ))
+
+                Text(appState.playbackMode.detail)
+                    .font(.system(size: 13))
+                    .foregroundStyle(theme.secondaryText)
+
+                Divider()
+
+                thresholdRow
+            }
+        }
+    }
+
+    private var thresholdRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L("idlePauseSensitivity"))
+                    .font(.system(size: 15, weight: .medium))
+                Spacer()
+                Text("\(Int(appState.idlePauseSensitivity))%")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(theme.accent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(theme.controlBackground))
+                    .overlay(Capsule().strokeBorder(theme.cardBorder, lineWidth: 1))
+            }
+
+            SnappingSlider(
+                value: Binding(
+                    get: { appState.idlePauseSensitivity },
+                    set: { appState.idlePauseSensitivity = $0 }
+                )
+            )
+            .accessibilityLabel(LocalizedStringKey(L("idlePauseSensitivity")))
+        }
+    }
+
+    // MARK: - 恢复默认设置（播放 + 连播，均实时生效，无需重启）
+
+    private func restoreDefaults() {
+        dlog("Playback restoreDefaults")
+        appState.playbackMode = .automatic
+        appState.idlePauseSensitivity = 50.0
+        appState.slideshowEnabled = false
+        appState.slideshowRandom = false
+        appState.slideshowLoop = true
+        appState.slideshowImageInterval = 60.0
     }
 }

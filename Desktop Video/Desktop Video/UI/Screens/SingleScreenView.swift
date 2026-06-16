@@ -1,90 +1,163 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
 import Combine
+import WebKit
 
-/// Controls for a single screen's wallpaper.
+/// 单块屏幕的壁纸「预览 + 控件检查器」块（Apple「墙纸」面板风格）。
+/// 左侧为当前壁纸大预览，右侧为名称、填充模式、播放控制、音量与网页浏览开关。
+/// 添加壁纸的入口已移至下方的 WallpaperGallery。
 struct SingleScreenView: View {
     let screen: NSScreen
+    var isMultiScreen: Bool = false
+    @Binding var menuBarOnly: Bool
     @ObservedObject private var appState = AppState.shared
+    @Environment(\.theme) private var theme
 
     @State private var volume: Double = 100
     @State private var stretchToFill: Bool = true
     @State private var isLocallyMuted: Bool = false
     @State private var lastVolumeBeforeMute: Double = 100
     @State private var currentFileName: String = ""
-    @State private var webURLString: String = ""
-    @State private var showWebURLInput: Bool = false
-    @State private var webURLError: String? = nil
-    
+    /// 当前是否处于播放状态：驱动单一播放/暂停切换按钮的图标与行为。
+    @State private var isPlaying: Bool = true
+    /// 预览刷新令牌：壁纸内容变化时自增，驱动 WallpaperPreview 重载缩略图。
+    @State private var refreshToken: Int = 0
+
     var body: some View {
-        VStack(alignment: .center, spacing: 16) {  // 增加垂直间距
-            HStack(spacing: 8) {
-                Button(action: chooseMedia) { Text(L("Choose Video…")).font(.system(size: 15)) }
-                Button(action: { showWebURLInput.toggle() }) { Text(L("Web URL...")).font(.system(size: 15)) }
-                Button(action: clear) { Text(L("Clear")).font(.system(size: 15)) }
-                Button(action: play) { Text(L("Play")).font(.system(size: 15)) }
-                Button(action: pause) { Text(L("Pause")).font(.system(size: 15)) }
-                Button(action: syncAll) { Text(L("Sync same videos")).font(.system(size: 15)) }
-            }
-            .frame(minWidth: 400) // 保证按钮文字完整显示
-            if showWebURLInput {
-                HStack(spacing: 8) {
-                    TextField(L("EnterWebURL"), text: $webURLString)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 13))
-                        .onSubmit { applyWebURL() }
-                    Button(action: applyWebURL) {
-                        Text(L("Apply")).font(.system(size: 13))
+        HStack(alignment: .top, spacing: 20) {
+            WallpaperPreview(screen: screen, refreshToken: refreshToken)
+
+            VStack(alignment: .leading, spacing: 16) {
+                // Grouped Settings Box
+                VStack(spacing: 0) {
+                    // Row 1: Filename and Display Mode
+                    HStack {
+                        Text(currentFileName.isEmpty ? L("No wallpaper") : currentFileName)
+                            .font(.system(size: 13))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        Spacer()
+
+                        if hasContent && !isWebContent {
+                            Picker("", selection: Binding(
+                                get: { stretchToFill },
+                                set: { stretchToFill = $0; updateStretch($0) }
+                            )) {
+                                Text(LocalizedStringKey(L("Fill Screen"))).tag(true)
+                                Text(LocalizedStringKey(L("Fit to Screen"))).tag(false)
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .frame(width: 120)
+                        }
                     }
-                }
-                if let error = webURLError {
-                    Text(error)
-                        .font(.system(size: 11))
-                        .foregroundColor(.red)
-                }
-            }
-            if !currentFileName.isEmpty {
-                HStack(spacing: 4) {
-                    Text(LocalizedStringKey(L("NowPlaying"))).font(.system(size: 12))
-                    Text(currentFileName).font(.system(size: 12))
-                }
-                .foregroundStyle(.secondary)
-            }
-            HStack(spacing: 8) {
-                SliderInputRow(title: LocalizedStringKey(L("Volume")), value: $volume, range: 0...100)
-                    .disabled(isMuteEffective)
-                    .onChange(of: volume) { newValue in
-                        let clamped = min(max(newValue, 0), 100)
-                        volume = clamped
-                        guard !isMuteEffective else { return }
-                        SharedWallpaperWindowManager.shared.setVolume(Float(clamped / 100.0), for: screen)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+
+                    Divider().padding(.leading, 14)
+
+                    // Row 2: Show only in menu bar
+                    HStack {
+                        Text(LocalizedStringKey(L("Show only in menu bar")))
+                            .font(.system(size: 13))
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { menuBarOnly },
+                            set: {
+                                menuBarOnly = $0
+                                AppDelegate.shared.setDockIconVisible(!$0)
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+
+                    // Playback & Volume
+                    if hasContent {
+                        Divider().padding(.leading, 14)
+                        
+                        HStack(spacing: 12) {
+                            // 单一播放/暂停切换：播放中显示「暂停」、暂停中显示「播放」
+                            Button(action: togglePlayPause) {
+                                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            }
+                            .buttonStyle(.borderless)
+                            .help(isPlaying ? L("Pause") : L("Play"))
+                            Button(action: clear) { Image(systemName: "trash") }.buttonStyle(.borderless)
+                            if isMultiScreen {
+                                Button(action: syncAll) {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                }.buttonStyle(.borderless)
+                                .help(L("Sync same videos"))
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: isMuteEffective ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 16)
+                            Slider(value: $volume, in: 0...100)
+                                .frame(width: 80)
+                                .disabled(isMuteEffective)
+                                .onChange(of: volume) { newValue in
+                                    let clamped = min(max(newValue, 0), 100)
+                                    if clamped != newValue { volume = clamped }
+                                    guard !isMuteEffective else { return }
+                                    let target = Float(clamped / 100.0)
+                                    let sid = screen.dv_displayUUID
+                                    let current = SharedWallpaperWindowManager.shared.players[sid]?.volume
+                                        ?? SharedWallpaperWindowManager.shared.screenContent[sid]?.volume
+                                    if let current, abs(current - target) < 0.001 { return }
+                                    SharedWallpaperWindowManager.shared.setVolume(target, for: screen)
+                                }
+                            Toggle("", isOn: Binding(
+                                get: { isMuteEffective },
+                                set: { handleMuteToggle($0) }
+                            ))
+                            .labelsHidden()
+                            .toggleStyle(.checkbox)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
 
-                Toggle(
-                    LocalizedStringKey(L("Mute")),
-                    isOn: Binding(
-                        get: { isMuteEffective },
-                        set: { handleMuteToggle($0) }
-                    )
-                )
-                .toggleStyle(.checkbox)
-            }
-            .font(.system(size: 15))
-            if !isWebContent {
-                ToggleRow(title: LocalizedStringKey(L("Stretch to fill")), value: $stretchToFill)
-                    .onChange(of: stretchToFill) { newValue in
-                        updateStretch(newValue)
+                    // Web Mode
+                    if isWebContent {
+                        Divider().padding(.leading, 14)
+                        HStack {
+                            Text(LocalizedStringKey(L("Web Mode")))
+                                .font(.system(size: 13))
+                            Spacer()
+                            Button(action: toggleBrowseMode) {
+                                Label(isBrowseMode ? L("ExitBrowse") : L("Browse"),
+                                      systemImage: isBrowseMode ? "xmark.circle" : "hand.point.up.left")
+                            }
+                            .controlSize(.small)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
-                    .font(.system(size: 15))
-            }
-            if isWebContent {
-                Button(action: toggleBrowseMode) {
-                    Text(isBrowseMode ? L("ExitBrowse") : L("Browse")).font(.system(size: 15))
+                }
+                .background(theme.controlBackground)
+                .cornerRadius(theme.cardCornerRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                        .stroke(theme.cardBorder, lineWidth: 1)
+                )
+
+                if !hasContent {
+                    Text(LocalizedStringKey(L("Pick a wallpaper below")))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
                 }
             }
+
+            Spacer(minLength: 0)
         }
-        .frame(minWidth: 440, maxWidth: 600) // 外层VStack宽度限制，防止内容被压缩
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear(perform: syncInitialState)
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WallpaperContentDidChange"))) { _ in
             refreshStateFromManager()
@@ -103,41 +176,24 @@ struct SingleScreenView: View {
         }
     }
 
-    // 打开媒体选择面板并设置壁纸
-    private func chooseMedia() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.movie, .video, .image]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        if panel.runModal() == .OK, let url = panel.url {
-            dlog("chooseMedia url=\(url.lastPathComponent)")
-            if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType {
-                if type.conforms(to: .image) {
-                    SharedWallpaperWindowManager.shared.showImage(for: screen, url: url, stretch: stretchToFill)
-                } else {
-                    SharedWallpaperWindowManager.shared.showVideo(
-                        for: screen,
-                        url: url,
-                        stretch: stretchToFill,
-                        volume: isMuteEffective ? 0 : Float(volume / 100)
-                    )
-                }
-            }
-        }
-    }
-    
     // 清除当前屏幕的壁纸
     private func clear() {
         dlog("clear wallpaper for \(screen.dv_localizedName)")
         SharedWallpaperWindowManager.shared.clear(for: screen)
     }
-    
+
+    // 切换当前屏幕壁纸的播放 / 暂停（单一按钮）
+    private func togglePlayPause() {
+        if isPlaying { pause() } else { play() }
+        isPlaying.toggle()
+    }
+
     // 播放当前屏幕的壁纸
     private func play() {
         let sid = screen.dv_displayUUID
         dlog("play wallpaper for \(screen.dv_localizedName)")
         if let webView = SharedWallpaperWindowManager.shared.webViews[sid] {
-            webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(e=>e.play())", completionHandler: nil)
+            webView.dv_evaluateJS(WKWebView.jsPlayAll)
         } else {
             SharedWallpaperWindowManager.shared.players[sid]?.play()
         }
@@ -148,7 +204,7 @@ struct SingleScreenView: View {
         let sid = screen.dv_displayUUID
         dlog("pause wallpaper for \(screen.dv_localizedName)")
         if let webView = SharedWallpaperWindowManager.shared.webViews[sid] {
-            webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(e=>e.pause())", completionHandler: nil)
+            webView.dv_evaluateJS(WKWebView.jsPauseAll)
         } else {
             SharedWallpaperWindowManager.shared.players[sid]?.pause()
         }
@@ -216,6 +272,13 @@ struct SingleScreenView: View {
         } else {
             currentFileName = ""
         }
+        // 同步播放/暂停按钮状态：视频按实际播放状态，网页/图片视为播放中
+        if let player = SharedWallpaperWindowManager.shared.players[sid] {
+            isPlaying = player.timeControlStatus != .paused
+        } else {
+            isPlaying = true
+        }
+        refreshToken &+= 1
         dlog("refresh state for \(screen.dv_localizedName) file=\(currentFileName) volume=\(Int(volume)) mute=\(isMuteEffective)")
     }
 
@@ -247,6 +310,10 @@ struct SingleScreenView: View {
         appState.isGlobalMuted || isLocallyMuted
     }
 
+    private var hasContent: Bool {
+        SharedWallpaperWindowManager.shared.screenContent[screen.dv_displayUUID] != nil
+    }
+
     private var isWebContent: Bool {
         let sid = screen.dv_displayUUID
         return SharedWallpaperWindowManager.shared.screenContent[sid]?.type == .web
@@ -264,26 +331,5 @@ struct SingleScreenView: View {
         } else {
             mgr.enterBrowseMode(for: screen)
         }
-    }
-
-    private func applyWebURL() {
-        webURLError = nil
-        var urlString = webURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !urlString.isEmpty else {
-            webURLError = L("URLEmpty")
-            return
-        }
-        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
-            urlString = "https://" + urlString
-        }
-        guard let url = URL(string: urlString) else {
-            webURLError = L("InvalidURL")
-            return
-        }
-        let sid = screen.dv_displayUUID
-        let currentVolume = SharedWallpaperWindowManager.shared.screenContent[sid]?.volume ?? 1.0
-        SharedWallpaperWindowManager.shared.showWeb(for: screen, url: url, volume: currentVolume)
-        showWebURLInput = false
-        webURLString = ""
     }
 }

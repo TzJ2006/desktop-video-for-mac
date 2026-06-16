@@ -3,38 +3,38 @@ import SwiftUI
 
 /// Main window using a sidebar + card content layout.
 struct AppMainWindow: View {
+    static let sidebarWidth: CGFloat = 220
+    static let dividerWidth: CGFloat = 1
+    static let contentMinWidth: CGFloat = 620
+    static let minWidth: CGFloat = sidebarWidth + dividerWidth + contentMinWidth
+    static let minHeight: CGFloat = 600
+
     @StateObject private var vm = AppViewModel()
-    private let baseWidth: CGFloat = 800
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        GeometryReader { proxy in
-            let scale = max(proxy.size.width / baseWidth, 1.0)
-            HStack(spacing: 0) {
-                SidebarView(selection: $vm.selection)
-                    .frame(width: 220)
-                    .background(.ultraThinMaterial)
+        HStack(spacing: 0) {
+            SidebarView(selection: $vm.selection)
+                .frame(width: Self.sidebarWidth)
+                .background(theme.sidebarBackground)
 
-                Divider()
+            Divider()
 
-                ScrollView {
-                    VStack(alignment: .center, spacing: 16) {
-                        switch vm.selection {
-                        case .wallpaper: WallpaperView()
-                        case .playback: PlaybackSettingsView()
-                        case .history:  HistoryView()
-                        case .general:  GeneralSettingsView()
-                        }
+            ScrollView {
+                VStack(alignment: .center, spacing: 16) {
+                    switch vm.selection {
+                    case .wallpaper: WallpaperView()
+                    case .playback: PlaybackSettingsView()
+                    case .history:  HistoryView()
+                    case .general:  GeneralSettingsView()
                     }
-                    .padding(20)
                 }
-                .background(Color(nsColor: .windowBackgroundColor))
+                .padding(.horizontal, 28)
+                .padding(.vertical, 24)
+                .frame(maxWidth: .infinity) // Ensure content centers/expands
             }
-            .scaleEffect(scale, anchor: .topLeading)
-            .frame(
-                width: proxy.size.width / scale,
-                height: proxy.size.height / scale,
-                alignment: .topLeading
-            )
+            .background(theme.windowBackground)
         }
+        .frame(minWidth: Self.minWidth, minHeight: Self.minHeight)
     }
 }

@@ -3,10 +3,14 @@ import AppKit
 
 /// Root view for the app. Hosts the new sidebar-based preferences window.
 struct ContentView: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     var body: some View {
         AppMainWindow()
-            .frame(minWidth: 720, minHeight: 480)
+            .frame(minWidth: AppMainWindow.minWidth, minHeight: AppMainWindow.minHeight)
+            .glassWindowBackground()
             .background(MainWindowBridge())
+            .applyTheme(themeManager)
     }
 }
 
@@ -15,28 +19,28 @@ struct ContentView: View {
 private struct MainWindowBridge: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         dlog("MainWindowBridge makeNSView")
-        let view = NSView()
-        DispatchQueue.main.async { [weak view] in
-            guard let window = view?.window else { return }
-            self.register(window: window)
-        }
-        return view
+        return GlassWindowConfigurator()
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        dlog("MainWindowBridge updateNSView")
-        DispatchQueue.main.async { [weak nsView] in
-            guard let window = nsView?.window else { return }
-            self.register(window: window)
-        }
+        (nsView as? GlassWindowConfigurator)?.applyIfPossible()
+    }
+}
+
+/// 一旦加入窗口层级即「同步」配置主窗口：设置标识符 + 应用整窗 liquid glass 外观。
+/// 用 `viewDidMoveToWindow`（首帧前触发）而非 `DispatchQueue.main.async`（下一 runloop），
+/// 避免窗口先以不透明背景显示再变半透明的首帧闪烁。
+private final class GlassWindowConfigurator: NSView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        applyIfPossible()
     }
 
-    private func register(window: NSWindow) {
-        dlog("MainWindowBridge register windowIdentifier=\(window.identifier?.rawValue ?? "nil")")
+    func applyIfPossible() {
+        guard let window else { return }
         if window.identifier?.rawValue != "MainWindow" {
             window.identifier = NSUserInterfaceItemIdentifier("MainWindow")
         }
-        // No-op for now: AppDelegate has no adoptMainWindowIfNeeded; keep identifier set above.
-        _ = window // reserved for future use if adoption logic is added
+        window.applyGlassWindowStyle()
     }
 }

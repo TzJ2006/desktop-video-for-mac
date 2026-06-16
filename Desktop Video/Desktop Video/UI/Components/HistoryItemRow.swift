@@ -5,12 +5,18 @@ struct HistoryItemRow: View {
     let onDoubleClick: () -> Void
 
     @State private var thumbnail: NSImage?
+    @State private var needsReauth = false
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
             // Thumbnail
             Group {
-                if let thumbnail {
+                if needsReauth {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                } else if let thumbnail {
                     Image(nsImage: thumbnail)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -31,9 +37,15 @@ struct HistoryItemRow: View {
             // File info
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(entry.fileName)
+                    Text(entry.displayName)
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
+
+                    if needsReauth {
+                        Text(LocalizedStringKey(L("Re-authorize")))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
 
                     Text(LocalizedStringKey(L(entry.isWeb ? "Web" : (entry.isVideo ? "Video" : "Image"))))
                         .font(.system(size: 10, weight: .medium))
@@ -41,9 +53,9 @@ struct HistoryItemRow: View {
                         .padding(.vertical, 1)
                         .background(
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(entry.isWeb ? Color.purple.opacity(0.15) : (entry.isVideo ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)))
+                                .fill(theme.contentTypeBadgeBackground(isWeb: entry.isWeb, isVideo: entry.isVideo))
                         )
-                        .foregroundColor(entry.isWeb ? .purple : (entry.isVideo ? .blue : .green))
+                        .foregroundColor(theme.contentTypeColor(isWeb: entry.isWeb, isVideo: entry.isVideo))
                 }
 
                 HStack(spacing: 8) {
@@ -73,6 +85,8 @@ struct HistoryItemRow: View {
 
     private func loadThumbnail() async {
         guard !entry.isWeb, let url = entry.url else { return }
-        thumbnail = await ThumbnailGenerator.generate(for: url, isVideo: entry.isVideo)
+        let result = await ThumbnailGenerator.loadStatus(for: url, isVideo: entry.isVideo)
+        needsReauth = result.needsReauth
+        thumbnail = result.image
     }
 }

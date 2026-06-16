@@ -122,7 +122,7 @@ class SharedWallpaperWindowManager {
       player.pause()
     }
     for (_, webView) in webViews {
-      webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(e=>e.pause())", completionHandler: nil)
+      webView.dv_evaluateJS(WKWebView.jsPauseAll)
     }
     cleanupDisconnectedScreens()
   }
@@ -167,6 +167,8 @@ class SharedWallpaperWindowManager {
   /// 全屏覆盖窗口，用于屏保启动前的遮挡检测
   var screensaverOverlayWindows: [String: NSWindow] = [:]
   var players: [String: AVQueuePlayer] = [:]
+  /// 各屏播放项状态观察（KVO），用于在播放失败时记录错误；token 释放即自动停止观察
+  private var itemObservations: [String: NSKeyValueObservation] = [:]
   private let videoDataCache = NSCache<NSURL, NSData>()
   var screenContent: [String: (type: ContentType, url: URL, stretch: Bool, volume: Float?)] = [:]
   /// 已激活安全作用域访问的 URL（按屏幕 UUID），在 clear 时释放
@@ -192,7 +194,8 @@ class SharedWallpaperWindowManager {
     }
     // 尝试从存储的书签获取安全作用域访问
     guard let bookmarkData: Data = BookmarkStore.get(prefix: "bookmark", id: sid) else {
-      return url
+      // 无 per-screen 书签时（如来自播放列表/文件夹的文件首次显示），回退到 per-URL 书签
+      return activatePerURLBookmark(for: url, sid: sid) ?? url
     }
     var isStale = false
     var resolved: URL
@@ -238,6 +241,17 @@ class SharedWallpaperWindowManager {
           }
           return urlResolved
         }
+        // 回退: 尝试非安全作用域解析，兼容旧的 non-scoped 书签数据
+        else if let urlResolved = try? URL(
+          resolvingBookmarkData: urlBookmarkData,
+          options: [],
+          relativeTo: nil,
+          bookmarkDataIsStale: &urlStale
+        ) {
+          dlog("ensureFileAccess: fell back to non-scoped per-URL bookmark for \(urlResolved.lastPathComponent)")
+          stopSecurityScopedAccess(forScreenID: sid)
+          return urlResolved
+        }
       }
       // 没有 per-URL 书签 — 原始 URL 应自带权限（如来自 NSOpenPanel）
       dlog("ensureFileAccess: no per-URL bookmark; using original URL")
@@ -255,6 +269,45 @@ class SharedWallpaperWindowManager {
       saveBookmark(for: resolved, stretch: stretch, volume: volume, screen: screen)
     }
     return resolved
+  }
+
+  /// 解析并激活某文件 URL 的 per-URL 安全作用域书签，记录到该屏幕的活跃访问中。
+  /// 用于没有 per-screen 书签、但有 per-URL 书签的文件（播放列表 / 文件夹子文件）。
+  private func activatePerURLBookmark(for url: URL, sid: String) -> URL? {
+    guard let data: Data = BookmarkStore.get(prefix: "urlBookmark", id: url.standardized.path) else {
+      return nil
+    }
+    var stale = false
+    if let resolved = try? URL(
+      resolvingBookmarkData: data, options: .withSecurityScope, relativeTo: nil,
+      bookmarkDataIsStale: &stale) {
+      stopSecurityScopedAccess(forScreenID: sid)
+      if resolved.startAccessingSecurityScopedResource() {
+        activeSecurityScopedURLs[sid] = resolved
+        dlog("activatePerURLBookmark: started access for \(resolved.lastPathComponent)")
+      }
+      return resolved
+    } else if let resolved = try? URL(
+      resolvingBookmarkData: data, options: [], relativeTo: nil,
+      bookmarkDataIsStale: &stale) {
+      return resolved
+    }
+    return nil
+  }
+
+  /// 应用历史/画廊条目前确保文件可访问：可访问直接返回；不可访问时**先**弹窗请求重新授权，
+  /// 授权成功保存新书签并返回新 URL，用户取消返回 nil（调用方应据此放弃切换、保留当前壁纸）。
+  /// 网络/远程 URL 始终视为可访问。
+  func ensureAccessibleURL(_ url: URL, isVideo: Bool) -> URL? {
+    if !url.isFileURL { return url }
+    if MediaAccess.isAccessible(url) { return url }
+    dlog("ensureAccessibleURL: \(url.lastPathComponent) inaccessible, requesting re-authorization")
+    guard let newURL = requestFileReaccess(for: url) else {
+      dlog("ensureAccessibleURL: user cancelled re-authorization for \(url.lastPathComponent)")
+      return nil
+    }
+    MediaAccess.saveURLBookmark(for: newURL)
+    return newURL
   }
 
   /// 释放指定屏幕的安全作用域访问
@@ -385,7 +438,7 @@ class SharedWallpaperWindowManager {
     }
   }
 
-  func showImage(for screen: NSScreen, url: URL, stretch: Bool) {
+  func showImage(for screen: NSScreen, url: URL, stretch: Bool, record: Bool = true) {
     dlog("show image \(url.lastPathComponent) on \(screen.dv_localizedName) stretch=\(stretch)")
     ensureWindowOnCorrectScreen(for: screen)
     let sid = id(for: screen)
@@ -393,20 +446,28 @@ class SharedWallpaperWindowManager {
     stopVideoIfNeeded(for: screen)
 
     let accessibleURL = ensureFileAccess(for: screen, url: url)
-    guard let image = NSImage(contentsOf: accessibleURL),
+    var image = NSImage(contentsOf: accessibleURL)
+    var effectiveURL = url
+    if image == nil, let reauthorizedURL = requestFileReaccess(for: url) {
+      image = NSImage(contentsOf: reauthorizedURL)
+      if image != nil {
+        effectiveURL = reauthorizedURL
+      }
+    }
+    guard let finalImage = image,
       let contentView = controller.window?.contentView
     else { return }
 
     let imageView = NSImageView(frame: contentView.bounds)
-    imageView.image = image
+    imageView.image = finalImage
     imageView.imageScaling = stretch ? .scaleAxesIndependently : .scaleProportionallyUpOrDown
     imageView.autoresizingMask = [.width, .height]
 
-    self.screenContent[sid] = (.image, url, stretch, nil)
-    WallpaperHistoryStore.shared.record(url: url, contentType: "image")
-    AppState.shared.currentMediaURL = url.absoluteString
-    dlog("saveBookmark in showImage for \(screen.dv_localizedName) url=\(url.lastPathComponent)")
-    saveBookmark(for: url, stretch: stretch, volume: nil, screen: screen)
+    self.screenContent[sid] = (.image, effectiveURL, stretch, nil)
+    if record { WallpaperHistoryStore.shared.record(url: effectiveURL, contentType: "image", screenID: sid) }
+    AppState.shared.currentMediaURL = effectiveURL.absoluteString
+    dlog("saveBookmark in showImage for \(screen.dv_localizedName) url=\(effectiveURL.lastPathComponent)")
+    saveBookmark(for: effectiveURL, stretch: stretch, volume: nil, screen: screen)
 
     switchContent(to: imageView, for: screen)
     DispatchQueue.main.async { [weak self] in
@@ -420,6 +481,7 @@ class SharedWallpaperWindowManager {
   /// 为指定屏幕播放视频，使用内存映射以减少磁盘读写。
   func showVideo(
     for screen: NSScreen, url: URL, stretch: Bool, volume: Float, allowReuse: Bool = true,
+    loop: Bool = true, record: Bool = true,
     onReady: (() -> Void)? = nil
   ) {
     ensureWindowOnCorrectScreen(for: screen)
@@ -443,7 +505,7 @@ class SharedWallpaperWindowManager {
         existingPlayer.play()
       }
       screenContent[sid] = (.video, url, stretch, volume)
-      WallpaperHistoryStore.shared.record(url: url, contentType: "video")
+      if record { WallpaperHistoryStore.shared.record(url: url, contentType: "video", screenID: sid) }
       NotificationCenter.default.post(
         name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
       onReady?()
@@ -471,6 +533,10 @@ class SharedWallpaperWindowManager {
     let accessibleURL = ensureFileAccess(for: screen, url: url)
     do {
       let data = try videoData(for: accessibleURL)
+      guard !data.isEmpty else {
+        errorLog("Video data is empty for \(accessibleURL.lastPathComponent)")
+        return
+      }
       guard let contentType = UTType(filenameExtension: accessibleURL.pathExtension),
             contentType.conforms(to: .movie) else {
         errorLog("Unsupported video type")
@@ -480,11 +546,19 @@ class SharedWallpaperWindowManager {
       let controller = ensureWallpaperController(for: screen)
       guard let contentView = controller.window?.contentView else { return }
 
-      let asset = AVDataAsset(data: data, contentType: contentType)
+      let asset = try AVDataAsset(data: data, contentType: contentType)
       let item = AVPlayerItem(asset: asset)
+      // 观察播放项状态：播放失败时记录错误（此前完全没有可见性，无法区分良性噪音与真失败）
+      itemObservations[sid]?.invalidate()
+      itemObservations[sid] = item.observe(\.status, options: [.new]) { observedItem, _ in
+        if observedItem.status == .failed {
+          errorLog("Video playback failed for \(url.lastPathComponent): \(observedItem.error?.localizedDescription ?? "unknown error")")
+        }
+      }
       let queuePlayer = AVQueuePlayer(playerItem: item)
       queuePlayer.automaticallyWaitsToMinimizeStalling = false
-      let looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
+      // 连播模式（loop=false）下不循环，单次播完触发 AVPlayerItemDidPlayToEndTime 以便切换
+      let looper = loop ? AVPlayerLooper(player: queuePlayer, templateItem: item) : nil
 
       queuePlayer.volume = AppState.shared.isGlobalMuted ? 0.0 : volume
 
@@ -500,7 +574,7 @@ class SharedWallpaperWindowManager {
       players[sid] = queuePlayer
       loopers[sid] = looper
       screenContent[sid] = (.video, url, stretch, volume)
-      WallpaperHistoryStore.shared.record(url: url, contentType: "video")
+      if record { WallpaperHistoryStore.shared.record(url: url, contentType: "video", screenID: sid) }
       saveBookmark(for: url, stretch: stretch, volume: volume, screen: screen)
       AppState.shared.currentMediaURL = url.absoluteString
       AppDelegate.shared?.startScreensaverTimer()
@@ -518,6 +592,14 @@ class SharedWallpaperWindowManager {
         name: NSNotification.Name("WallpaperContentDidChange"), object: nil)
       onReady?()
     } catch {
+      let nsError = error as NSError
+      if nsError.domain == NSCocoaErrorDomain && nsError.code == NSFileReadNoPermissionError {
+        if let reauthorizedURL = requestFileReaccess(for: url) {
+          showVideo(for: screen, url: reauthorizedURL, stretch: stretch, volume: volume,
+                    allowReuse: false, loop: loop, record: record, onReady: onReady)
+          return
+        }
+      }
       errorLog("Failed to load video data: \(error)")
     }
   }
@@ -538,6 +620,7 @@ class SharedWallpaperWindowManager {
 
     let config = WKWebViewConfiguration()
     config.mediaTypesRequiringUserActionForPlayback = []
+    // NOTE: 私有 API，用于允许 file:// URL 的跨文件访问，未来 macOS 版本可能失效
     config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
 
     let scrollbarCSS = """
@@ -560,9 +643,11 @@ class SharedWallpaperWindowManager {
 
     webView.load(URLRequest(url: url))
     webViews[sid] = webView
+    // 诊断：每个网页壁纸对应一个 WKWebView（按屏 UUID）；WebKit 会再为每个 view 派生独立沙盒辅助进程。
+    dlog("active webViews: \(webViews.count) screen(s) with web wallpaper")
 
     screenContent[sid] = (.web, url, false, volume)
-    WallpaperHistoryStore.shared.record(url: url, contentType: "web")
+    WallpaperHistoryStore.shared.record(url: url, contentType: "web", screenID: sid)
     AppState.shared.currentMediaURL = url.absoluteString
     saveWebBookmark(url: url, volume: volume, screen: screen)
 
@@ -577,10 +662,9 @@ class SharedWallpaperWindowManager {
     guard let entry = webViews.first(where: { $0.value === webView }) else { return }
     let sid = entry.key
     guard let content = screenContent[sid] else { return }
-    let vol = AppState.shared.isGlobalMuted ? 0.0 : (content.volume ?? 1.0)
+    let vol = AppState.shared.isGlobalMuted ? 0.0 : Double(content.volume ?? 1.0)
     let muted = AppState.shared.isGlobalMuted || vol == 0
-    let js = "document.querySelectorAll('video,audio').forEach(e=>{e.volume=\(vol);e.muted=\(muted)})"
-    webView.evaluateJavaScript(js, completionHandler: nil)
+    webView.dv_evaluateJS(WKWebView.jsSetVolume(vol, muted: muted))
     dlog("applied web settings for screen \(sid) volume=\(vol)")
   }
 
@@ -590,6 +674,28 @@ class SharedWallpaperWindowManager {
       webView.navigationDelegate = nil
       webView.removeFromSuperview()
       dlog("cleaned up webView for screen \(sid)")
+    }
+    // 延迟一拍再判空,以区分「替换网页壁纸」(setWebsite 会在本次调用后同步装回新 WebView)与
+    // 「真正移除最后一个网页壁纸」。仅当确实不再有任何网页壁纸时才清缓存,避免替换时清掉又立即重新拉取。
+    DispatchQueue.main.async { [weak self] in
+      guard let self, self.webViews.isEmpty else { return }
+      Self.clearWebCache()
+    }
+  }
+
+  /// 清理网页壁纸 WebView 留下的持久化 HTTP 缓存(网络/磁盘/离线缓存),保留 cookies 与 localStorage,
+  /// 以便浏览模式登录态可跨启动保留。WKWebView 默认使用持久化的 WKWebsiteDataStore,缓存会堆积在
+  /// ~/Library/Containers/<bundle>/Data/Library/Caches/WebKit/NetworkCache 且永不自动清理。
+  /// 在 App 启动时与最后一个网页壁纸被移除时调用,把缓存增长限制在「网页壁纸活跃期间」。
+  static func clearWebCache() {
+    let cacheTypes: Set<String> = [
+      WKWebsiteDataTypeDiskCache,
+      WKWebsiteDataTypeMemoryCache,
+      WKWebsiteDataTypeFetchCache,
+      WKWebsiteDataTypeOfflineWebApplicationCache
+    ]
+    WKWebsiteDataStore.default().removeData(ofTypes: cacheTypes, modifiedSince: .distantPast) {
+      dlog("cleared WebKit cache (\(cacheTypes.count) types)")
     }
   }
 
@@ -841,6 +947,7 @@ class SharedWallpaperWindowManager {
   private func stopVideoIfNeeded(for screen: NSScreen) {
     dlog("stop video for \(screen.dv_localizedName)")
     let sid = id(for: screen)
+    itemObservations.removeValue(forKey: sid)?.invalidate()
     if let looper = loopers[sid] {
       looper.disableLooping()
       loopers.removeValue(forKey: sid)
@@ -941,6 +1048,23 @@ class SharedWallpaperWindowManager {
     } catch {
       errorLog("Failed to save bookmark for \(url): \(error)")
     }
+  }
+
+  /// 当文件因权限不足无法访问时，通过 NSOpenPanel 让用户重新选择以获取访问权限
+  private func requestFileReaccess(for url: URL) -> URL? {
+    dlog("requestFileReaccess: requesting user to re-authorize \(url.lastPathComponent)")
+    let panel = NSOpenPanel()
+    panel.directoryURL = url.deletingLastPathComponent()
+    panel.allowedContentTypes = [.movie, .video, .image]
+    panel.allowsMultipleSelection = false
+    panel.canChooseDirectories = false
+    panel.message = L("The file requires re-authorization. Please select it again.")
+    panel.prompt = L("Open")
+
+    guard panel.runModal() == .OK, let newURL = panel.url else {
+      return nil
+    }
+    return newURL
   }
 
   /// Save URL and type information for fallback restoration when bookmark fails
@@ -1128,8 +1252,7 @@ class SharedWallpaperWindowManager {
       } else if entry.type == .web {
         // 通过 JS 注入设置网页中媒体元素的音量
         let muted = volume == 0
-        let js = "document.querySelectorAll('video,audio').forEach(e=>{e.volume=\(volume);e.muted=\(muted)})"
-        webViews[sid]?.evaluateJavaScript(js, completionHandler: nil)
+        webViews[sid]?.dv_evaluateJS(WKWebView.jsSetVolume(Double(volume), muted: muted))
         screenContent[sid] = (.web, entry.url, entry.stretch, volume)
         saveWebBookmark(url: entry.url, volume: volume, screen: screen)
       }
@@ -1180,6 +1303,7 @@ class SharedWallpaperWindowManager {
       players[sid]?.replaceCurrentItem(with: nil)
       players.removeValue(forKey: sid)
       loopers.removeValue(forKey: sid)
+      itemObservations.removeValue(forKey: sid)?.invalidate()
       screenContent.removeValue(forKey: sid)
     }
   }

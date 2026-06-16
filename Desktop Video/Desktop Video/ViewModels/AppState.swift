@@ -92,15 +92,90 @@ class AppState: ObservableObject {
         }
     }
 
+    // MARK: - 自动连播（幻灯片）
+
+    /// 是否开启自动连播
+    @Published var slideshowEnabled: Bool {
+        didSet {
+            guard oldValue != slideshowEnabled else { return }
+            UserDefaults.standard.set(slideshowEnabled, forKey: slideshowEnabledKey)
+            Task { @MainActor in SlideshowController.shared.apply() }
+        }
+    }
+
+    /// 连播顺序：true = 随机，false = 顺序
+    @Published var slideshowRandom: Bool {
+        didSet {
+            guard oldValue != slideshowRandom else { return }
+            UserDefaults.standard.set(slideshowRandom, forKey: slideshowRandomKey)
+            Task { @MainActor in SlideshowController.shared.apply() }
+        }
+    }
+
+    /// 播放到列表末尾后是否循环
+    @Published var slideshowLoop: Bool {
+        didSet {
+            guard oldValue != slideshowLoop else { return }
+            UserDefaults.standard.set(slideshowLoop, forKey: slideshowLoopKey)
+        }
+    }
+
+    /// 图片停留时长（秒），到点切换下一项
+    @Published var slideshowImageInterval: Double {
+        didSet {
+            guard oldValue != slideshowImageInterval else { return }
+            UserDefaults.standard.set(slideshowImageInterval, forKey: slideshowImageIntervalKey)
+        }
+    }
+
+    // MARK: - 壁纸库排序
+
+    enum LibrarySortOrder: Int, CaseIterable, Identifiable {
+        case nameAsc = 0
+        case nameDesc = 1
+        case recentAdd = 2
+        case recentUse = 3
+
+        var id: Int { rawValue }
+
+        var description: String {
+            switch self {
+            case .nameAsc:    return L("LibrarySortNameAsc")
+            case .nameDesc:   return L("LibrarySortNameDesc")
+            case .recentAdd:  return L("LibrarySortRecentAdd")
+            case .recentUse:  return L("LibrarySortRecentUse")
+            }
+        }
+    }
+
+    /// 壁纸画廊排序方式
+    @Published var librarySortOrder: LibrarySortOrder {
+        didSet {
+            guard oldValue != librarySortOrder else { return }
+            UserDefaults.standard.set(librarySortOrder.rawValue, forKey: librarySortOrderKey)
+        }
+    }
+
     private let idlePauseSensitivityKey = "idlePauseSensitivity"
     private let globalMuteKey = "globalMute"
+    private let slideshowEnabledKey = "slideshowEnabled"
+    private let slideshowRandomKey = "slideshowRandom"
+    private let slideshowLoopKey = "slideshowLoop"
+    private let slideshowImageIntervalKey = "slideshowImageInterval"
+    private let librarySortOrderKey = "librarySortOrder"
     private var userDefaultsCancellable: AnyCancellable?
 
     private init() {
         let raw = UserDefaults.standard.integer(forKey: "playbackMode")
         self.playbackMode = PlaybackMode(rawValue: raw) ?? .automatic
-        self.idlePauseSensitivity = UserDefaults.standard.object(forKey: idlePauseSensitivityKey) as? Double ?? 40.0
+        self.idlePauseSensitivity = UserDefaults.standard.object(forKey: idlePauseSensitivityKey) as? Double ?? 50.0
         self.isGlobalMuted = UserDefaults.standard.object(forKey: globalMuteKey) as? Bool ?? false
+        self.slideshowEnabled = UserDefaults.standard.object(forKey: slideshowEnabledKey) as? Bool ?? false
+        self.slideshowRandom = UserDefaults.standard.object(forKey: slideshowRandomKey) as? Bool ?? false
+        self.slideshowLoop = UserDefaults.standard.object(forKey: slideshowLoopKey) as? Bool ?? true
+        self.slideshowImageInterval = UserDefaults.standard.object(forKey: slideshowImageIntervalKey) as? Double ?? 60.0
+        let sortRaw = UserDefaults.standard.integer(forKey: librarySortOrderKey)
+        self.librarySortOrder = LibrarySortOrder(rawValue: sortRaw) ?? .recentAdd
         bindUserDefaults()
     }
 

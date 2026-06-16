@@ -7,7 +7,10 @@ struct ToggleRow: View {
     @Binding var value: Bool
     var body: some View {
         Toggle(title, isOn: $value)
+            .toggleStyle(.switch)
             .font(.system(size: 15))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)   // 两列并排时长标题（多语言）缩放而非截断
             .frame(maxWidth: .infinity, alignment: .center)
     }
 }

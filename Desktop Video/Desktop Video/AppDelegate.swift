@@ -11,6 +11,7 @@ import AVFoundation
 import CoreGraphics
 import AVKit
 import Combine
+import WebKit
 import IOKit
 import IOKit.pwr_mgt
 import Foundation
@@ -46,6 +47,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    private var systemSleepActivity: NSObjectProtocol?
    // 屏保模式下的时钟标签
    private var clockTimer: Timer?
+   // 时钟尺寸缓存：时间为等宽数字(HH:mm:ss)整体宽度恒定，仅日期按天变化时才需重新测量，
+   // 借此避免每秒在“在屏” NSHostingView 上读取 fittingSize（曾触发 _NSDetectedLayoutRecursion）。
+   private var cachedClockSize: CGSize = .zero
+   private var lastClockDateForSizing: String = ""
+   // 仅用于离屏测量尺寸的 host，永不加入任何窗口，故读取其 fittingSize 不会与在屏布局发生递归。
+   private lazy var clockSizingHost = NSHostingView(rootView: ScreensaverClockHighlight(dateText: "", timeText: ""))
    // 独立时钟窗口（per-screen UUID → NSWindow）
    private var clockWindows: [String: NSWindow] = [:]
    // 无壁纸屏幕的黑色背景窗口（per-screen UUID → NSWindow）
@@ -69,7 +76,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        AppDelegate.shared = self
 
        // Register default idle pause sensitivity
-       UserDefaults.standard.register(defaults: ["idlePauseSensitivity": 40.0])
+       UserDefaults.standard.register(defaults: ["idlePauseSensitivity": 50.0])
+
+       // 清理上次会话/历史遗留的 WebKit 网络缓存(网页壁纸的 HTTP 缓存会无限堆积),
+       // 把磁盘增长限制在本次会话内;在 restoreFromBookmark 之前调用,使恢复的网页壁纸加载到最新内容。
+       SharedWallpaperWindowManager.clearWebCache()
 
        // 从书签中恢复窗口
        SharedWallpaperWindowManager.shared.restoreFromBookmark()
@@ -160,6 +171,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
        // Ensure shouldPauseVideo is evaluated once when the app launches
        updatePlaybackStateForAllScreens()
+
+       // 若已开启自动连播，待窗口恢复完成后启动（每屏各自遍历播放列表）
+       if AppState.shared.slideshowEnabled {
+           DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+               Task { @MainActor in SlideshowController.shared.apply() }
+           }
+       }
 
        // 应用运行于沙盒环境，不再检查 GitHub 更新以避免网络错误
    }
@@ -660,7 +678,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        // Existing creation code...
        let contentView = ContentView()
        let newWindow = NSWindow(
-           contentRect: NSRect(x: 0, y: 0, width: 480, height: 325),
+           contentRect: NSRect(x: 0, y: 0, width: AppMainWindow.minWidth, height: AppMainWindow.minHeight),
            styleMask: [.titled, .closable, .resizable],
            backing: .buffered,
            defer: false
@@ -668,6 +686,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        newWindow.identifier = NSUserInterfaceItemIdentifier("MainWindow")
        newWindow.center()
        newWindow.title = L("Controller")
+       // 在显示前同步应用整窗 liquid glass 外观，避免首帧闪现不透明背景。
+       newWindow.applyGlassWindowStyle()
        newWindow.contentView = NSHostingView(rootView: contentView)
        newWindow.isReleasedWhenClosed = false
        newWindow.delegate = self
@@ -840,11 +860,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
         // 网页中的视频/音频暂停与恢复
-        let jsCommand = pauseAll
-            ? "document.querySelectorAll('video,audio').forEach(e=>e.pause())"
-            : "document.querySelectorAll('video,audio').forEach(e=>e.play())"
+        let jsCommand = pauseAll ? WKWebView.jsPauseAll : WKWebView.jsPlayAll
         for (_, webView) in SharedWallpaperWindowManager.shared.webViews {
-            webView.evaluateJavaScript(jsCommand, completionHandler: nil)
+            webView.dv_evaluateJS(jsCommand)
         }
         // 仅在状态变化时才通知 UI 刷新
         if lastPauseAllState != pauseAll {
@@ -935,6 +953,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let dateString = formatScreensaverDate()
         let timeString = formatScreensaverTime()
 
+        // 先算尺寸：时间为等宽数字(HH:mm:ss)宽度恒定，仅当日期变化（或首次）时才在“离屏” host 上重新测量。
+        // 关键：fittingSize 只在离屏的 clockSizingHost 上读取，绝不在已加入窗口的在屏 host 上每秒读取，
+        // 以规避 AppKit 的 _NSDetectedLayoutRecursion（在某次布局过程中再次触发布局）。
+        if cachedClockSize == .zero || dateString != lastClockDateForSizing {
+            clockSizingHost.rootView = ScreensaverClockHighlight(dateText: dateString, timeText: timeString)
+            cachedClockSize = clockSizingHost.fittingSize
+            lastClockDateForSizing = dateString
+        }
+        let clockSize = cachedClockSize
+
         for screen in NSScreen.screens {
             let sid = screen.dv_displayUUID
             guard let clockWin = clockWindows[sid] else { continue }
@@ -949,10 +977,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 contentBounds = CGRect(origin: .zero, size: screen.frame.size)
             }
 
-            // 更新高光文字
+            // 更新高光文字：先改 rootView，再按缓存尺寸设 frame（不读在屏 host 的 fittingSize）
             if let highlightHost = clockWin.contentView?.subviews.compactMap({ $0 as? NSHostingView<ScreensaverClockHighlight> }).first {
                 highlightHost.rootView = ScreensaverClockHighlight(dateText: dateString, timeText: timeString)
-                let clockSize = highlightHost.fittingSize
                 let originX = (contentBounds.width - clockSize.width) / 2
                 let originY = contentBounds.height * clockVerticalPositionFactor - clockSize.height / 2
                 let clockFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: clockSize)

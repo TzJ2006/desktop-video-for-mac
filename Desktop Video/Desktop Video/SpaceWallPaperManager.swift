@@ -103,7 +103,7 @@ final class SpaceWallpaperManager {
         do {
             let data = try Data(contentsOf: url, options: .mappedIfSafe)
             let contentType = UTType(filenameExtension: url.pathExtension) ?? .video
-            let asset = AVDataAsset(data: data, contentType: contentType)
+            let asset = try AVDataAsset(data: data, contentType: contentType)
             let item = AVPlayerItem(asset: asset)
             let player = AVQueuePlayer(playerItem: item)
             _ = AVPlayerLooper(player: player, templateItem: item)

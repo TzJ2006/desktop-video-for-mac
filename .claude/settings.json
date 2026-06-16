@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash",
+      "Agent",
+      "WebFetch",
+      "WebSearch",
+      "Skill",
+      "NotebookEdit"
+    ],
+    "ask": [
+      "Bash(rm :*)",
+      "Bash(rm -:*)",
+      "Bash(rmdir:*)",
+      "Bash(unlink :*)",
+      "Bash(git clean:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git checkout -- .:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)"
+    ]
+  }
+}
