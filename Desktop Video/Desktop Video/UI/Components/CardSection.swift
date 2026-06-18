@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// 卡片分区。Image #3 风格：左对齐的「图标徽章 + 标题 + 可选配件」头部，
-/// 下接内容；整卡为磨砂玻璃 + 圆角 + 细描边 + 柔和阴影。
+/// 卡片分区。左对齐的「图标徽章 + 标题 + 可选配件」头部 + Liquid Glass 磨砂卡面。
 struct CardSection<Content: View, Trailing: View>: View {
     let title: LocalizedStringKey
     let systemImage: String
@@ -23,6 +22,10 @@ struct CardSection<Content: View, Trailing: View>: View {
         self.content = content
     }
 
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: theme.cardCornerRadius, style: .continuous)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
@@ -30,16 +33,8 @@ struct CardSection<Content: View, Trailing: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: theme.cardCornerRadius, style: .continuous)
-                .fill(theme.cardBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: theme.cardCornerRadius, style: .continuous)
-                .strokeBorder(theme.cardBorder, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .glassEffect(.regular, in: cardShape)
     }
 
     private var header: some View {
@@ -57,7 +52,7 @@ struct CardSection<Content: View, Trailing: View>: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(theme.primaryText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)   // 半宽并排时长标题（多语言）缩放而非截断
+                .minimumScaleFactor(0.8)
 
             Spacer(minLength: 8)
 
@@ -70,7 +65,6 @@ struct CardSection<Content: View, Trailing: View>: View {
     }
 }
 
-// 无 trailing 配件的便捷初始化：保持既有调用点 `CardSection(title:systemImage:help:) { ... }` 不变。
 extension CardSection where Trailing == EmptyView {
     init(title: LocalizedStringKey,
          systemImage: String,

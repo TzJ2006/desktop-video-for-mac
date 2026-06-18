@@ -6,24 +6,28 @@ struct ContentView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some View {
-        AppMainWindow()
-            .frame(minWidth: AppMainWindow.minWidth, minHeight: AppMainWindow.minHeight)
-            .glassWindowBackground()
-            .background(MainWindowBridge())
-            .applyTheme(themeManager)
+        GlassEffectContainer {
+            AppMainWindow()
+                .frame(minWidth: AppMainWindow.minWidth, minHeight: AppMainWindow.minHeight)
+        }
+        .glassWindowBackground()
+        .background(MainWindowBridge())
+        .applyTheme(themeManager)
     }
 }
 
 #Preview { ContentView() }
 
 private struct MainWindowBridge: NSViewRepresentable {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     func makeNSView(context: Context) -> NSView {
         dlog("MainWindowBridge makeNSView")
         return GlassWindowConfigurator()
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? GlassWindowConfigurator)?.applyIfPossible()
+        (nsView as? GlassWindowConfigurator)?.applyIfPossible(themeManager: themeManager)
     }
 }
 
@@ -36,11 +40,12 @@ private final class GlassWindowConfigurator: NSView {
         applyIfPossible()
     }
 
-    func applyIfPossible() {
+    func applyIfPossible(themeManager: ThemeManager = .shared) {
         guard let window else { return }
         if window.identifier?.rawValue != "MainWindow" {
             window.identifier = NSUserInterfaceItemIdentifier("MainWindow")
         }
         window.applyGlassWindowStyle()
+        AppDelegate.shared?.adoptMainWindowIfNeeded(window)
     }
 }

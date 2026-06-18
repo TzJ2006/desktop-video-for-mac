@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Desktop Video Wallpaper is a lightweight, privacy-focused dynamic wallpaper app for macOS. It sets videos, images, and web pages as desktop wallpapers with multi-display support, playback modes, screensaver functionality, and power management. Runs entirely offline with no cloud syncing.
 
-**Tech Stack**: Swift, SwiftUI, AVFoundation, WebKit | **Target**: macOS 12.0+
+**Tech Stack**: Swift, SwiftUI, AVFoundation, WebKit | **Target**: macOS 26.0+
 
 ## Build & Verify
 

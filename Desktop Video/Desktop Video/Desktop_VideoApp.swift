@@ -29,8 +29,8 @@ struct desktop_videoApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
-            ContentView() // Main app window
+        SwiftUI.Settings {
+            PreferencesView()
         }
         .commands {
             // Replace the About menu item
@@ -55,10 +55,6 @@ struct desktop_videoApp: App {
                 .keyboardShortcut(KeyEquivalent(KeyBindings.startScreensaverKey.first ?? "s"),
                                    modifiers: eventModifiers(from: KeyBindings.startScreensaverModifiers))
             }
-        }
-
-        SwiftUI.Settings {
-            PreferencesView()
         }
     }
 

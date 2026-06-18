@@ -4,6 +4,41 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 5.0 Preview 0618 (2026-06-18)
+
+- 修复切回「壁纸」页时折叠画廊仍实例化全部缩略图导致闪烁与 CPU 瞬时升高的问题；折叠行现在只加载前 6 项，并在磁贴重建时同步复用内存缩略图
+- Fix thumbnail flicker and CPU spikes when returning to Wallpaper: collapsed gallery rows now instantiate only the first 6 items and tiles synchronously reuse in-memory thumbnails when rebuilt
+- 新增侧边栏导航按钮点击日志，记录目标页面、上一个页面与是否发生切换
+- Add sidebar navigation click logging with the target page, previous page, and whether the selection changed
+
+### Version 5.0 Preview 0617 (2026-06-17)
+
+- 修复主窗口标题栏透明、与主界面明暗不一致的问题：标题栏区域改用 within-window 的 `.titlebar` 材质，并同步窗口 `NSAppearance`
+- Fix the main window title bar appearing transparent and mismatched with the UI: the title bar now uses a within-window `.titlebar` material and the window `NSAppearance` is synced
+- 修复「外观 → 跟随系统」不生效的问题：监听系统明暗变化、同步窗口 `NSAppearance`，并在跟随系统时用解析后的明暗驱动 token 刷新
+- Fix Appearance → Follow System not working: observe system light/dark changes, sync window `NSAppearance`, and refresh tokens from the resolved scheme when following the system
+- 播放页「图片切换间隔」改为「标签 + 输入框 + 秒」同一行布局，去掉标签中的「(秒)」
+- Playback: place the image-interval field inline between the label and “seconds”, removing “(seconds)” from the label
+- 加强标题栏修复：在 NSWindow frame 层铺设 within-window 材质（替代 SwiftUI 安全区估算），窗口缩放时同步更新
+- Strengthen title bar fix: lay within-window material on the NSWindow frame (replacing SwiftUI safe-area guessing) and refresh on resize
+- 加强「跟随系统」：始终用解析后的 `resolvedColorScheme` 驱动 SwiftUI，不再传 `nil`
+- Strengthen Follow System: always drive SwiftUI with the resolved `resolvedColorScheme` instead of passing `nil`
+- 最低系统要求提升至 macOS 26；主界面改用原生 Liquid Glass（`.glassEffect`、 `GlassEffectContainer`、`backgroundExtensionEffect`），移除旧版 NSVisualEffectView 模拟实现
+- Raise minimum macOS to 26; adopt native Liquid Glass for the main UI (`.glassEffect`, `GlassEffectContainer`, `backgroundExtensionEffect`) and remove the legacy NSVisualEffectView simulation
+- 播放页「自动连播 / 播放列表」改用 `GridRow` 等宽等高并排；「图片切换间隔」输入框置于标签与「秒」之间（去掉 Stepper 以保持左右卡片尺寸一致）
+- Playback: lay out Auto-advance and Playlist in equal-width/height `GridRow` columns; place the image-interval field between the label and “seconds” (Stepper removed so both cards stay the same size)
+- 统一全部 Liquid Glass 为 `.regular` 变体（含整窗底层与标题栏）
+- Unify all Liquid Glass to the `.regular` variant (including the window background and title bar)
+
+### Version 5.0 Preview 0616 (2026-06-16)
+
+- 修复启动或重新激活 App 时偶发出现两个主窗口的问题：SwiftUI 主窗口创建后会立即注册到 `AppDelegate`，手动打开路径增加 pending 防重入，并阻止 AppKit 默认 reopen 行为再额外创建 `WindowGroup` 窗口
+- Fix the intermittent duplicate main window on app launch/reopen: the SwiftUI-created main window is now adopted by `AppDelegate` as soon as it appears, manual opening is protected by a pending guard, and the default AppKit reopen path no longer creates an extra `WindowGroup` window
+- 修复 `Localizable.xcstrings` 末尾重复的 `"version"` 片段导致本地化文件无法解析的问题
+- Fix duplicated trailing `"version"` fragments in `Localizable.xcstrings` that made the localization file fail to parse
+- 清理 AppIcon 资源：移除 iOS / watchOS 图标槽位及 30 个未使用的 PNG，仅保留 macOS 所需的 7 个尺寸（16–1024px），修复 Xcode「20 unassigned children」警告
+- Clean up AppIcon assets: remove iOS / watchOS icon slots and 30 unused PNGs, keeping only the 7 macOS sizes (16–1024px), fixing the Xcode "20 unassigned children" warning
+
 ### Version 5.0 Preview 0615 (2026-06-15)
 
 - 「通用」页把「外观」从分段控件改为可点开的下拉菜单，与下方「壁纸库排序」「语言」一致；三者改用统一的自绘下拉组件 `CenteredMenuPicker`：框内文字居中（原生 Picker(.menu) 只能左对齐）、统一宽度（200pt，容纳最长的本地化选项）、右对齐，菜单项仍用内联 Picker 保留「选中打勾」语义

@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    static var shared: AppDelegate!
    /// Tracks whether the main window has been opened once already
    private var hasOpenedMainWindowOnce = false
+   private var pendingMainWindowOpen = false
    private let clockVerticalPositionFactor: CGFloat = 0.85
    var window: NSWindow?
    var statusItem: NSStatusItem?
@@ -588,9 +589,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         dlog("adoptMainWindowIfNeeded alreadyTracked=\(self.window === window)")
         guard self.window !== window else { return }
         self.window = window
+        pendingMainWindowOpen = false
         hasOpenedMainWindowOnce = true
         window.isReleasedWhenClosed = false
         window.delegate = self
+        window.syncAppearance(with: ThemeManager.shared)
+    }
+
+    func syncMainWindowAppearance() {
+        dlog("syncMainWindowAppearance")
+        if let window {
+            window.syncAppearance(with: ThemeManager.shared)
+        }
     }
 
     private func captureMainWindowFromSwiftUI() {
@@ -637,6 +647,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        dlog("windowWillClose")
        if let win = notification.object as? NSWindow, win == self.window {
            self.window = nil
+           self.pendingMainWindowOpen = false
        }
        // 添加处理preferences窗口关闭
        if let win = notification.object as? NSWindow, win == self.preferencesWindow {
@@ -647,6 +658,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    // 打开窗口
    @objc func openMainWindow() {
         captureMainWindowFromSwiftUI()
+        if let win = self.window {
+            if win.isMiniaturized {
+                win.deminiaturize(nil)
+            }
+            win.makeKeyAndOrderFront(nil)
+            NSRunningApplication.current.activate(options: [.activateAllWindows])
+            return
+        }
+        guard !pendingMainWindowOpen else {
+            dlog("openMainWindow skipped because another open is pending")
+            return
+        }
+        pendingMainWindowOpen = true
         // Only delay on the very first open
         if !hasOpenedMainWindowOnce {
             dlog("OpenMainWindow for the first time")
@@ -668,6 +692,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         dlog("openMainWindow (delayed or immediate)")
         captureMainWindowFromSwiftUI()
         if let win = self.window {
+            pendingMainWindowOpen = false
             if win.isMiniaturized {
                 win.deminiaturize(nil)
             }
@@ -693,6 +718,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
        newWindow.delegate = self
        newWindow.makeKeyAndOrderFront(nil)
        self.window = newWindow
+       pendingMainWindowOpen = false
         hasOpenedMainWindowOnce = true
        NSRunningApplication.current.activate(options: [.activateAllWindows])
    }
@@ -700,11 +726,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
    // 重新打开窗口
    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
        dlog("applicationShouldHandleReopen visible=\(flag)")
-       if !flag || window == nil || !window!.isVisible {
+       captureMainWindowFromSwiftUI()
+       if let win = window, win.isVisible {
+           if win.isMiniaturized {
+               win.deminiaturize(nil)
+           }
+           win.makeKeyAndOrderFront(nil)
            NSRunningApplication.current.activate(options: [.activateAllWindows])
+       } else {
            openMainWindow()
        }
-       return true
+       return false
    }
 
    // 设置定时删除 bookmark 避免被塞垃圾

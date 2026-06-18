@@ -65,6 +65,7 @@ struct WallpaperGallery: View {
         if !entries.isEmpty || showAddFile || showAddWeb {
             // 条目数回落到上限以内时强制折叠（此时也不再显示 Show All 入口）
             let expanded = entries.count > collapsedLimit && expandedRows.contains(key)
+            let visibleEntries = expanded ? entries : Array(entries.prefix(collapsedLimit))
             VStack(alignment: .leading, spacing: 8) {
                 sectionHeader(title: L(key),
                               count: entries.count,
@@ -81,7 +82,7 @@ struct WallpaperGallery: View {
                         HStack(alignment: .top, spacing: 12) {
                             if showAddFile { addFileTile }
                             if showAddWeb { addWebTile }
-                            ForEach(entries) { tile($0) }
+                            ForEach(visibleEntries) { tile($0) }
                         }
                         .padding(.bottom, 4)
                     }

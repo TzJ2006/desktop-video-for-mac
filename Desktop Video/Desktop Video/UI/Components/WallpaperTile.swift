@@ -13,6 +13,20 @@ struct WallpaperTile: View {
 
     static let tileSize = CGSize(width: 132, height: 84)
 
+    init(entry: WallpaperHistoryEntry, isSelected: Bool, onApply: @escaping () -> Void) {
+        self.entry = entry
+        self.isSelected = isSelected
+        self.onApply = onApply
+
+        let initialThumbnail: NSImage?
+        if !entry.isWeb, let url = entry.url {
+            initialThumbnail = ThumbnailGenerator.cachedImageIfAvailable(for: url)
+        } else {
+            initialThumbnail = nil
+        }
+        _thumbnail = State(initialValue: initialThumbnail)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .bottomTrailing) {
@@ -69,6 +83,7 @@ struct WallpaperTile: View {
 
     private func loadThumbnail() async {
         guard !entry.isWeb, let url = entry.url else { return }
+        if thumbnail != nil { return }
         thumbnail = await ThumbnailGenerator.cached(for: url, isVideo: entry.isVideo)
     }
 }

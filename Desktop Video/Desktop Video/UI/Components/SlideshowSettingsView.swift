@@ -2,9 +2,8 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// 「自动连播」+「播放列表」两张并排卡片（Image #3 布局）。
+/// 「自动连播」+「播放列表」两张并排卡片（等宽等高）。
 /// 左卡：开关（在卡片头部）+ 顺序 / 循环 / 图片切换间隔；右卡：播放列表（加文件/文件夹、列表、清空）。
-/// 播放列表可加入单个文件或整个文件夹；视频播完自动切下一项，图片按间隔切换，每屏各自独立。
 struct SlideshowSettingsView: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var playlist = PlaylistStore.shared
@@ -20,9 +19,15 @@ struct SlideshowSettingsView: View {
     }()
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            autoAdvanceCard
-            playlistCard
+        GlassEffectContainer {
+            Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 0) {
+                GridRow(alignment: .top) {
+                    autoAdvanceCard
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    playlistCard
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -57,16 +62,13 @@ struct SlideshowSettingsView: View {
                 Toggle(LocalizedStringKey(L("Loop playlist")), isOn: $appState.slideshowLoop)
                     .toggleStyle(.checkbox)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L("Image interval (seconds)")).font(.system(size: 13, weight: .medium))
-                    HStack(spacing: 8) {
-                        TextField("", value: $appState.slideshowImageInterval, formatter: intervalFormatter)
-                            .frame(width: 70)
-                            .textFieldStyle(.roundedBorder)
-                        Stepper("", value: $appState.slideshowImageInterval, in: 2...86_400, step: 1)
-                            .labelsHidden()
-                        Text(L("Seconds")).font(.system(size: 13)).foregroundStyle(theme.secondaryText)
-                    }
+                HStack(spacing: 6) {
+                    Text(L("Image interval")).font(.system(size: 13, weight: .medium))
+                    TextField("", value: $appState.slideshowImageInterval, formatter: intervalFormatter)
+                        .frame(width: 56)
+                        .textFieldStyle(.roundedBorder)
+                    Text(L("Seconds")).font(.system(size: 13)).foregroundStyle(theme.secondaryText)
+                    Spacer(minLength: 0)
                 }
             }
             .disabled(!appState.slideshowEnabled)

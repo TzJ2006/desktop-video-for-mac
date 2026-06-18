@@ -7,10 +7,8 @@
 //
 //  与早期「经典 / 玻璃深色」两套独立主题不同，现在全 App 统一一套
 //  「liquid glass」设计——半透明磨砂玻璃 + 整窗模糊透出桌面，
-//  仅由「外观」（跟随系统 / 浅色 / 深色）驱动明暗。多数颜色本就是
-//  系统语义色（`.primary` / `.secondary` / 材质等），会随
-//  `.preferredColorScheme` 自动适配，因此三档外观共用同一套玻璃 token，
-//  只在 `colorScheme` 字段上不同。
+//  仅由「外观」（跟随系统 / 浅色 / 深色）驱动明暗。主界面采用 macOS 26
+//  原生 Liquid Glass（`.glassEffect` / `GlassEffectContainer`）。
 //
 
 import SwiftUI
@@ -25,7 +23,7 @@ struct ThemeTokens {
     var colorScheme: ColorScheme?
 
     // MARK: 表面（材质或纯色，统一用 AnyShapeStyle 承载）
-    /// 主内容滚动区背景。玻璃设计下为透明——直接透出整窗模糊（见 WindowBlur）。
+    /// 主内容滚动区背景。玻璃设计下为透明——直接透出整窗玻璃底层。
     var windowBackground: AnyShapeStyle
     /// 侧边栏背景。
     var sidebarBackground: AnyShapeStyle
@@ -35,6 +33,10 @@ struct ThemeTokens {
     var controlBackground: AnyShapeStyle
     /// 内容类型徽标后面的胶囊材质。
     var badgeBackground: AnyShapeStyle
+    /// 整窗玻璃上的色彩校正层。
+    var windowTint: Color
+    /// 侧边栏玻璃上的色彩校正层。
+    var sidebarTint: Color
 
     // MARK: 文字与强调色
     var primaryText: Color
@@ -103,19 +105,22 @@ enum AppTheme: String, CaseIterable, Identifiable {
 // MARK: - 玻璃预设
 
 extension ThemeTokens {
-    /// 统一的 liquid glass 设计 token。三档外观共用，仅 `colorScheme` 不同。
+    /// 统一的 Liquid Glass 设计 token。三档外观共用，仅 `colorScheme` 不同。
     ///
-    /// 设计要点：主窗口已整窗半透明（`WindowBlur` 提供 behind-window 模糊，透出桌面），
-    /// 因此窗口/侧边栏背景取透明，卡片用 within-window 材质叠出磨砂玻璃层次；
-    /// 颜色尽量用系统语义色，随 `colorScheme` 自动明暗。
+    /// 卡片/侧栏等表面由 `.glassEffect` 渲染，再用轻 tint 把浅色外观提亮。
     static func glass(_ scheme: ColorScheme?) -> ThemeTokens {
-        ThemeTokens(
+        let isDark = scheme == .dark
+        let groupedSurface = isDark ? Color.white.opacity(0.08) : Color.white.opacity(0.54)
+
+        return ThemeTokens(
             colorScheme: scheme,
             windowBackground: AnyShapeStyle(Color.clear),
             sidebarBackground: AnyShapeStyle(Color.clear),
-            cardBackground: AnyShapeStyle(.regularMaterial),
-            controlBackground: AnyShapeStyle(.thinMaterial),
-            badgeBackground: AnyShapeStyle(.ultraThinMaterial),
+            cardBackground: AnyShapeStyle(groupedSurface),
+            controlBackground: AnyShapeStyle(groupedSurface),
+            badgeBackground: AnyShapeStyle(isDark ? Color.white.opacity(0.10) : Color.white.opacity(0.48)),
+            windowTint: isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.42),
+            sidebarTint: isDark ? Color.black.opacity(0.14) : Color.white.opacity(0.34),
             primaryText: .primary,
             secondaryText: .secondary,
             accent: .accentColor,

@@ -16,7 +16,12 @@ struct AppMainWindow: View {
         HStack(spacing: 0) {
             SidebarView(selection: $vm.selection)
                 .frame(width: Self.sidebarWidth)
-                .background(theme.sidebarBackground)
+                .frame(maxHeight: .infinity)
+                .background {
+                    theme.sidebarTint
+                        .background(theme.sidebarBackground)
+                        .ignoresSafeArea(.container, edges: .top)
+                }
 
             Divider()
 
@@ -31,9 +36,9 @@ struct AppMainWindow: View {
                 }
                 .padding(.horizontal, 28)
                 .padding(.vertical, 24)
-                .frame(maxWidth: .infinity) // Ensure content centers/expands
+                .frame(maxWidth: .infinity)
             }
-            .background(theme.windowBackground)
+            .frame(maxHeight: .infinity)
         }
         .frame(minWidth: Self.minWidth, minHeight: Self.minHeight)
     }
