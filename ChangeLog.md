@@ -4,6 +4,11 @@
 
 **Desktop Video Wallpaper*- is a lightweight dynamic wallpaper app for macOS. It runs entirely offline — no data is uploaded or synced to the cloud, ensuring your privacy and local control.
 
+### Version 5.0 Preview 1025 (2026-10-25)
+
+- 更新 CLAUDE.md：补充连播/播放列表、MediaAccess、主题与 Liquid Glass 架构说明，以及 periphery、DMG 打包命令与当前版本号格式
+- Update CLAUDE.md: document slideshow/playlist, MediaAccess, theming and Liquid Glass architecture, plus periphery and DMG packaging commands and the current version-header format
+
 ### Version 5.0 Preview 0618 (2026-06-18)
 
 - 修复切回「壁纸」页时折叠画廊仍实例化全部缩略图导致闪烁与 CPU 瞬时升高的问题；折叠行现在只加载前 6 项，并在磁贴重建时同步复用内存缩略图

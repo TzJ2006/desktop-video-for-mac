@@ -18,9 +18,11 @@ xcodebuild \
   clean build
 ```
 
-There are no automated tests. The build command above is the primary verification step before merging.
+There are no automated tests and no test targets. The build command above is the primary verification step before merging; if Xcode is unavailable (e.g. on Linux), say so in the PR. The built app ends up under `~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/Desktop Video.app`.
 
-**Dead code detection** is configured via two `.periphery.yml` files. The root one sets `retain_public: true` only. The one inside `Desktop Video/` is stricter — it adds `targets`, `retain_assign_only_properties`, `analyze_spm`, and `strict: true`. Note `periphery:ignore` comments are used in source to park unused code (e.g. `SpaceWallPaperManager.swift`).
+**Release packaging**: `scripts/make-dmg.sh "<path/to/Desktop Video.app>" [out.dmg] [volume name]` builds the installer DMG using `statics/background.png` and `statics/icon.icns` (default output: `releases/`).
+
+**Dead code detection** is configured via two `.periphery.yml` files. The root one sets `retain_public: true` only. The one inside `Desktop Video/` is stricter — it adds `targets`, `retain_assign_only_properties`, `analyze_spm`, and `strict: true`. Run with `periphery scan` from the repo root (root config) or from `Desktop Video/` (strict config). Note `periphery:ignore` comments are used in source to park unused code (e.g. `SpaceWallPaperManager.swift`).
 
 **Localization check**: When making code changes, verify if translations are needed and update `Localizable.xcstrings` accordingly.
 
@@ -46,6 +48,12 @@ There are no automated tests. The build command above is the primary verificatio
 **Creation flow**: `WindowManager.startForAllScreens()` → `syncScreens()` → `ensureWallpaper(on:)` → `SharedWallpaperWindowManager.ensureWallpaperController(for:)` → creates `WallpaperWindowController` + `WallpaperWindow` per screen.
 
 **Content types**: Video (AVQueuePlayer with AVPlayerLooper), Image (NSImageView), Web (WKWebView with `WebNavigationHandler` delegate and JavaScript injection for pause control). Cached in-memory video bytes (`NSCache<NSURL, NSData>`) are played back via `AVDataAsset` (`Core/AVDataAsset.swift`), which writes the data to a temp file with the correct extension and cleans it up on deinit.
+
+### Slideshow / Playlist
+
+`PlaylistStore` (`Models/`, JSON in UserDefaults) holds files or folders; folders are enumerated at add time and each child gets a per-URL bookmark. `SlideshowController` (`ViewModels/`) advances **each screen independently** through the playlist — videos advance on end-of-playback, images on a timer — in sequential or shuffled order. `AppState`'s slideshow settings and `PlaylistStore` changes call back into `SlideshowController.shared.apply()` / `playlistDidChange()`.
+
+`Core/MediaAccess.swift` is the shared entry point for video/image type detection (UTType with extension fallback), folder enumeration, security-scoped reachability checks, and per-URL bookmark saving — reuse it rather than re-implementing these checks.
 
 ### Security-Scoped Bookmark System
 
@@ -81,6 +89,8 @@ Sidebar navigation (`SidebarView`, 220pt) + scrollable card-based content (`Card
 
 **History system**: `WallpaperHistoryStore` (singleton) stores up to 100 `WallpaperHistoryEntry` records (Codable, JSON in UserDefaults) tracking URL, content type, timestamp, and filename. Per-URL bookmarks enable re-opening history items without re-prompting. `ThumbnailGenerator` (`ViewModels/ThumbnailGenerator.swift`) renders preview thumbnails for video/image entries, activating per-URL security-scoped bookmarks before reading.
 
+**Theming**: `ThemeManager` (`UI/Theme/`) follows the same singleton + `@Published` + UserDefaults pattern as `LanguageManager`/`AppState` (key `selectedTheme`; `AppTheme` = system/light/dark). Theme changes apply live and sync the window's `NSAppearance`; language changes require a restart. The main UI uses native Liquid Glass (`.glassEffect(.regular)`, `GlassEffectContainer`) — do not reintroduce `NSVisualEffectView` simulations.
+
 ### App Sandbox Entitlements
 
 `app-sandbox`, `files.user-selected.read-write`, `files.bookmarks.app-scope`, `network.client` — files accessed only via NSOpenPanel or stored bookmarks.
@@ -89,13 +99,14 @@ Sidebar navigation (`SidebarView`, 220pt) + scrollable card-based content (`Card
 
 - PascalCase for types, camelCase for functions/variables
 - File names match the main type they contain
-- Provide Chinese comments when adding command-line scripts
+- Provide Chinese comments when adding command-line scripts (existing source comments are largely Chinese)
+- Add a `dlog()` statement to new functions; remove obsolete logic/unused methods rather than leaving it behind (from `AGENTS.md`)
 - **Every change must be logged in `ChangeLog.md`** — see `AGENTS.md` for detailed requirements
   - Format: Bilingual entries (Chinese first, then English) under version headers
   - Newest entries go at the top of the file
   - Use actual current date in format `YYYY-MM-DD`
-- Versioning: `Version X.Y hot-fix Z` (one hot-fix per day max)
-- **ChangeLog grouping rule**: If changes are made on the same day as an existing version entry, append to that entry. Only create a new `hot-fix` version if the changes are on a different day.
+- Versioning: `AGENTS.md` describes `Version X.Y hot-fix Z`, but recent entries use `### Version X.Y Preview MMDD (YYYY-MM-DD)` (e.g. `Version 5.0 Preview 0618 (2026-06-18)`) — follow the format of the newest entry in `ChangeLog.md`
+- **ChangeLog grouping rule**: If changes are made on the same day as an existing version entry, append to that entry. Only create a new version entry (one per day max) if the changes are on a different day.
 
 ## Git Workflow
 
